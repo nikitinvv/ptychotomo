@@ -103,6 +103,8 @@ void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
 	fftshift1c<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
 	cufftExecC2C(plan1d, (cufftComplex*)g,(cufftComplex*)g,CUFFT_FORWARD);
 	fftshift1c<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
+	//applyfilter<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
+
 
 	scatter<<<GS3d3, BS3d>>>(fde,g,x,y,M,mu,N,Ntheta,Nz);
 	wrapadj<<<GS3d2, BS3d>>>(fde,N,Nz,M);
@@ -125,7 +127,7 @@ void radonusfft::fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4,
 }
 
 //wrap for python
-void radonusfft::adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2, float* theta_, int N7)
+void radonusfft::adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2, float* theta, int N7)
 {
 	adjR((float2*)f,(float2*)g,theta);
 }
