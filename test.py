@@ -39,11 +39,10 @@ if __name__ == "__main__":
     energy = 5
 
     # Load a 3D object.
-#    beta = dxchange.read_tiff('data/lego-imag.tiff')
-#    delta = dxchange.read_tiff('data/lego-real.tiff')
-    beta = tomopy.misc.phantom.shepp3d(64)*1e-3
-    delta = tomopy.misc.phantom.shepp3d(64)*1e-3
-
+    beta = dxchange.read_tiff('data/lego-imag.tiff')
+    delta = dxchange.read_tiff('data/lego-real.tiff')
+    #beta = tomopy.misc.phantom.shepp3d(128)*1e-3
+    #delta = tomopy.misc.phantom.shepp3d(128)*1e-3
 
 
     # Create object.
@@ -54,12 +53,12 @@ if __name__ == "__main__":
     prb = objects.Probe(weights, maxint=maxint)
 
     # Detector parameters.
-    #det = objects.Detector(63, 63)
-    det = objects.Detector(31, 31)
+    det = objects.Detector(63, 63)
+    #det = objects.Detector(31, 31)
 
 
     # Define rotation angles.
-    theta = np.linspace(0, np.pi, 180)
+    theta = np.linspace(0, 2*np.pi, 360)
 
     # Raster scan parameters for each rotation angle.
     scan = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
@@ -67,6 +66,33 @@ if __name__ == "__main__":
 
     # class solver 
     slv = solver.Solver(prb, scan, theta, det, voxelsize, energy)
+
+    # # Adjoint and normalization test 
+    # r = 1/np.sqrt(len(theta)*obj.shape[2]/2)
+    # a = obj.complexform
+    # b = slv.fwd_tomo(a)*r
+    # aa = slv.adj_tomo(b)*r
+    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
+    # s2 = np.sum(np.complex64(b)*np.conj(np.complex64(b)))
+    # s3 = np.sum(np.complex64(aa)*np.conj(np.complex64(aa)))
+    # print("Adjoint and normalization test tomo: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
+    # #r = 1/np.sqrt(len(theta)*obj.shape[2])
+    # a = slv.fwd_tomo(obj.complexform)
+    # a = slv.exptomo(a)
+    # b = slv.fwd_ptycho(a)
+    # aa = slv.adj_ptycho(b,obj.complexform)
+    # s1 = 0+1j*0
+    # s3 = 0+1j*0
+
+    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
+    # for k in range(len(theta)):
+    #     #print([a[k].shape,aa[k].shape])
+    #     s2+=np.sum(np.complex64(b[k])*np.conj(np.complex64(b[k])))
+    # for k in range(len(theta)):
+    #     s3+=np.sum(np.complex64(aa[k])*np.conj(np.complex64(aa[k])))
+
+    # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
+
 
     # Project.
     psis = slv.fwd_tomo(obj.complexform)

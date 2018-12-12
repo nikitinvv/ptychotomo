@@ -43,13 +43,17 @@ class Solver(object):
     def fwd_tomo(self,psi):
         pb = tomopy.project(psi.imag, self.theta, pad=False) 
         pd = tomopy.project(psi.real, self.theta, pad=False) 
-        return pd + 1j*pb
+        r = 1/np.sqrt(pb.shape[0]*pb.shape[1]/2)
+        res = (pd + 1j*pb)#*r
+        return res
 
     # adjoint Radon transform (R^*)
     def adj_tomo(self,data):
         pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp') 
         pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp') 
-        return pd + 1j*pb
+        r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
+        res = (pd + 1j*pb)#*r
+        return res
 
     # ptychography transform (FQ)
     def fwd_ptycho(self,psi):

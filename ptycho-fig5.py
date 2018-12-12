@@ -309,16 +309,16 @@ print (folder)
 rho = 0.5
 gamma = 0.25
 eta = 0.25
-NITER = 1000
+NITER = 3
 piter = 1
 titer = 1
 maxint = 100
-noise = True
+noise = False
 debug = False
 
 # Load a 3D object.
-beta = dxchange.read_tiff('/Users/dgursoy/Data/Ptycho/lego-imag.tiff')
-delta = dxchange.read_tiff('/Users/dgursoy/Data/Ptycho/lego-real.tiff')
+beta = dxchange.read_tiff('data/lego-imag.tiff')
+delta = dxchange.read_tiff('data/lego-real.tiff')
 
 # Create object.
 obj = Object(beta, delta, 1e-6)
