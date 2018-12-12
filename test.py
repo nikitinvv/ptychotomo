@@ -63,13 +63,18 @@ if __name__ == "__main__":
 
     # Raster scan parameters for each rotation angle.
     scan = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
+
+
+    # class solver 
+    slv = solver.Solver(prb, scan, theta, det, voxelsize, energy)
+
     # Project.
-    #psis = solver.project(obj, theta, energy=5)
-    psis = solver.fwd_tomo(obj.complexform, theta)*voxelsize
-    psis = np.exp(1j * solver.wavenumber(energy) * psis)
+    psis = slv.fwd_tomo(obj.complexform)
+    psis = slv.exptomo(psis)
 
     # Propagate.
-    data = solver.propagate3(prb, psis, scan, theta, det)
+    data = slv.fwd_ptycho(psis)
+    data = np.abs(data)**2
 
     # Init.
     hobj = np.ones(psis.shape, dtype='complex')
@@ -77,5 +82,5 @@ if __name__ == "__main__":
     lamd = np.zeros(psi.shape, dtype='complex')
     recobj = objects.Object(np.zeros(obj.shape), np.zeros(obj.shape), voxelsize)
 
-    solver.admm(data,prb,scan,hobj,psi,lamd,recobj,theta,voxelsize,energy,rho,gamma,eta,piter,titer)
+    slv.admm(data,hobj,psi,lamd,recobj,rho,gamma,eta,piter,titer)
 
