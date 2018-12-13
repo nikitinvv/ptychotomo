@@ -19,11 +19,24 @@ def gaussian(size, rin=0.8, rout=1):
 def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
     a = spiral
     scan = []
+    lenmaxx = 0
+    lenmaxy = 0
+
     for m in range(len(theta)):
         s = objects.Scanner(shape, sx, sy, margin, offset=[offset[0], np.mod(offset[1]+a, sy)])
         scan.append(s)
         a += spiral
-    return scan
+        lenmaxx = max(lenmaxx,len(s.x))
+        lenmaxy = max(lenmaxy,len(s.y))
+
+    scanax = -1+np.zeros([len(theta),lenmaxx],dtype='int32')
+    scanay = -1+np.zeros([len(theta),lenmaxy],dtype='int32')
+
+    for m in range(len(theta)):
+        scanax[m,:len(scan[m].x)] = scan[m].x
+        scanay[m,:len(scan[m].y)] = scan[m].y
+
+    return scan,scanax,scanay
 
 
 if __name__ == "__main__":
@@ -59,12 +72,11 @@ if __name__ == "__main__":
     theta = np.float32(np.linspace(0, np.pi, 180))
 
     # Raster scan parameters for each rotation angle.
-    scan = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
+    scan,scanax,scanay = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
 
     tomoshape = [len(theta),obj.shape[1],obj.shape[2]]
     # class solver 
-    slv = solver_gpu.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape)
-
+    slv = solver_gpu.Solver(prb, scan,scanax,scanay, theta, det, voxelsize, energy, tomoshape)
 
     # test
     #a = slv.fwd_tomo(obj.complexform)
@@ -103,8 +115,10 @@ if __name__ == "__main__":
 
     # Propagate.
     data = slv.fwd_ptycho(psis)
-    data = np.abs(data)**2
+    data = slv.fwd_ptycho(psis)
 
+    data = np.abs(data)**2
+    #exit()
     # Init.
     hobj = np.ones(psis.shape, dtype='complex')
     psi = np.ones(psis.shape, dtype='complex')
