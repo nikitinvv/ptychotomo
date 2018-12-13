@@ -41,8 +41,8 @@ void __global__ fftshift1c(float2 *f, int N, int Ntheta, int Nz)
 	int tz = blockDim.z * blockIdx.z + threadIdx.z;
 	if (tx>=N||ty>=Ntheta||tz>=Nz) return;
 	int g = (1-2*((tx+1)%2));
-	f[tx+ty*N+tz*N*Ntheta].x *= g;
-	f[tx+ty*N+tz*N*Ntheta].y *= g;
+	f[tx+tz*N+ty*N*Nz].x *= g;
+	f[tx+tz*N+ty*N*Nz].y *= g;
 }
 
 void __global__ wrap(float2 *f, int N, int Nz, int M)
@@ -119,8 +119,8 @@ void __global__ gather(float2* g,float2 *f,float *x,float *y, int M, float mu,in
 			g0.y += w*f[N+M+ell0+(2*N+2*M)*(N+M+ell1)+tz*(2*N+2*M)*(2*N+2*M)].y;
 		}
 	}
-	g[tx+ty*N+tz*N*Ntheta].x = g0.x/N;
-	g[tx+ty*N+tz*N*Ntheta].y = g0.y/N;
+	g[tx+tz*N+ty*N*Nz].x = g0.x/N;
+	g[tx+tz*N+ty*N*Nz].y = g0.y/N;
 }
 
 void __global__ scatter(float2* f,float2 *g,float *x,float *y, int M, float mu,int N,int Ntheta, int Nz)
@@ -135,8 +135,8 @@ void __global__ scatter(float2* f,float2 *g,float *x,float *y, int M, float mu,i
 	float2 g0;
 	x0 = x[tx+ty*N];
 	y0 = y[tx+ty*N];
-	g0.x = g[tx+ty*N+tz*N*Ntheta].x/N;
-	g0.y = g[tx+ty*N+tz*N*Ntheta].y/N;
+	g0.x = g[tx+tz*N+ty*N*Nz].x/N;
+	g0.y = g[tx+tz*N+ty*N*Nz].y/N;
 
 	for (int i1=0;i1<2*M+1;i1++)
 	{

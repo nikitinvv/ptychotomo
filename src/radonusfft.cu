@@ -2,7 +2,7 @@
 #include "kernels.cuh"
 #include <stdio.h>
 
-radonusfft::radonusfft(size_t Nz_, size_t Ntheta_, size_t N_)
+radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 {
 	N = N_;
 	Ntheta = Ntheta_;
@@ -13,7 +13,9 @@ radonusfft::radonusfft(size_t Nz_, size_t Ntheta_, size_t N_)
 
 	cudaMalloc((void**)&f,N*N*Nz*sizeof(float2));
 	cudaMalloc((void**)&g,N*Ntheta*Nz*sizeof(float2));
-	cudaMalloc((void**)&fde,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+	cudaMalloc((void**)&fde,2*N*2*N*Nz*sizeof(float2));
+	cudaMalloc((void**)&fdee,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+
 	cudaMalloc((void**)&x,N*Ntheta*sizeof(float));
 	cudaMalloc((void**)&y,N*Ntheta*sizeof(float));
 	cudaMalloc((void**)&theta,Ntheta*sizeof(float));
@@ -41,6 +43,7 @@ radonusfft::~radonusfft()
 	cudaFree(f);
 	cudaFree(g);
 	cudaFree(fde);
+	cudaFree(fdee);
 	cudaFree(x);
 	cudaFree(y);
 	cufftDestroy(plan2dfwd);
@@ -62,18 +65,20 @@ void radonusfft::fwdR(float2* g_, float2* f_, float* theta_)
 	cudaMemcpy(f,f_,N*N*Nz*sizeof(float2),cudaMemcpyDefault);
 	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 
-	cudaMemset(fde,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+	cudaMemset(fde,0,2*N*2*N*Nz*sizeof(float2));
+	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+
 
 	circ<<<GS3d0, BS3d>>>(f,1.0f/N,N,Nz);
 	takexy<<<GS2d0, BS2d>>>(x,y,theta,N,Ntheta);
 
 	divphi<<<GS3d0, BS3d>>>(fde,f,mu,N,Nz);
 	fftshiftc<<<GS3d1, BS3d>>>(fde,2*N,Nz);
-	cufftExecC2C(plan2dfwd, (cufftComplex*)fde,(cufftComplex*)&fde[M+M*(2*N+2*M)],CUFFT_FORWARD);
-	fftshiftc<<<GS3d2, BS3d>>>(fde,2*N+2*M,Nz);
+	cufftExecC2C(plan2dfwd, (cufftComplex*)fde,(cufftComplex*)&fdee[M+M*(2*N+2*M)],CUFFT_FORWARD);
+	fftshiftc<<<GS3d2, BS3d>>>(fdee,2*N+2*M,Nz);
 
-	wrap<<<GS3d2, BS3d>>>(fde,N,Nz,M);
-	gather<<<GS3d3, BS3d>>>(g,fde,x,y,M,mu,N,Ntheta,Nz);
+	wrap<<<GS3d2, BS3d>>>(fdee,N,Nz,M);
+	gather<<<GS3d3, BS3d>>>(g,fdee,x,y,M,mu,N,Ntheta,Nz);
 
 	fftshift1c<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
 	cufftExecC2C(plan1d, (cufftComplex*)g,(cufftComplex*)g,CUFFT_INVERSE);
@@ -97,6 +102,8 @@ void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
 	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 
 	cudaMemset(fde,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
+
 
 	takexy<<<GS2d0, BS2d>>>(x,y,theta,N,Ntheta);
 
@@ -106,11 +113,11 @@ void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
 	//applyfilter<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
 
 
-	scatter<<<GS3d3, BS3d>>>(fde,g,x,y,M,mu,N,Ntheta,Nz);
-	wrapadj<<<GS3d2, BS3d>>>(fde,N,Nz,M);
+	scatter<<<GS3d3, BS3d>>>(fdee,g,x,y,M,mu,N,Ntheta,Nz);
+	wrapadj<<<GS3d2, BS3d>>>(fdee,N,Nz,M);
 
-	fftshiftc<<<GS3d2, BS3d>>>(fde,2*N+2*M,Nz);
-	cufftExecC2C(plan2dadj, (cufftComplex*)&fde[M+M*(2*N+2*M)],(cufftComplex*)fde,CUFFT_INVERSE);
+	fftshiftc<<<GS3d2, BS3d>>>(fdee,2*N+2*M,Nz);
+	cufftExecC2C(plan2dadj, (cufftComplex*)&fdee[M+M*(2*N+2*M)],(cufftComplex*)fde,CUFFT_INVERSE);
 	fftshiftc<<<GS3d1, BS3d>>>(fde,2*N,Nz);
 
 	unpaddivphi<<<GS3d0, BS3d>>>(f,fde,mu,N,Nz);

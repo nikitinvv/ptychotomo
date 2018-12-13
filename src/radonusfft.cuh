@@ -16,6 +16,8 @@ class radonusfft
 	float *y;
 
 	float2 *fde;
+	float2 *fdee;
+
 
 	cufftHandle plan2dfwd;
 	cufftHandle plan2dadj;
@@ -23,7 +25,7 @@ class radonusfft
 	cufftHandle plan1d;
 
 public:
-	radonusfft(size_t Nz, size_t Ntheta, size_t N);
+	radonusfft(size_t Ntheta, size_t Nz, size_t N);
 	~radonusfft();	
 	void fwdR(float2 *g, float2 *f, float *theta);
 	void adjR(float2 *f, float2 *g, float *theta);
