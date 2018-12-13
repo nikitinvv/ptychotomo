@@ -51,7 +51,7 @@ radonusfft::~radonusfft()
 	cufftDestroy(plan1d);
 }
 
-void radonusfft::fwdR(float2* g_, float2* f_, float* theta_)
+void radonusfft::fwdR(float2* g_, float2* f_)
 {	
 	dim3 BS2d(32,32);
 	dim3 BS3d(32,32,1);
@@ -63,7 +63,6 @@ void radonusfft::fwdR(float2* g_, float2* f_, float* theta_)
 	dim3 GS3d3(ceil(N/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 
 	cudaMemcpy(f,f_,N*N*Nz*sizeof(float2),cudaMemcpyDefault);
-	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 
 	cudaMemset(fde,0,2*N*2*N*Nz*sizeof(float2));
 	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
@@ -87,7 +86,7 @@ void radonusfft::fwdR(float2* g_, float2* f_, float* theta_)
 	cudaMemcpy(g_,g,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);  	
 }
 
-void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
+void radonusfft::adjR(float2* f_, float2* g_)
 {
 	dim3 BS2d(32,32);
 	dim3 BS3d(32,32,1);
@@ -99,7 +98,7 @@ void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
 	dim3 GS3d3(ceil(N/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 
 	cudaMemcpy(g,g_,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
-	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
+
 
 	cudaMemset(fde,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
 	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
@@ -127,16 +126,26 @@ void radonusfft::adjR(float2* f_, float2* g_, float* theta_)
 
 }
 
-//wrap for python
-void radonusfft::fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4, int N5, float* theta, int N7)
+void radonusfft::setobjc(float* theta_)
 {
-	fwdR((float2*)g,(float2*)f,theta);
+	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 }
 
 //wrap for python
-void radonusfft::adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2, float* theta, int N7)
+void radonusfft::fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4, int N5)
 {
-	adjR((float2*)f,(float2*)g,theta);
+	fwdR((float2*)g,(float2*)f);
+}
+
+//wrap for python
+void radonusfft::adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2)
+{
+	adjR((float2*)f,(float2*)g);
+}
+
+void radonusfft::setobj(float* theta_, int N7)
+{
+	setobjc(theta_);
 }
 
 

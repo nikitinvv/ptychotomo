@@ -9,7 +9,7 @@ theta = np.float32(np.arange(0,Ntheta)*np.pi/Ntheta)
 
 #create class for the transform
 cl = radonusfft.radonusfft(Ntheta,Ns,N)
-
+cl.setobj(theta)
 #swig does not work with complex numbers, so array sizes are doubled 2*N
 f = np.float32(np.zeros([Ns,N,2*N]),dtype="float32")
 
@@ -23,13 +23,13 @@ f[:,:,1::2] = np.fliplr(tomopy.misc.phantom.shepp2d(size=N, dtype=u'float32'))
 # memory for result
 g = np.float32(np.zeros([Ntheta,Ns,2*N]),dtype="float32")
 # run
-cl.fwd(g,f,theta)
+cl.fwd(g,f)
 
 # adj
 # memory for result
 ff = np.float32(np.zeros([Ns,N,2*N]),dtype="float32")
 #run
-cl.adj(ff,g,theta)
+cl.adj(ff,g)
 
 f = np.float64(f)
 ff = np.float64(ff)

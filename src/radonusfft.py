@@ -81,8 +81,10 @@ class radonusfft(_object):
     __del__ = lambda self : None;
     def fwdR(self, *args): return _radonusfft.radonusfft_fwdR(self, *args)
     def adjR(self, *args): return _radonusfft.radonusfft_adjR(self, *args)
+    def setobjc(self, *args): return _radonusfft.radonusfft_setobjc(self, *args)
     def fwd(self, *args): return _radonusfft.radonusfft_fwd(self, *args)
     def adj(self, *args): return _radonusfft.radonusfft_adj(self, *args)
+    def setobj(self, *args): return _radonusfft.radonusfft_setobj(self, *args)
 radonusfft_swigregister = _radonusfft.radonusfft_swigregister
 radonusfft_swigregister(radonusfft)
 

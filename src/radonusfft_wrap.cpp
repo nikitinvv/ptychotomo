@@ -3753,21 +3753,17 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwdR(PyObject *SWIGUNUSEDPARM(self), PyObj
   radonusfft *arg1 = (radonusfft *) 0 ;
   float2 *arg2 = (float2 *) 0 ;
   float2 *arg3 = (float2 *) 0 ;
-  float *arg4 = (float *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  void *argp4 = 0 ;
-  int res4 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOO:radonusfft_fwdR",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_fwdR",&obj0,&obj1,&obj2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_fwdR" "', argument " "1"" of type '" "radonusfft *""'"); 
@@ -3783,12 +3779,7 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwdR(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_fwdR" "', argument " "3"" of type '" "float2 *""'"); 
   }
   arg3 = reinterpret_cast< float2 * >(argp3);
-  res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_float, 0 |  0 );
-  if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "radonusfft_fwdR" "', argument " "4"" of type '" "float *""'"); 
-  }
-  arg4 = reinterpret_cast< float * >(argp4);
-  (arg1)->fwdR(arg2,arg3,arg4);
+  (arg1)->fwdR(arg2,arg3);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3801,21 +3792,17 @@ SWIGINTERN PyObject *_wrap_radonusfft_adjR(PyObject *SWIGUNUSEDPARM(self), PyObj
   radonusfft *arg1 = (radonusfft *) 0 ;
   float2 *arg2 = (float2 *) 0 ;
   float2 *arg3 = (float2 *) 0 ;
-  float *arg4 = (float *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   void *argp2 = 0 ;
   int res2 = 0 ;
   void *argp3 = 0 ;
   int res3 = 0 ;
-  void *argp4 = 0 ;
-  int res4 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOO:radonusfft_adjR",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_adjR",&obj0,&obj1,&obj2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_adjR" "', argument " "1"" of type '" "radonusfft *""'"); 
@@ -3831,12 +3818,37 @@ SWIGINTERN PyObject *_wrap_radonusfft_adjR(PyObject *SWIGUNUSEDPARM(self), PyObj
     SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_adjR" "', argument " "3"" of type '" "float2 *""'"); 
   }
   arg3 = reinterpret_cast< float2 * >(argp3);
-  res4 = SWIG_ConvertPtr(obj3, &argp4,SWIGTYPE_p_float, 0 |  0 );
-  if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "radonusfft_adjR" "', argument " "4"" of type '" "float *""'"); 
+  (arg1)->adjR(arg2,arg3);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_radonusfft_setobjc(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  radonusfft *arg1 = (radonusfft *) 0 ;
+  float *arg2 = (float *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:radonusfft_setobjc",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_setobjc" "', argument " "1"" of type '" "radonusfft *""'"); 
   }
-  arg4 = reinterpret_cast< float * >(argp4);
-  (arg1)->adjR(arg2,arg3,arg4);
+  arg1 = reinterpret_cast< radonusfft * >(argp1);
+  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_setobjc" "', argument " "2"" of type '" "float *""'"); 
+  }
+  arg2 = reinterpret_cast< float * >(argp2);
+  (arg1)->setobjc(arg2);
   resultobj = SWIG_Py_Void();
   return resultobj;
 fail:
@@ -3855,21 +3867,16 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObje
   int arg7 ;
   int arg8 ;
   int arg9 ;
-  float *arg10 = (float *) 0 ;
-  int arg11 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyArrayObject *array2 = NULL ;
   PyArrayObject *array6 = NULL ;
   int is_new_object6 = 0 ;
-  PyArrayObject *array10 = NULL ;
-  int is_new_object10 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOO:radonusfft_fwd",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_fwd",&obj0,&obj1,&obj2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_fwd" "', argument " "1"" of type '" "radonusfft *""'"); 
@@ -3897,30 +3904,12 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObje
     arg8 = (int) array_size(array6,1);
     arg9 = (int) array_size(array6,2);
   }
-  {
-    npy_intp size[1] = {
-      -1 
-    };
-    array10 = obj_to_array_contiguous_allow_conversion(obj3,
-      NPY_FLOAT,
-      &is_new_object10);
-    if (!array10 || !require_dimensions(array10, 1) ||
-      !require_size(array10, size, 1)) SWIG_fail;
-    arg10 = (float*) array_data(array10);
-    arg11 = (int) array_size(array10,0);
-  }
-  (arg1)->fwd(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
+  (arg1)->fwd(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
   resultobj = SWIG_Py_Void();
   {
     if (is_new_object6 && array6)
     {
       Py_DECREF(array6); 
-    }
-  }
-  {
-    if (is_new_object10 && array10)
-    {
-      Py_DECREF(array10); 
     }
   }
   return resultobj;
@@ -3929,12 +3918,6 @@ fail:
     if (is_new_object6 && array6)
     {
       Py_DECREF(array6); 
-    }
-  }
-  {
-    if (is_new_object10 && array10)
-    {
-      Py_DECREF(array10); 
     }
   }
   return NULL;
@@ -3952,21 +3935,16 @@ SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObje
   int arg7 ;
   int arg8 ;
   int arg9 ;
-  float *arg10 = (float *) 0 ;
-  int arg11 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   PyArrayObject *array2 = NULL ;
   PyArrayObject *array6 = NULL ;
   int is_new_object6 = 0 ;
-  PyArrayObject *array10 = NULL ;
-  int is_new_object10 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOO:radonusfft_adj",&obj0,&obj1,&obj2,&obj3)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_adj",&obj0,&obj1,&obj2)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_adj" "', argument " "1"" of type '" "radonusfft *""'"); 
@@ -3994,30 +3972,12 @@ SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObje
     arg8 = (int) array_size(array6,1);
     arg9 = (int) array_size(array6,2);
   }
-  {
-    npy_intp size[1] = {
-      -1 
-    };
-    array10 = obj_to_array_contiguous_allow_conversion(obj3,
-      NPY_FLOAT,
-      &is_new_object10);
-    if (!array10 || !require_dimensions(array10, 1) ||
-      !require_size(array10, size, 1)) SWIG_fail;
-    arg10 = (float*) array_data(array10);
-    arg11 = (int) array_size(array10,0);
-  }
-  (arg1)->adj(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
+  (arg1)->adj(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
   resultobj = SWIG_Py_Void();
   {
     if (is_new_object6 && array6)
     {
       Py_DECREF(array6); 
-    }
-  }
-  {
-    if (is_new_object10 && array10)
-    {
-      Py_DECREF(array10); 
     }
   }
   return resultobj;
@@ -4028,10 +3988,54 @@ fail:
       Py_DECREF(array6); 
     }
   }
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_radonusfft_setobj(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  radonusfft *arg1 = (radonusfft *) 0 ;
+  float *arg2 = (float *) 0 ;
+  int arg3 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyArrayObject *array2 = NULL ;
+  int is_new_object2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:radonusfft_setobj",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_setobj" "', argument " "1"" of type '" "radonusfft *""'"); 
+  }
+  arg1 = reinterpret_cast< radonusfft * >(argp1);
   {
-    if (is_new_object10 && array10)
+    npy_intp size[1] = {
+      -1 
+    };
+    array2 = obj_to_array_contiguous_allow_conversion(obj1,
+      NPY_FLOAT,
+      &is_new_object2);
+    if (!array2 || !require_dimensions(array2, 1) ||
+      !require_size(array2, size, 1)) SWIG_fail;
+    arg2 = (float*) array_data(array2);
+    arg3 = (int) array_size(array2,0);
+  }
+  (arg1)->setobj(arg2,arg3);
+  resultobj = SWIG_Py_Void();
+  {
+    if (is_new_object2 && array2)
     {
-      Py_DECREF(array10); 
+      Py_DECREF(array2); 
+    }
+  }
+  return resultobj;
+fail:
+  {
+    if (is_new_object2 && array2)
+    {
+      Py_DECREF(array2); 
     }
   }
   return NULL;
@@ -4051,8 +4055,10 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"delete_radonusfft", _wrap_delete_radonusfft, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_fwdR", _wrap_radonusfft_fwdR, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_adjR", _wrap_radonusfft_adjR, METH_VARARGS, NULL},
+	 { (char *)"radonusfft_setobjc", _wrap_radonusfft_setobjc, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_fwd", _wrap_radonusfft_fwd, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_adj", _wrap_radonusfft_adj, METH_VARARGS, NULL},
+	 { (char *)"radonusfft_setobj", _wrap_radonusfft_setobj, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_swigregister", radonusfft_swigregister, METH_VARARGS, NULL},
 	 { NULL, NULL, 0, NULL }
 };
