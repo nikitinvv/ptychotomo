@@ -5,6 +5,7 @@
 
 import dxchange
 import tomopy
+import radonusfft
 import xraylib as xl
 import numpy as np
 import scipy as sp
@@ -12,6 +13,7 @@ import pyfftw
 import shutil
 import objects
 import warnings
+
 warnings.filterwarnings("ignore")
 
 PLANCK_CONSTANT = 6.58211928e-19  # [keV*s]
@@ -28,6 +30,8 @@ class Solver(object):
         self.energy = energy
         self.tomoshape = tomoshape 
         self.objshape = [tomoshape[1],tomoshape[2],tomoshape[2]]
+        #create class for the tomo transform
+        self.cl_tomo = radonusfft.radonusfft(*tomoshape)
 
         
     def wavenumber(self,energy):
@@ -43,19 +47,31 @@ class Solver(object):
        
     # Radon transform (R )
     def fwd_tomo(self,psi):
-        pb = tomopy.project(psi.imag, self.theta, pad=False) 
-        pd = tomopy.project(psi.real, self.theta, pad=False) 
-        #r = 1/np.sqrt(pb.shape[0]*pb.shape[1]/2)
-        res = (pd + 1j*pb)#*r
-        return res
+        psi_gpu = np.array(psi,dtype='complex64',order='C')
+        res_gpu = np.zeros(self.tomoshape,dtype='complex64',order='C')
+        self.cl_tomo.fwd(res_gpu.view('float32'),psi_gpu.view('float32'),self.theta)
+
+        # pb = tomopy.project(psi.imag, self.theta, pad=False) 
+        # pd = tomopy.project(psi.real, self.theta, pad=False) 
+       # r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
+        # res = (pd + 1j*pb)#*r
+        #print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+
+        return res_gpu
 
     # adjoint Radon transform (R^*)
     def adj_tomo(self,data):
-        pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp') 
-        pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp') 
-        #r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
-        res = (pd + 1j*pb)#*r
-        return res
+        data_gpu = np.array(data,dtype='complex64',order='C')
+        res_gpu = np.zeros(self.objshape,dtype='complex64',order='C')
+        self.cl_tomo.adj(res_gpu.view('float32'),data_gpu.view('float32'),self.theta)
+
+        # pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp') 
+        # pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp') 
+        #r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
+        # res = (pd + 1j*pb)#*r
+        #print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+
+        return res_gpu#
 
     # ptychography transform (FQ)
     def fwd_ptycho(self,psi):
@@ -113,6 +129,7 @@ class Solver(object):
     # Gradient descent tomography
     def grad_tomo(self,data, niter, init, eta):
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
+
         res = init.complexform/r
         for i in range(niter):
             tmp = self.fwd_tomo(res)*r

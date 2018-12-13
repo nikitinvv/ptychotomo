@@ -1,5 +1,5 @@
 import objects
-import solver
+import solver_gpu
 import dxchange
 import tomopy 
 import numpy as np
@@ -39,10 +39,10 @@ if __name__ == "__main__":
     energy = 5
 
     # Load a 3D object.
-    beta = dxchange.read_tiff('data/lego-imag.tiff')
-    delta = dxchange.read_tiff('data/lego-real.tiff')
-    #beta = tomopy.misc.phantom.shepp3d(128)*1e-3
-    #delta = tomopy.misc.phantom.shepp3d(128)*1e-3
+#   beta = dxchange.read_tiff('data/lego-imag.tiff')
+#   delta = dxchange.read_tiff('data/lego-real.tiff')
+    beta = tomopy.misc.phantom.shepp3d(64)*1e-3
+    delta = tomopy.misc.phantom.shepp3d(64)*1e-3
 
 
     # Create object.
@@ -53,21 +53,23 @@ if __name__ == "__main__":
     prb = objects.Probe(weights, maxint=maxint)
 
     # Detector parameters.
-    det = objects.Detector(63, 63)
-    #det = objects.Detector(31, 31)
-
+    det = objects.Detector(31, 31)
 
     # Define rotation angles.
-    theta = np.linspace(0, 2*np.pi, 360)
+    theta = np.float32(np.linspace(0, np.pi, 180))
 
     # Raster scan parameters for each rotation angle.
     scan = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
 
-
+    tomoshape = [len(theta),obj.shape[1],obj.shape[2]]
     # class solver 
-    slv = solver.Solver(prb, scan, theta, det, voxelsize, energy)
+    slv = solver_gpu.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape)
 
-    # # Adjoint and normalization test 
+
+    # test
+    #a = slv.fwd_tomo(obj.complexform)
+    #b = slv.adj_tomo(a)
+    # Adjoint and normalization test 
     # r = 1/np.sqrt(len(theta)*obj.shape[2]/2)
     # a = obj.complexform
     # b = slv.fwd_tomo(a)*r
@@ -94,6 +96,7 @@ if __name__ == "__main__":
     # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
 
 
+
     # Project.
     psis = slv.fwd_tomo(obj.complexform)
     psis = slv.exptomo(psis)
@@ -109,4 +112,11 @@ if __name__ == "__main__":
     recobj = objects.Object(np.zeros(obj.shape), np.zeros(obj.shape), voxelsize)
 
     slv.admm(data,hobj,psi,lamd,recobj,rho,gamma,eta,piter,titer)
+
+
+
+
+
+
+
 
