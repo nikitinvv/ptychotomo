@@ -1,4 +1,5 @@
 import objects
+import solver
 import solver_gpu
 import dxchange
 import tomopy 
@@ -52,10 +53,10 @@ if __name__ == "__main__":
     energy = 5
 
     # Load a 3D object.
-#   beta = dxchange.read_tiff('data/lego-imag.tiff')
-#   delta = dxchange.read_tiff('data/lego-real.tiff')
-    beta = tomopy.misc.phantom.shepp3d(64)*1e-3
-    delta = tomopy.misc.phantom.shepp3d(64)*1e-3
+    beta = dxchange.read_tiff('data/lego-imag.tiff')
+    delta = dxchange.read_tiff('data/lego-real.tiff')
+    #beta = tomopy.misc.phantom.shepp3d(64)*1e-3
+    #delta = tomopy.misc.phantom.shepp3d(64)*1e-3
 
 
     # Create object.
@@ -66,10 +67,10 @@ if __name__ == "__main__":
     prb = objects.Probe(weights, maxint=maxint)
 
     # Detector parameters.
-    det = objects.Detector(31, 31)
+    det = objects.Detector(63, 63)
 
     # Define rotation angles.
-    theta = np.float32(np.linspace(0, np.pi, 180))
+    theta = np.float32(np.linspace(0, 2*np.pi, 360))
 
     # Raster scan parameters for each rotation angle.
     scan,scanax,scanay = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
@@ -115,7 +116,8 @@ if __name__ == "__main__":
 
     # Propagate.
     data = slv.fwd_ptycho(psis)
-    data = slv.fwd_ptycho(psis)
+    tmp = slv.adj_ptycho(data)
+
 
     data = np.abs(data)**2
     #exit()

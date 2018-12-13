@@ -19,7 +19,7 @@ SPEED_OF_LIGHT = 299792458e+2  # [cm/s]
 
 
 class Solver(object):
-    def __init__(self, prb, scan, theta, det, voxelsize, energy, tomoshape):
+    def __init__(self, prb, scan, scanx,scany,theta, det, voxelsize, energy, tomoshape):
         self.prb = prb
         self.scan = scan
         self.theta = theta
@@ -76,8 +76,8 @@ class Solver(object):
         return res
 
     # adjoint ptychography transfrorm (Q*F*)
-    def adj_ptycho(self,data,psi):
-        res = np.zeros([len(self.theta),psi.shape[1],psi.shape[2]],dtype='complex')
+    def adj_ptycho(self,data):
+        res = np.zeros(self.tomoshape,dtype='complex')
         npadx = (self.det.x - self.prb.size) // 2
         npady = (self.det.y - self.prb.size) // 2
     
@@ -127,12 +127,13 @@ class Solver(object):
         for i in range(niter):
             tmp = self.fwd_ptycho(psi)
             tmp = self.update_amp(tmp,data)
-            upd1 = self.adj_ptycho(tmp,psi)
+            upd1 = self.adj_ptycho(tmp)
             upd2 = self.adjfwd_prb(psi)
             psi = (1 - rho*gamma) * psi + rho*gamma * (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)
         return psi
 
     # ADMM for ptycho-tomography problem 
+    @profile
     def admm(self,data,hobj,psi,lamd,recobj,rho,gamma,eta,piter,titer):
         for m in range(10):
             # Ptychography
