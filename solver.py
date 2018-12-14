@@ -38,7 +38,7 @@ class Solver(object):
 
     # log represnetation of R
     def logtomo(self, psi):
-        return 1 / self.wavenumber(self.energy) * np.log(psi) / self.voxelsize
+        return -1j / self.wavenumber(self.energy) * np.log(psi) / self.voxelsize
 
     # Radon transform (R )
     def fwd_tomo(self, psi):
@@ -64,7 +64,7 @@ class Solver(object):
 
         for k in range(self.theta.size):
             tmp = np.zeros([len(self.scan[k].x)*len(self.scan[k].y),
-                            self.det.x, self.det.y], dtype=complex)
+                            self.det.x, self.det.y], dtype='complex64')
             for m in range(len(self.scan[k].x)):
                 for n in range(len(self.scan[k].y)):
                     stx = self.scan[k].x[m]
@@ -80,7 +80,7 @@ class Solver(object):
 
     # adjoint ptychography transfrorm (Q*F*)
     def adj_ptycho(self, data):
-        res = np.zeros(self.tomoshape, dtype='complex')
+        res = np.zeros(self.tomoshape, dtype='complex64')
         npadx = (self.det.x - self.prb.size) // 2
         npady = (self.det.y - self.prb.size) // 2
 
@@ -100,7 +100,7 @@ class Solver(object):
     # multiply by probe and adj probe (Q^*Q)
     def adjfwd_prb(self, psi):
         res = np.zeros([len(self.theta), psi.shape[1],
-                        psi.shape[2]], dtype='complex')
+                        psi.shape[2]], dtype='complex64')
         for k in range(self.theta.size):
             for m in range(len(self.scan[k].x)):
                 for n in range(len(self.scan[k].y)):
@@ -117,7 +117,7 @@ class Solver(object):
             res[k] = np.multiply(
                 np.sqrt(data[k]), np.exp(1j * np.angle(res[k])))
         return res
-
+    @profile
     # Gradient descent tomography
     def grad_tomo(self, data, niter, init, eta):
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
@@ -128,7 +128,7 @@ class Solver(object):
             res = res - eta*tmp
         res *= r
         return objects.Object(res.imag, res.real, self.voxelsize)
-
+    @profile
     # Gradient descent ptychography
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
         psi = init.copy()
@@ -141,13 +141,14 @@ class Solver(object):
                 (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)
         return psi
 
+    @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer):
         for m in range(10):
             # Ptychography
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, hobj, lamd)
             # Tomography
-            tmp = -1j*self.logtomo(psi+lamd/rho)
+            tmp = self.logtomo(psi+lamd/rho)
             _recobj = self.grad_tomo(tmp, titer, recobj, eta)
             # Lambda update
             _hobj = self.fwd_tomo(_recobj.complexform)

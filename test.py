@@ -76,7 +76,7 @@ if __name__ == "__main__":
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
     # class solver
-    slv = solver_gpu.Solver(prb, scan, scanax, scanay,
+    slv = solver.Solver(prb, scan, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
 
     # Adjoint and normalization test
@@ -110,7 +110,6 @@ if __name__ == "__main__":
     psis = slv.exptomo(psis)
     # Propagate.
     data = slv.fwd_ptycho(psis)
-    tmp = slv.adj_ptycho(data)
     data = np.abs(data)**2
     # Init.
     hobj = np.ones(psis.shape, dtype='complex64')

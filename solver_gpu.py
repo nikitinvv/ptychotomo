@@ -55,7 +55,7 @@ class Solver(object):
 
     # log represnetation of R
     def logtomo(self, psi):
-        return 1 / self.wavenumber() * np.log(psi) / self.voxelsize
+        return -1j / self.wavenumber() * np.log(psi) / self.voxelsize
 
     # Radon transform (R )
     def fwd_tomo(self, psi):
@@ -234,6 +234,7 @@ class Solver(object):
 
         return res_gpu
 
+    @profile
     # Gradient descent tomography
     def grad_tomo(self, data, niter, init, eta):
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
@@ -261,11 +262,11 @@ class Solver(object):
     @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer):
-        for m in range(2):
+        for m in range(10):
             # Ptychography
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, hobj, lamd)
             # Tomography
-            tmp = -1j*self.logtomo(psi+lamd/rho)
+            tmp = self.logtomo(psi+lamd/rho)
             _recobj = self.grad_tomo(tmp, titer, recobj, eta)
             # Lambda update
             _hobj = self.fwd_tomo(_recobj.complexform)

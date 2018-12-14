@@ -1,0 +1,71 @@
+Timer unit: 1e-06 s
+
+Total time: 16.8042 s
+File: /home/beams0/VNIKITIN/ptycho/solver.py
+Function: grad_tomo at line 120
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   120                                               @profile
+   121                                               # Gradient descent tomography
+   122                                               def grad_tomo(self, data, niter, init, eta):
+   123        10        125.0     12.5      0.0          r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
+   124        10      26580.0   2658.0      0.2          res = init.complexform/r
+   125        20         83.0      4.2      0.0          for i in range(niter):
+   126        10   11206975.0 1120697.5     66.7              tmp = self.fwd_tomo(res)*r
+   127        10    5551290.0 555129.0     33.0              tmp = self.adj_tomo(2*(tmp-data))*r
+   128        10      12809.0   1280.9      0.1              res = res - eta*tmp
+   129        10       5951.0    595.1      0.0          res *= r
+   130        10        347.0     34.7      0.0          return objects.Object(res.imag, res.real, self.voxelsize)
+
+Total time: 211.179 s
+File: /home/beams0/VNIKITIN/ptycho/solver.py
+Function: grad_ptycho at line 131
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   131                                               @profile
+   132                                               # Gradient descent ptychography
+   133                                               def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
+   134        10      10703.0   1070.3      0.0          psi = init.copy()
+   135        20        129.0      6.5      0.0          for i in range(niter):
+   136        10  103757968.0 10375796.8     49.1              tmp = self.fwd_ptycho(psi)
+   137        10   61934189.0 6193418.9     29.3              tmp = self.update_amp(tmp, data)
+   138        10   33396450.0 3339645.0     15.8              upd1 = self.adj_ptycho(tmp)
+   139        10   11841584.0 1184158.4      5.6              upd2 = self.adjfwd_prb(psi)
+   140                                                       psi = (1 - rho*gamma) * psi + rho*gamma * \
+   141        10     237926.0  23792.6      0.1                  (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)
+   142        10          9.0      0.9      0.0          return psi
+
+Total time: 241.521 s
+File: /home/beams0/VNIKITIN/ptycho/solver.py
+Function: admm at line 144
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   144                                               @profile
+   145                                               # ADMM for ptycho-tomography problem
+   146                                               def admm(self, data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer):
+   147        11         18.0      1.6      0.0          for m in range(10):
+   148                                                       # Ptychography
+   149        10  211386518.0 21138651.8     87.5              psi = self.grad_ptycho(data, psi, piter, rho, gamma, hobj, lamd)
+   150                                                       # Tomography
+   151        10     799136.0  79913.6      0.3              tmp = -1j*self.logtomo(psi+lamd/rho)
+   152        10   16804625.0 1680462.5      7.0              _recobj = self.grad_tomo(tmp, titer, recobj, eta)
+   153                                                       # Lambda update
+   154        10   11246430.0 1124643.0      4.7              _hobj = self.fwd_tomo(_recobj.complexform)
+   155        10     560441.0  56044.1      0.2              _hobj = self.exptomo(_hobj)
+   156        10      83304.0   8330.4      0.0              _lamd = lamd + 1 * rho * (psi - _hobj)
+   157                                           
+   158                                                       # convergence
+   159        10     292240.0  29224.0      0.1              cp = np.sqrt(np.sum(np.power(np.abs(hobj-psi), 2)))
+   160        10         32.0      3.2      0.0              co = np.sqrt(
+   161        10      76368.0   7636.8      0.0                  np.sum(np.power(np.abs(recobj.complexform - _recobj.complexform), 2)))
+   162        10     271165.0  27116.5      0.1              cl = np.sqrt(np.sum(np.power(np.abs(lamd-_lamd), 2)))
+   163        10        856.0     85.6      0.0              print(m, cp, co, cl)
+   164                                           
+   165                                                       # update to next iter
+   166        10         41.0      4.1      0.0              lamd = _lamd
+   167        10         76.0      7.6      0.0              recobj = _recobj
+   168        10         24.0      2.4      0.0              hobj = _hobj
+
