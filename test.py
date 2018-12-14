@@ -58,13 +58,17 @@ if __name__ == "__main__":
     # Load a 3D object.
     beta = dxchange.read_tiff('data/lego-imag.tiff').astype('float32')
     delta = dxchange.read_tiff('data/lego-real.tiff').astype('float32')
+    #print(beta.shape)
+    #beta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-3
+    #delta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-3
+
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe.
     weights = gaussian(15, rin=0.8, rout=1.0)
     prb = objects.Probe(weights, maxint=maxint)
     # Detector parameters.
-    det = objects.Detector(63, 63)
+    det = objects.Detector(63,63)
     # Define rotation angles.
     theta = np.linspace(0, 2*np.pi, 360).astype('float32')
     # Raster scan parameters for each rotation angle.
