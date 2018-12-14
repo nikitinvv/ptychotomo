@@ -2,8 +2,9 @@ import objects
 import solver
 import solver_gpu
 import dxchange
-import tomopy 
+import tomopy
 import numpy as np
+
 
 def gaussian(size, rin=0.8, rout=1):
     r, c = np.mgrid[:size, :size] + 0.5
@@ -17,6 +18,7 @@ def gaussian(size, rin=0.8, rout=1):
     img[zone] = np.divide(rmax - rs[zone], rmax - rmin)
     return img
 
+
 def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
     a = spiral
     scan = []
@@ -24,20 +26,21 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
     lenmaxy = 0
 
     for m in range(len(theta)):
-        s = objects.Scanner(shape, sx, sy, margin, offset=[offset[0], np.mod(offset[1]+a, sy)])
+        s = objects.Scanner(shape, sx, sy, margin, offset=[
+                            offset[0], np.mod(offset[1]+a, sy)])
         scan.append(s)
         a += spiral
-        lenmaxx = max(lenmaxx,len(s.x))
-        lenmaxy = max(lenmaxy,len(s.y))
+        lenmaxx = max(lenmaxx, len(s.x))
+        lenmaxy = max(lenmaxy, len(s.y))
 
-    scanax = -1+np.zeros([len(theta),lenmaxx],dtype='int32')
-    scanay = -1+np.zeros([len(theta),lenmaxy],dtype='int32')
+    scanax = -1+np.zeros([len(theta), lenmaxx], dtype='int32')
+    scanay = -1+np.zeros([len(theta), lenmaxy], dtype='int32')
 
     for m in range(len(theta)):
-        scanax[m,:len(scan[m].x)] = scan[m].x
-        scanay[m,:len(scan[m].y)] = scan[m].y
+        scanax[m, :len(scan[m].x)] = scan[m].x
+        scanay[m, :len(scan[m].y)] = scan[m].y
 
-    return scan,scanax,scanay
+    return scan, scanax, scanay
 
 
 if __name__ == "__main__":
@@ -53,36 +56,26 @@ if __name__ == "__main__":
     energy = 5
 
     # Load a 3D object.
-    beta = dxchange.read_tiff('data/lego-imag.tiff')
-    delta = dxchange.read_tiff('data/lego-real.tiff')
-    #beta = tomopy.misc.phantom.shepp3d(64)*1e-3
-    #delta = tomopy.misc.phantom.shepp3d(64)*1e-3
-
-
+    beta = dxchange.read_tiff('data/lego-imag.tiff').astype('float32')
+    delta = dxchange.read_tiff('data/lego-real.tiff').astype('float32')
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
-
     # Create probe.
     weights = gaussian(15, rin=0.8, rout=1.0)
     prb = objects.Probe(weights, maxint=maxint)
-
     # Detector parameters.
     det = objects.Detector(63, 63)
-
     # Define rotation angles.
-    theta = np.float32(np.linspace(0, 2*np.pi, 360))
-
+    theta = np.linspace(0, 2*np.pi, 360).astype('float32')
     # Raster scan parameters for each rotation angle.
-    scan,scanax,scanay = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
+    scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
+                                    prb.size, prb.size], offset=[0, 0], spiral=1)
+    tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+    # class solver
+    slv = solver_gpu.Solver(prb, scan, scanax, scanay,
+                            theta, det, voxelsize, energy, tomoshape)
 
-    tomoshape = [len(theta),obj.shape[1],obj.shape[2]]
-    # class solver 
-    slv = solver_gpu.Solver(prb, scan,scanax,scanay, theta, det, voxelsize, energy, tomoshape)
-
-    # test
-    #a = slv.fwd_tomo(obj.complexform)
-    #b = slv.adj_tomo(a)
-    # Adjoint and normalization test 
+    # Adjoint and normalization test
     # r = 1/np.sqrt(len(theta)*obj.shape[2]/2)
     # a = obj.complexform
     # b = slv.fwd_tomo(a)*r
@@ -108,31 +101,18 @@ if __name__ == "__main__":
 
     # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
 
-
-
     # Project.
     psis = slv.fwd_tomo(obj.complexform)
     psis = slv.exptomo(psis)
-
     # Propagate.
     data = slv.fwd_ptycho(psis)
     tmp = slv.adj_ptycho(data)
-
-
     data = np.abs(data)**2
-    #exit()
     # Init.
-    hobj = np.ones(psis.shape, dtype='complex')
-    psi = np.ones(psis.shape, dtype='complex')
-    lamd = np.zeros(psi.shape, dtype='complex')
-    recobj = objects.Object(np.zeros(obj.shape), np.zeros(obj.shape), voxelsize)
+    hobj = np.ones(psis.shape, dtype='complex64')
+    psi = np.ones(psis.shape, dtype='complex64')
+    lamd = np.zeros(psi.shape, dtype='complex64')
+    recobj = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
+        obj.shape, dtype='float32'), voxelsize)
 
-    slv.admm(data,hobj,psi,lamd,recobj,rho,gamma,eta,piter,titer)
-
-
-
-
-
-
-
-
+    slv.admm(data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer)

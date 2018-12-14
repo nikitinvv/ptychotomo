@@ -45,7 +45,7 @@ class Material(object):
 
 class Object(object):
     """Discrete object represented in a 3D regular grid.
-    
+
     Attributes
     ----------
     beta : ndarray
@@ -55,8 +55,9 @@ class Object(object):
     voxelsize : scalar [cm]
         Size of the voxels in the grid.
     """
+
     def __init__(self, beta, delta, voxelsize):
-        self.beta = beta 
+        self.beta = beta
         self.delta = delta
         self.voxelsize = voxelsize
 
@@ -79,6 +80,7 @@ class Detector(object):
     numy : int
         Number of vertical pixels.
     """
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -90,7 +92,7 @@ class Probe(object):
     A finite-extent circular shaped probe is represented as 
     a complex wave. The intensity of the probe is maximum at 
     the center and damps to zero at the borders of the frame. 
-    
+
     Attributes
     size : int
     ----------
@@ -146,6 +148,3 @@ class Scanner(object):
     @property
     def y(self):
         return np.arange(self.offset[1], self.shape[1]-self.margin[1]+1, self.sy)
-
-
-

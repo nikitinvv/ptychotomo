@@ -133,7 +133,6 @@ class Solver(object):
         return psi
 
     # ADMM for ptycho-tomography problem 
-    @profile
     def admm(self,data,hobj,psi,lamd,recobj,rho,gamma,eta,piter,titer):
         for m in range(10):
             # Ptychography
