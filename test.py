@@ -76,7 +76,7 @@ if __name__ == "__main__":
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
     # class solver
-    slv = solver.Solver(prb, scan, scanax, scanay,
+    slv = solver_gpu.Solver(prb, scan, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
 
     # Adjoint and normalization test

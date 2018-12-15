@@ -34,17 +34,13 @@ class Solver(object):
         self.tomoshape = tomoshape
         self.objshape = [self.tomoshape[1],
                          self.tomoshape[2], self.tomoshape[2]]
-        self.ptychoshape = [scanax.shape[1],
-                            scanay.shape[1], det.x, det.y, prb.size]
-
         # create class for the tomo transform
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
-        self.cl_ptycho = ptychofft.ptychofft(1,
-            *self.tomoshape[1:], *self.ptychoshape)
-        self.cl_ptycho.setobj(theta[0:1], scanax, scanay,
-                              prb.complex.view('float32'))
+        self.projgpu = tomoshape[0]
+        self.cl_ptycho = ptychofft.ptychofft(self.projgpu,tomoshape[1],tomoshape[2],
+                scanax.shape[1],scanay.shape[1], det.x, det.y, prb.size)
 
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
@@ -65,7 +61,7 @@ class Solver(object):
 
         # pb = tomopy.project(psi.imag, self.theta, pad=False)
         # pd = tomopy.project(psi.real, self.theta, pad=False)
-        # r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
+        # #r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
         # res = (pd + 1j*pb)#*r
         # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
 
@@ -79,7 +75,7 @@ class Solver(object):
 
         # pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp')
         # pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp')
-        #r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
+        # # r = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
         # res = (pd + 1j*pb)#*r
         # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
 
@@ -91,8 +87,11 @@ class Solver(object):
                             self.scanax.shape[1]*self.scanay.shape[1],
                             self.det.x, self.det.y], dtype='complex64', order='C')
         psi_gpu = np.array(psi.astype('complex64'), order='C')
-        for k in range(len(self.theta)):
-            self.cl_ptycho.fwd(res_gpu[k:k+1].view('float32'), psi_gpu[k:k+1].view('float32'))
+        for k in range(0,self.tomoshape[0]//self.projgpu):
+            ast, aend = k*self.projgpu, (k+1)*self.projgpu
+            self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
+                              self.prb.complex.view('float32'))
+            self.cl_ptycho.fwd(res_gpu[ast:aend].view('float32'), psi_gpu[ast:aend].view('float32'))
 
         # res = np.zeros([self.theta.size,
         #                 self.scanax.shape[1]*self.scanay.shape[1],
@@ -108,12 +107,17 @@ class Solver(object):
         #             sty = self.scanay[k,n]
         #             if (stx==-1 or sty==-1):
         #                 continue
-        #             phi = np.multiply(self.prb.c.astype('float32')lex, psi[k][stx:stx+self.prb.size, sty:sty+self.prb.size])
-        #             phi = np.pad(phi, ((npadx, n.astype('float32')x), (npady, npady)), mode='constant')
-        #             res[k,n+m*self.scanay.shape[.astype('float32') = np.fft.fft2(phi)/np.sqrt(phi.shape[0]*phi.shape[1])
+        #             phi = np.multiply(self.prb.complex, psi[k][stx:stx+self.prb.size, sty:sty+self.prb.size])
+        #             phi = np.pad(phi, ((npadx, npadx), (npady, npady)), mode='constant')
+        #             res[k,n+m*self.scanay.shape[1]] = np.fft.fft2(phi)/np.sqrt(phi.shape[0]*phi.shape[1])
+
+        #             # phi = np.pad(
+        #             #     phi, ((npadx, npadx), (npady, npady)), mode='constant')
+        #             # tmp[n+m*len(self.scan[k].y)] = np.fft.fft2(phi) / \
+        #             #     np.sqrt(phi.shape[0]*phi.shape[1])
 
         # import matplotlib.pyplot as plt
-        # plt.subplot(2,2,1)                      .astype('float32')
+        # plt.subplot(2,2,1)                    
         # plt.imshow(res[0,0].real)
         # plt.colorbar()
         # plt.subplot(2,2,2)
@@ -126,17 +130,20 @@ class Solver(object):
         # plt.imshow(res_gpu[0,0].imag)
         # plt.colorbar()
         # plt.show()
-        # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+        # print('fwd ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
     # adjoint ptychography transfrorm (Q*F*)
     def adj_ptycho(self, data):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
         data_gpu = np.array(data.astype('complex64'), order='C')
-        for k in range(len(self.theta)):
-            self.cl_ptycho.adj(res_gpu[k:k+1].view('float32'), data_gpu[k:k+1].view('float32'))
+        for k in range(0,self.tomoshape[0]//self.projgpu):
+            ast, aend = k*self.projgpu, (k+1)*self.projgpu
+            self.cl_ptycho.setobj(self.scanax[ast:aend],self.scanay[ast:aend],
+                              self.prb.complex.view('float32'))
+            self.cl_ptycho.adj(res_gpu[ast:aend].view('float32'), data_gpu[ast:aend].view('float32'))
 
-        # res = np.zeros(self.tomoshape,dtype='complex')
+        # res = np.zeros(self.tomoshape,dtype='complex64')
         # npadx = (self.det.x - self.prb.size) // 2
         # npady = (self.det.y - self.prb.size) // 2
 
@@ -166,7 +173,7 @@ class Solver(object):
         # plt.imshow(res_gpu[0].imag)
         # plt.colorbar()
         # plt.show()
-        # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+        # print('adj ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
 
         return res_gpu
 
@@ -174,12 +181,15 @@ class Solver(object):
     def adjfwd_prb(self, psi):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
         psi_gpu = np.array(psi.astype('complex64'), order='C')
-
-        for k in range(len(self.theta)):
-            self.cl_ptycho.adjfwd_prb(res_gpu[k:k+1].view(
-                'float32'), psi_gpu[k:k+1].view('float32'))
+        for k in range(0,self.tomoshape[0]//self.projgpu):
+            ast, aend = k*self.projgpu, (k+1)*self.projgpu
+            self.cl_ptycho.setobj(self.scanax[ast:aend],self.scanay[ast:aend],
+                              self.prb.complex.view('float32'))
+            self.cl_ptycho.adjfwd_prb(res_gpu[ast:aend].view(
+                    'float32'), psi_gpu[ast:aend].view('float32'))
 
         # res = np.zeros([len(self.theta),psi.shape[1],psi.shape[2]],dtype='complex')
+
         # for k in range(self.theta.size):
         #     for m in range(len(self.scan[k].x)):
         #         for n in range(len(self.scan[k].y)):
@@ -202,15 +212,19 @@ class Solver(object):
         # plt.imshow(res_gpu[0].imag)
         # plt.colorbar()
         # plt.show()
-        # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+        # print('adjfbp_prb ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
     # amplitude update in Gradient descent ptychography
     def update_amp(self, init, data):
         res_gpu = np.array(init.copy().astype('complex64'), order='C')
         data_gpu = np.array(data.astype('float32'), order='C')
-        for k in range(len(self.theta)):
-            self.cl_ptycho.update_amp(res_gpu[k:k+1].view('float32'), data_gpu[k:k+1])
+        for k in range(0,self.tomoshape[0]//self.projgpu):
+            ast, aend = k*self.projgpu, (k+1)*self.projgpu
+            self.cl_ptycho.setobj(self.scanax[ast:aend],self.scanay[ast:aend],
+                              self.prb.complex.view('float32'))
+            self.cl_ptycho.update_amp(res_gpu[ast:aend].view('float32'), data_gpu[ast:aend])
+        #self.cl_ptycho.update_amp(res_gpu.view('float32'), data_gpu)
 
         # res = init.copy()
         # for k in range(self.theta.size):
@@ -230,7 +244,7 @@ class Solver(object):
         # plt.imshow(res_gpu[0,0].imag)
         # plt.colorbar()
         # plt.show()
-        # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
+        # print('update ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
 
         return res_gpu
 
@@ -262,7 +276,7 @@ class Solver(object):
     @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer):
-        for m in range(10):
+        for m in range(256):
             # Ptychography
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, hobj, lamd)
             # Tomography
