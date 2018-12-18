@@ -46,12 +46,12 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 if __name__ == "__main__":
     # Parameters.
     rho = 0.5
-    tau = 0.005
+    tau = 1e-3
     gamma = 0.25
     eta = 0.25
     piter = 1
     titer = 1
-    maxint = 1
+    maxint = 100
     voxelsize = 1e-6
     energy = 5
 
@@ -80,6 +80,15 @@ if __name__ == "__main__":
                             theta, det, voxelsize, energy, tomoshape)
 
     # Adjoint and normalization test
+    # a = slv.fwd_reg(obj.complexform)
+    # b = slv.adj_reg(a)
+    # aa = slv.fwd_reg(b)
+    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
+    # s2 = np.sum(np.complex64(b)*np.conj(np.complex64(b)))
+    # s3 = np.sum(np.complex64(aa)*np.conj(np.complex64(aa)))
+
+    # print("Adjoint and normalization test gr: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
+    # exit()
     # r = 1/np.sqrt(len(theta)*obj.shape[2]/2)
     # a = obj.complexform
     # b = slv.fwd_tomo(a)*r
@@ -114,11 +123,37 @@ if __name__ == "__main__":
     data = np.random.poisson(data).astype('float32')
 
     # Init.
+    # tau=1e-12
+    # reg_term=0
+    # h = np.ones(psis.shape, dtype='complex64')
+    # psi = np.ones(psis.shape, dtype='complex64')
+    # lamd = np.zeros(psi.shape, dtype='complex64')
+    # y = np.zeros([3,*obj.shape], dtype='complex64')
+    # mu = np.zeros([3,*obj.shape], dtype='complex64')
+    # x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
+    #     obj.shape, dtype='float32'), voxelsize)
+    # slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
+
+ # Init.
+    tau=8e-3
+    reg_term=0
     h = np.ones(psis.shape, dtype='complex64')
     psi = np.ones(psis.shape, dtype='complex64')
     lamd = np.zeros(psi.shape, dtype='complex64')
-    y = np.zeros([2,*obj.shape], dtype='complex64')
-    mu = np.zeros([2,*obj.shape], dtype='complex64')
+    y = np.zeros([3,*obj.shape], dtype='complex64')
+    mu = np.zeros([3,*obj.shape], dtype='complex64')
     x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
         obj.shape, dtype='float32'), voxelsize)
-    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer)
+    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
+ 
+ # Init.
+    tau=8e-3
+    reg_term=1
+    h = np.ones(psis.shape, dtype='complex64')
+    psi = np.ones(psis.shape, dtype='complex64')
+    lamd = np.zeros(psi.shape, dtype='complex64')
+    y = np.zeros([3,*obj.shape], dtype='complex64')
+    mu = np.zeros([3,*obj.shape], dtype='complex64')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
+        obj.shape, dtype='float32'), voxelsize)
+    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)

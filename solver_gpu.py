@@ -83,9 +83,10 @@ class Solver(object):
 
     # forward operator for regularization (q)
     def fwd_reg(self,x):
-        res = np.zeros([2,*self.objshape], dtype='complex64', order='C')
+        res = np.zeros([3,*self.objshape], dtype='complex64', order='C')
         res[0,:,:,:-1] = x[:,:,1:]-x[:,:,:-1]
         res[1,:,:-1,:] = x[:,1:,:]-x[:,:-1,:]
+        res[2,:-1,:,:] = x[1:,:,:]-x[:-1,:,:]
         return res
 
     # adjoint operator for regularization (q^*)
@@ -93,8 +94,10 @@ class Solver(object):
         res = np.zeros(self.objshape, dtype='complex64', order='C')
         res[:,:,1:] = gr[0,:,:,1:]-gr[0,:,:,:-1]
         res[:,:,0] = gr[0,:,:,0]
-        res[:,:-1,:] += gr[1,:,1:,:]-gr[1,:,:-1,:]
+        res[:,1:,:] += gr[1,:,1:,:]-gr[1,:,:-1,:]
         res[:,0,:] += gr[1,:,0,:] 
+        res[1:,:,:] += gr[2,1:,:,:]-gr[2,:-1,:,:]
+        res[0,:,:] += gr[2,0,:,:] 
         return -res
 
 
@@ -293,13 +296,13 @@ class Solver(object):
             upd1 = self.adj_ptycho(tmp)
             upd2 = self.adjfwd_prb(psi)
             psi = (1 - rho*gamma) * psi + rho*gamma * \
-                (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)
+                (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)/np.power(np.abs(self.prb.complex), 2).max()
         return psi
 
     # @profile
     # ADMM for ptycho-tomography problem
-    def admm(self, data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer):
-        for m in range(32):
+    def admm(self, data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term):
+        for m in range(128):
             # psi update
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
             # x update
@@ -307,13 +310,15 @@ class Solver(object):
             tmp1 = y + mu/tau
             _x = self.grad_tomo(tmp0, tmp1, titer, x, rho,tau, eta)
             
-            # y update
             gr_tmp = self.fwd_reg(_x.complexform)
-            z = np.sqrt(gr_tmp[0]**2+gr_tmp[1]**2)
-            y = gr_tmp
-            y[:,z<=1/tau] = 0
-            y[:,z>1/tau] = z[z>1/tau]-1/tau*gr_tmp[:,z>1/tau]/z[z>1/tau]
-            #y = (mu+tau*self.fwd_reg(_x.complexform))/(2+tau)
+            # y update
+            if reg_term==0:
+                z = np.sqrt(gr_tmp[0]**2+gr_tmp[1]**2+gr_tmp[2]**2)
+                y = gr_tmp  
+                y[:,z<=1/tau] = 0
+                y[:,z>1/tau] = z[z>1/tau]-1/tau*gr_tmp[:,z>1/tau]/z[z>1/tau]
+            else:
+                y = (mu+tau*self.fwd_reg(_x.complexform))/(2+tau)
             # lambda update
             _h = self.fwd_tomo(_x.complexform)
             _h = self.exptomo(_h)
@@ -323,16 +328,14 @@ class Solver(object):
             _mu = mu + tau * (y - q)
             # # convergence
             cp = np.sqrt(np.sum(np.power(np.abs(h-psi), 2)))
-            cy = np.sqrt(np.sum(np.power(np.abs(q-y), 2)))
-            co = np.sqrt(
-                np.sum(np.power(np.abs(x.complexform - _x.complexform), 2)))
-            cl = np.sqrt(np.sum(np.power(np.abs(lamd-_lamd), 2)))
-            cm = np.sqrt(np.sum(np.power(np.abs(mu-_mu), 2)))
-            print(m, cp, cy, co, cl,cm)
-            dxchange.write_tiff(
-                x.beta[:, x.beta.shape[0] // 2],  'beta/beta')
-            dxchange.write_tiff(
-                x.delta[:, x.delta.shape[0] // 2],  'delta/delta')
+            # cy = np.sqrt(np.sum(np.power(np.abs(q-y), 2)))
+            # co = np.sqrt(
+            #     np.sum(np.power(np.abs(x.complexform - _x.complexform), 2)))
+            # cl = np.sqrt(np.sum(np.power(np.abs(lamd-_lamd), 2)))
+            # cm = np.sqrt(np.sum(np.power(np.abs(mu-_mu), 2)))
+            # print(m, cp, cy, co, cl,cm)
+            print(m,cp)
+
             ##############
             # htmp = self.fwd_tomo(_x.complexform)
             # htmp = self.exptomo(_h)
@@ -351,3 +354,7 @@ class Solver(object):
             x = _x
             h = _h
             mu = _mu
+        dxchange.write_tiff(
+            x.beta[:, x.beta.shape[0] // 2],  'beta2/beta')
+        dxchange.write_tiff(
+            x.delta[:, x.delta.shape[0] // 2],  'delta2/delta')
