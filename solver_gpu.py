@@ -81,6 +81,24 @@ class Solver(object):
 
         return res_gpu
 
+    # forward operator for regularization (q)
+    def fwd_reg(self,x):
+        res = np.zeros([2,*self.objshape], dtype='complex64', order='C')
+        res[0,:,:,:-1] = x[:,:,1:]-x[:,:,:-1]
+        res[1,:,:-1,:] = x[:,1:,:]-x[:,:-1,:]
+        return res
+
+    # adjoint operator for regularization (q^*)
+    def adj_reg(self,gr):
+        res = np.zeros(self.objshape, dtype='complex64', order='C')
+        res[:,:,1:] = gr[0,:,:,1:]-gr[0,:,:,:-1]
+        res[:,:,0] = gr[0,:,:,0]
+        res[:,:-1,:] += gr[1,:,1:,:]-gr[1,:,:-1,:]
+        res[:,0,:] += gr[1,:,0,:] 
+        return -res
+
+
+
     # ptychography transform (FQ)
     def fwd_ptycho(self, psi):
         res_gpu = np.zeros([self.theta.size,
@@ -251,19 +269,21 @@ class Solver(object):
 
         return res_gpu
 
-    @profile
+    # @profile
     # Gradient descent tomography
-    def grad_tomo(self, data, niter, init, eta):
+    def grad_tomo(self, data, data_reg, niter, init, rho,tau, eta):
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
         res = init.complexform/r
         for i in range(niter):
-            tmp = self.fwd_tomo(res)*r
-            tmp = self.adj_tomo(2*(tmp-data))*r
+            tmp0 = self.fwd_tomo(res)*r
+            tmp1 = self.fwd_reg(res)
+            tmp = self.adj_tomo(2*(tmp0-data))*r
+            tmp += self.adj_reg(2*(tmp1-data_reg))*tau/rho
             res = res - eta*tmp
         res *= r
         return objects.Object(res.imag, res.real, self.voxelsize)
 
-    @profile
+    # @profile
     # Gradient descent ptychography
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
         psi = init.copy()
@@ -276,33 +296,58 @@ class Solver(object):
                 (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)
         return psi
 
-    @profile
+    # @profile
     # ADMM for ptycho-tomography problem
-    def admm(self, data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer):
-        for m in range(100):
-            # Ptychography
-            psi = self.grad_ptycho(data, psi, piter, rho, gamma, hobj, lamd)
-            # Tomography
-            tmp = self.logtomo(psi+lamd/rho)
-            _recobj = self.grad_tomo(tmp, titer, recobj, eta)
-            # Lambda update
-            _hobj = self.fwd_tomo(_recobj.complexform)
-            _hobj = self.exptomo(_hobj)
-            _lamd = lamd + 1 * rho * (psi - _hobj)
-
-            # convergence
-            cp = np.sqrt(np.sum(np.power(np.abs(hobj-psi), 2)))
+    def admm(self, data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer):
+        for m in range(32):
+            # psi update
+            psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
+            # x update
+            tmp0 = self.logtomo(psi+lamd/rho)
+            tmp1 = y + mu/tau
+            _x = self.grad_tomo(tmp0, tmp1, titer, x, rho,tau, eta)
+            
+            # y update
+            gr_tmp = self.fwd_reg(_x.complexform)
+            z = np.sqrt(gr_tmp[0]**2+gr_tmp[1]**2)
+            y = gr_tmp
+            y[:,z<=1/tau] = 0
+            y[:,z>1/tau] = z[z>1/tau]-1/tau*gr_tmp[:,z>1/tau]/z[z>1/tau]
+            #y = (mu+tau*self.fwd_reg(_x.complexform))/(2+tau)
+            # lambda update
+            _h = self.fwd_tomo(_x.complexform)
+            _h = self.exptomo(_h)
+            _lamd = lamd + rho * (psi - _h)
+            # mu update
+            q = self.fwd_reg(_x.complexform)
+            _mu = mu + tau * (y - q)
+            # # convergence
+            cp = np.sqrt(np.sum(np.power(np.abs(h-psi), 2)))
+            cy = np.sqrt(np.sum(np.power(np.abs(q-y), 2)))
             co = np.sqrt(
-                np.sum(np.power(np.abs(recobj.complexform - _recobj.complexform), 2)))
+                np.sum(np.power(np.abs(x.complexform - _x.complexform), 2)))
             cl = np.sqrt(np.sum(np.power(np.abs(lamd-_lamd), 2)))
-            print(m, cp, co, cl)
+            cm = np.sqrt(np.sum(np.power(np.abs(mu-_mu), 2)))
+            print(m, cp, cy, co, cl,cm)
             dxchange.write_tiff(
-                recobj.beta[:, recobj.beta.shape[0] // 2],  'beta/beta')
+                x.beta[:, x.beta.shape[0] // 2],  'beta/beta')
             dxchange.write_tiff(
-                recobj.delta[:, recobj.delta.shape[0] // 2],  'delta/delta')
+                x.delta[:, x.delta.shape[0] // 2],  'delta/delta')
             ##############
+            # htmp = self.fwd_tomo(_x.complexform)
+            # htmp = self.exptomo(_h)
 
+            # data_cmp = fwd_ptycho(htmp)
+            # data_cmp = np.abs(data_cmp)**2
+
+            # gr_tmp = fwd_reg(_x.complexform)
+
+            # cp = 0.5*np.sum((htmp-psi)**2)
+            # cd = 0.5*np.sum((data-data_cmp)**2)
+            # cgr = np.sum(gr_tmp[0]**2+gr_tmp[1]**2)
+            # print(cp,cd,cgr,cd+)
             # update to next iter
             lamd = _lamd
-            recobj = _recobj
-            hobj = _hobj
+            x = _x
+            h = _h
+            mu = _mu

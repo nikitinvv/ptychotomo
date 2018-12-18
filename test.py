@@ -1,5 +1,5 @@
 import objects
-import solver
+# import solver
 import solver_gpu
 import dxchange
 import tomopy
@@ -44,9 +44,9 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 
 
 if __name__ == "__main__":
-
     # Parameters.
     rho = 0.5
+    tau = 0.005
     gamma = 0.25
     eta = 0.25
     piter = 1
@@ -111,11 +111,14 @@ if __name__ == "__main__":
     # Propagate.
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)**2
+    data = np.random.poisson(data).astype('float32')
+
     # Init.
-    hobj = np.ones(psis.shape, dtype='complex64')
+    h = np.ones(psis.shape, dtype='complex64')
     psi = np.ones(psis.shape, dtype='complex64')
     lamd = np.zeros(psi.shape, dtype='complex64')
-    recobj = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
+    y = np.zeros([2,*obj.shape], dtype='complex64')
+    mu = np.zeros([2,*obj.shape], dtype='complex64')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
         obj.shape, dtype='float32'), voxelsize)
-
-    slv.admm(data, hobj, psi, lamd, recobj, rho, gamma, eta, piter, titer)
+    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer)
