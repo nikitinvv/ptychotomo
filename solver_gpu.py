@@ -38,7 +38,7 @@ class Solver(object):
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
-        self.projgpu = tomoshape[0]
+        self.projgpu = tomoshape[0]//2
         self.cl_ptycho = ptychofft.ptychofft(self.projgpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
 
@@ -286,7 +286,7 @@ class Solver(object):
         res *= r
         return objects.Object(res.imag, res.real, self.voxelsize)
 
-    # @profile
+    @profile
     # Gradient descent ptychography
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
         psi = init.copy()
@@ -299,7 +299,7 @@ class Solver(object):
                 (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2)/np.power(np.abs(self.prb.complex), 2).max()
         return psi
 
-    # @profile
+    @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term):
         for m in range(128):
@@ -355,6 +355,6 @@ class Solver(object):
             h = _h
             mu = _mu
         dxchange.write_tiff(
-            x.beta[:, x.beta.shape[0] // 2],  'beta2/beta')
+            x.beta,  'beta2/beta')
         dxchange.write_tiff(
-            x.delta[:, x.delta.shape[0] // 2],  'delta2/delta')
+            x.delta,  'delta2/delta')
