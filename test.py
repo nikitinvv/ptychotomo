@@ -62,8 +62,11 @@ if __name__ == "__main__":
     # print(np.amax(beta))
     # print(np.amax(delta))
     # exit()
-    beta = tomopy.misc.phantom.shepp3d(size=256, dtype=u'float32')*1e-6
-    delta = tomopy.misc.phantom.shepp3d(size=256, dtype=u'float32')*1e-5*5
+    #beta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-6
+    #delta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-5*5
+    #dxchange.write_tiff(beta,'data/ph-imag.tiff')
+#    dxchange.write_tiff(delta,'data/ph-real.tiff')
+#    exit()
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -73,7 +76,7 @@ if __name__ == "__main__":
     # Detector parameters.
     det = objects.Detector(63,63)
     # Define rotation angles.
-    theta = np.linspace(0, np.pi, 60).astype('float32')
+    theta = np.linspace(0, 2*np.pi, 360).astype('float32')
     # Raster scan parameters for each rotation angle.
     scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
@@ -123,22 +126,23 @@ if __name__ == "__main__":
     # Propagate.
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)**2
+    data =  np.array(data, dtype='complex64', order = 'C')
     #data = np.random.poisson(data).astype('float32')
 
 # Init.
     tau=1e-12
     reg_term=0
-    h = np.ones(psis.shape, dtype='complex64')
-    psi = np.ones(psis.shape, dtype='complex64')
-    lamd = np.zeros(psi.shape, dtype='complex64')
-    y = np.zeros([3,*obj.shape], dtype='complex64')
-    mu = np.zeros([3,*obj.shape], dtype='complex64')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
-        obj.shape, dtype='float32'), voxelsize)
+    h = np.ones(psis.shape, dtype='complex64', order = 'C')
+    psi = np.ones(psis.shape, dtype='complex64', order = 'C')
+    lamd = np.zeros(psi.shape, dtype='complex64', order = 'C')
+    y = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
+    mu = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order = 'C'), np.zeros(
+        obj.shape, dtype='float32', order = 'C'), voxelsize)
     slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
 
  # Init.
-    tau=1e-2
+    tau=3e-2
     reg_term=0
     h = np.ones(psis.shape, dtype='complex64')
     psi = np.ones(psis.shape, dtype='complex64')
@@ -150,7 +154,7 @@ if __name__ == "__main__":
     slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
  
  # Init.
-    tau=1e-2
+    tau=3e-2
     reg_term=1
     h = np.ones(psis.shape, dtype='complex64')
     psi = np.ones(psis.shape, dtype='complex64')

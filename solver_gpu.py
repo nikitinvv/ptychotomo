@@ -56,8 +56,8 @@ class Solver(object):
     # Radon transform (R )
     def fwd_tomo(self, psi):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
-        psi_gpu = np.array(psi, dtype='complex64', order='C')
-        self.cl_tomo.fwd(res_gpu.view('float32'), psi_gpu.view('float32'))
+        # psi_gpu = np.array(psi, dtype='complex64', order='C')
+        self.cl_tomo.fwd(res_gpu.view('float32'), psi.view('float32'))
 
         # pb = tomopy.project(psi.imag, self.theta, pad=False)
         # pd = tomopy.project(psi.real, self.theta, pad=False)
@@ -70,8 +70,8 @@ class Solver(object):
     # adjoint Radon transform (R^*)
     def adj_tomo(self, data):
         res_gpu = np.zeros(self.objshape, dtype='complex64', order='C')
-        data_gpu = np.array(data, dtype='complex64', order='C')
-        self.cl_tomo.adj(res_gpu.view('float32'), data_gpu.view('float32'))
+        #data_gpu = np.array(data, dtype='complex64', order='C')
+        self.cl_tomo.adj(res_gpu.view('float32'), data.view('float32'))
 
         # pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp')
         # pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp')
@@ -101,19 +101,19 @@ class Solver(object):
         return -res
 
 
-
+    @profile
     # ptychography transform (FQ)
     def fwd_ptycho(self, psi):
         res_gpu = np.zeros([self.theta.size,
                             self.scanax.shape[1]*self.scanay.shape[1],
                             self.det.x, self.det.y], dtype='complex64', order='C')
-        psi_gpu = np.array(psi.astype('complex64'), order='C')
+        #psi_gpu = np.array(psi.astype('complex64'), order='C')
         for k in range(0, self.tomoshape[0]//self.projgpu):
             ast, aend = k*self.projgpu, (k+1)*self.projgpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex.view('float32'))
             self.cl_ptycho.fwd(res_gpu[ast:aend].view(
-                'float32'), psi_gpu[ast:aend].view('float32'))
+                'float32'), psi[ast:aend].view('float32'))
 
         # res = np.zeros([self.theta.size,
         #                 self.scanax.shape[1]*self.scanay.shape[1],
@@ -155,16 +155,18 @@ class Solver(object):
         # print('fwd ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
+    @profile
     # adjoint ptychography transfrorm (Q*F*)
     def adj_ptycho(self, data):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
-        data_gpu = np.array(data.astype('complex64'), order='C')
+        #data_gpu = data.astype('complex64')
+        #data_gpu = np.array(data_gpu, order='C')
         for k in range(0, self.tomoshape[0]//self.projgpu):
             ast, aend = k*self.projgpu, (k+1)*self.projgpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex.view('float32'))
             self.cl_ptycho.adj(res_gpu[ast:aend].view(
-                'float32'), data_gpu[ast:aend].view('float32'))
+                'float32'), data[ast:aend].view('float32'))
 
         # res = np.zeros(self.tomoshape,dtype='complex64')
         # npadx = (self.det.x - self.prb.size) // 2
@@ -203,13 +205,13 @@ class Solver(object):
     # multiply by probe and adj probe (Q^*Q)
     def adjfwd_prb(self, psi):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
-        psi_gpu = np.array(psi.astype('complex64'), order='C')
+        #psi_gpu = np.array(psi.astype('complex64'), order='C')
         for k in range(0, self.tomoshape[0]//self.projgpu):
             ast, aend = k*self.projgpu, (k+1)*self.projgpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex.view('float32'))
             self.cl_ptycho.adjfwd_prb(res_gpu[ast:aend].view(
-                'float32'), psi_gpu[ast:aend].view('float32'))
+                'float32'), psi[ast:aend].view('float32'))
 
         # res = np.zeros([len(self.theta),psi.shape[1],psi.shape[2]],dtype='complex')
 
@@ -238,16 +240,17 @@ class Solver(object):
         # print('adjfbp_prb ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
+    @profile
     # amplitude update in Gradient descent ptychography
     def update_amp(self, init, data):
-        res_gpu = np.array(init.copy().astype('complex64'), order='C')
-        data_gpu = np.array(data.astype('float32'), order='C')
+        #res_gpu = np.array(init.copy().astype('complex64'), order='C')
+        #data_gpu = np.array(data.astype('float32'), order='C')
         for k in range(0, self.tomoshape[0]//self.projgpu):
             ast, aend = k*self.projgpu, (k+1)*self.projgpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex.view('float32'))
             self.cl_ptycho.update_amp(
-                res_gpu[ast:aend].view('float32'), data_gpu[ast:aend])
+                init[ast:aend].view('float32'), data[ast:aend].real)
         #self.cl_ptycho.update_amp(res_gpu.view('float32'), data_gpu)
 
         # res = init.copy()
@@ -269,8 +272,7 @@ class Solver(object):
         # plt.colorbar()
         # plt.show()
         # print('update ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
-
-        return res_gpu
+        return init
 
     # @profile
     # Gradient descent tomography
@@ -327,7 +329,7 @@ class Solver(object):
             q = self.fwd_reg(_x.complexform)
             _mu = mu + tau * (y - q)
             # # convergence
-            cp = np.sqrt(np.sum(np.power(np.abs(h-psi), 2)))
+            cx = np.sqrt(np.sum(np.power(np.abs(_x.complexform-x.complexform), 2)))
             # cy = np.sqrt(np.sum(np.power(np.abs(q-y), 2)))
             # co = np.sqrt(
             #     np.sum(np.power(np.abs(x.complexform - _x.complexform), 2)))
@@ -354,7 +356,5 @@ class Solver(object):
             x = _x
             h = _h
             mu = _mu
-        dxchange.write_tiff(
-            x.beta,  'beta2/beta')
-        dxchange.write_tiff(
-            x.delta,  'delta2/delta')
+        dxchange.write_tiff(x.beta,  'beta2/beta')
+        dxchange.write_tiff(x.delta,  'delta2/delta')
