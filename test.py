@@ -51,22 +51,13 @@ if __name__ == "__main__":
     eta = 0.25
     piter = 1
     titer = 1
-    maxint = 100
+    maxint = 10
     voxelsize = 1e-6
     energy = 5
 
-    # Load a 3D object.
-    beta = dxchange.read_tiff('data/lego-imag.tiff').astype('float32')
-    delta = dxchange.read_tiff('data/lego-real.tiff').astype('float32')
-    #print(beta.shape)
-    # print(np.amax(beta))
-    # print(np.amax(delta))
-    # exit()
-    #beta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-6
-    #delta = tomopy.misc.phantom.shepp3d(size=128, dtype=u'float32')*1e-5*5
-    #dxchange.write_tiff(beta,'data/ph-imag.tiff')
-#    dxchange.write_tiff(delta,'data/ph-real.tiff')
-#    exit()
+     # Load a 3D object.
+    beta = dxchange.read_tiff('data/test-beta-128.tiff').astype('float32')[::2,::2,::2]
+    delta = dxchange.read_tiff('data/test-delta-128.tiff').astype('float32')[::2,::2,::2]
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -82,8 +73,38 @@ if __name__ == "__main__":
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
     # class solver
-    slv = solver_gpu.Solver(prb, scan, scanax, scanay,
+    slv = solver_gpu.Solver(prb, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
+
+    # Project.
+    psis = slv.fwd_tomo(obj.complexform)
+    psis = slv.exptomo(psis)
+    # Propagate.
+    data = slv.fwd_ptycho(psis)
+    data = np.abs(data)**2
+    data =  np.array(data, dtype='complex64', order = 'C')
+    #data = np.random.poisson(data).astype('float32')
+
+    h = np.ones(psis.shape, dtype='complex64', order = 'C')
+    psi = np.ones(psis.shape, dtype='complex64', order = 'C')
+    lamd = np.zeros(psi.shape, dtype='complex64', order = 'C')
+    mu = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order = 'C'), np.zeros(
+        obj.shape, dtype='float32', order = 'C'), voxelsize)
+
+    slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer)
+
+
+
+
+
+
+
+
+
+
+
+
 
     # Adjoint and normalization test
     # a = slv.fwd_reg(obj.complexform)
@@ -120,47 +141,4 @@ if __name__ == "__main__":
 
     # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
 
-    # Project.
-    psis = slv.fwd_tomo(obj.complexform)
-    psis = slv.exptomo(psis)
-    # Propagate.
-    data = slv.fwd_ptycho(psis)
-    data = np.abs(data)**2
-    data =  np.array(data, dtype='complex64', order = 'C')
-    #data = np.random.poisson(data).astype('float32')
-
-# Init.
-    tau=1e-12
-    reg_term=0
-    h = np.ones(psis.shape, dtype='complex64', order = 'C')
-    psi = np.ones(psis.shape, dtype='complex64', order = 'C')
-    lamd = np.zeros(psi.shape, dtype='complex64', order = 'C')
-    y = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
-    mu = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32', order = 'C'), np.zeros(
-        obj.shape, dtype='float32', order = 'C'), voxelsize)
-    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
-
- # Init.
-    tau=3e-2
-    reg_term=0
-    h = np.ones(psis.shape, dtype='complex64')
-    psi = np.ones(psis.shape, dtype='complex64')
-    lamd = np.zeros(psi.shape, dtype='complex64')
-    y = np.zeros([3,*obj.shape], dtype='complex64')
-    mu = np.zeros([3,*obj.shape], dtype='complex64')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
-        obj.shape, dtype='float32'), voxelsize)
-    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
- 
- # Init.
-    tau=3e-2
-    reg_term=1
-    h = np.ones(psis.shape, dtype='complex64')
-    psi = np.ones(psis.shape, dtype='complex64')
-    lamd = np.zeros(psi.shape, dtype='complex64')
-    y = np.zeros([3,*obj.shape], dtype='complex64')
-    mu = np.zeros([3,*obj.shape], dtype='complex64')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32'), np.zeros(
-        obj.shape, dtype='float32'), voxelsize)
-    slv.admm(data, h, psi, y, lamd, x, rho, mu, tau, gamma, eta, piter, titer,reg_term)
+    
