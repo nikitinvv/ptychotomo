@@ -183,3 +183,31 @@ void __global__ applyfilter(float2 *f, int N, int Ntheta, int Nz)
 	f[id0].x*=w;
 	f[id0].y*=w;
 }
+
+void __global__ pad(float2 *f, int N, int Ntheta, int Nz)
+{
+	int tx = blockDim.x * blockIdx.x + threadIdx.x;
+	int ty = blockDim.y * blockIdx.y + threadIdx.y;
+	int tz = blockDim.z * blockIdx.z + threadIdx.z;
+	if (tx>=N||ty>=Ntheta||tz>=Nz) return;
+	if(tx<N/6)
+	{
+		f[tx+tz*N+ty*N*Nz].x = f[N/6+tz*N+ty*N*Nz].x;
+		f[tx+tz*N+ty*N*Nz].y = f[N/6+tz*N+ty*N*Nz].y;
+	}
+	if(tx>=5*N/6)
+	{
+		f[tx+tz*N+ty*N*Nz].x = f[5*N/6-1+tz*N+ty*N*Nz].x;
+		f[tx+tz*N+ty*N*Nz].y = f[5*N/6-1+tz*N+ty*N*Nz].y;
+	}
+
+}
+void __global__ pad2(float2 *f, int N, int Nz)
+{
+	int tx = blockDim.x * blockIdx.x + threadIdx.x;
+	int ty = blockDim.y * blockIdx.y + threadIdx.y;
+	int tz = blockDim.z * blockIdx.z + threadIdx.z;
+	if (tx>=N||ty>=N||tz>=Nz) return;
+	f[tx+ty*N+tz*N*N].x = f[max(N/6,min(5*N/6-1,tx))+max(N/6,min(5*N/6-1,ty))*N+tz*N*N].x;
+	f[tx+ty*N+tz*N*N].y = f[max(N/6,min(5*N/6-1,tx))+max(N/6,min(5*N/6-1,ty))*N+tz*N*N].y;
+}

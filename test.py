@@ -3,8 +3,8 @@ import tomopy
 import numpy as np
 import radonusfft
 N = 128
-Ntheta = 180
-Ns = 128
+Ntheta = 128
+Ns = 16
 theta = np.float32(np.arange(0, Ntheta)*np.pi/Ntheta)
 
 
@@ -15,10 +15,10 @@ cl.setobj(theta)
 f = np.float32(np.zeros([Ns, N, 2*N]), dtype="float32")
 
 # real part
-f[:, :, ::2] = tomopy.misc.phantom.shepp2d(size=N, dtype=u'float32')
+f[:, :, ::2] = tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32')[0,N//2:3*N//2,N//2:3*N//2]
 # complex part
 f[:, :, 1::2] = np.fliplr(
-    tomopy.misc.phantom.shepp2d(size=N, dtype=u'float32'))
+    tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32'))[0,N//2:3*N//2,N//2:3*N//2]
 # f[-1]*=0
 
 # fwd
