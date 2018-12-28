@@ -128,6 +128,8 @@ class Solver(object):
             upd2 = self.adjfwd_prb(psi)
             psi = (1 - rho*gamma) * psi + rho*gamma * \
                 (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2) / self.maxint
+        
+        self.cl_ptycho.grad_ptycho(psi,data,hobj,rho,gamma,lamd,niter)
         return psi
 
     # ADMM for ptycho-tomography problem
