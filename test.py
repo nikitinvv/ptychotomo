@@ -43,15 +43,15 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 
 
 if __name__ == "__main__":
- 
+
     # Parameters.
     rho = 0.5
     gamma = 0.25
     eta = 0.25
     piter = 1
     titer = 1
-    NITER = 10
-    maxint = 10
+    NITER = 128
+    maxint = 1
     voxelsize = 1e-6
     energy = 5
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe.
-    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)  
     # Detector parameters.
     det = objects.Detector(63, 63)
     # Define rotation angles.
@@ -73,18 +73,18 @@ if __name__ == "__main__":
     scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
- 
+
     # class solver
     slv = solver_gpu.Solver(prb, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
 
-    # Project.
+    # Project
     psis = slv.fwd_tomo(obj.complexform)
     psis = slv.exptomo(psis)
-    # Propagate.
+    # Propagate
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)**2
-    data = np.array(data, order='C')
+    # Add noise
     #data = np.random.poisson(data).astype('float32')
 
     h = np.ones(psis.shape, dtype='complex64', order='C')
@@ -93,40 +93,12 @@ if __name__ == "__main__":
     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
         obj.shape, dtype='float32', order='C'), voxelsize)
+   
+    # ADMM
+    x = slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER)
 
-    slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER)
+    # Save result
+    dxchange.write_tiff(x.beta,  'beta/beta')
+    dxchange.write_tiff(x.delta,  'delta/delta')
 
-    # Adjoint and normalization test
-    # a = slv.fwd_reg(obj.complexform)
-    # b = slv.adj_reg(a)
-    # aa = slv.fwd_reg(b)
-    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
-    # s2 = np.sum(np.complex64(b)*np.conj(np.complex64(b)))
-    # s3 = np.sum(np.complex64(aa)*np.conj(np.complex64(aa)))
-
-    # print("Adjoint and normalization test gr: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
-    # exit()
-    # r = 1/np.sqrt(len(theta)*obj.shape[2]/2)
-    # a = obj.complexform
-    # b = slv.fwd_tomo(a)*r
-    # aa = slv.adj_tomo(b)*r
-    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
-    # s2 = np.sum(np.complex64(b)*np.conj(np.complex64(b)))
-    # s3 = np.sum(np.complex64(aa)*np.conj(np.complex64(aa)))
-    # print("Adjoint and normalization test tomo: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
-    # #r = 1/np.sqrt(len(theta)*obj.shape[2])
-    # a = slv.fwd_tomo(obj.complexform)
-    # a = slv.exptomo(a)
-    # b = slv.fwd_ptycho(a)
-    # aa = slv.adj_ptycho(b,obj.complexform)
-    # s1 = 0+1j*0
-    # s3 = 0+1j*0
-
-    # s1 = np.sum(np.complex64(a)*np.conj(np.complex64(aa)))
-    # for k in range(len(theta)):
-    #     #print([a[k].shape,aa[k].shape])
-    #     s2+=np.sum(np.complex64(b[k])*np.conj(np.complex64(b[k])))
-    # for k in range(len(theta)):
-    #     s3+=np.sum(np.complex64(aa[k])*np.conj(np.complex64(aa[k])))
-
-    # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
+   
