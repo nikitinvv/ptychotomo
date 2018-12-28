@@ -7,11 +7,7 @@ import dxchange
 import tomopy
 import radonusfft
 import ptychofft
-import xraylib as xl
 import numpy as np
-import scipy as sp
-import pyfftw
-import shutil
 import objects
 import warnings
 
