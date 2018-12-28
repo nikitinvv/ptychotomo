@@ -19,7 +19,7 @@ SPEED_OF_LIGHT = 299792458e+2  # [cm/s]
 
 def wavelength(energy):
     """Calculates the wavelength [cm] given energy [keV].
-    
+
     Parameters
     ----------
     energy : scalar
@@ -33,7 +33,7 @@ def wavelength(energy):
 
 def wavenumber(energy):
     """Calculates the wavenumber [1/cm] given energy [keV].
-    
+
     Parameters
     ----------
     energy : scalar
@@ -76,7 +76,7 @@ class Material(object):
 
 class Object(object):
     """Discrete object represented in a 3D regular grid.
-    
+
     Attributes
     ----------
     beta : ndarray
@@ -86,8 +86,9 @@ class Object(object):
     voxelsize : scalar [cm]
         Size of the voxels in the grid.
     """
+
     def __init__(self, beta, delta, voxelsize):
-        self.beta = beta 
+        self.beta = beta
         self.delta = delta
         self.voxelsize = voxelsize
 
@@ -110,6 +111,7 @@ class Detector(object):
     numy : int
         Number of vertical pixels.
     """
+
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -138,7 +140,7 @@ class Probe(object):
     A finite-extent circular shaped probe is represented as 
     a complex wave. The intensity of the probe is maximum at 
     the center and damps to zero at the borders of the frame. 
-    
+
     Attributes
     size : int
     ----------
@@ -200,10 +202,12 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
     a = spiral
     scan = []
     for m in range(len(theta)):
-        s = Scanner(shape, sx, sy, margin, offset=[offset[0], np.mod(offset[1]+a, sy)])
+        s = Scanner(shape, sx, sy, margin, offset=[
+                    offset[0], np.mod(offset[1]+a, sy)])
         scan.append(s)
         a += spiral
     return scan
+
 
 def _pad(phi, det):
     """Pads phi according to detector size."""
@@ -230,7 +234,7 @@ def propagate2(phi, det):
 
 
 def propagate3(prb, psi, scan, theta, det, noise=False):
-    data = [] 
+    data = []
     for m in range(theta.size):
         phi = exitwave(prb, np.squeeze(psi[m]), scan[m])
         dat = propagate2(phi, det)
@@ -249,15 +253,17 @@ def invptycho2(data, prb, scan, init, niter, rho, gamma, hobj, lamd, folder, deb
     for i in range(niter):
         upd = np.zeros(psi.shape, dtype='complex')
         _psi = np.zeros(psi.shape, dtype='complex')
-        a = 0 
+        a = 0
         for m in range(len(scan.x)):
             for n in range(len(scan.y)):
-            
+
                 # Near-plane.
-                phi = np.multiply(prb.complex, psi[scan.x[m]:scan.x[m] + prb.size, scan.y[n]:scan.y[n] + prb.size])
+                phi = np.multiply(
+                    prb.complex, psi[scan.x[m]:scan.x[m] + prb.size, scan.y[n]:scan.y[n] + prb.size])
 
                 # Go far-plane & Replace the amplitude with the measured amplitude.
-                phi = np.pad(phi, ((npadx, npadx), (npady, npady)), mode='constant')
+                phi = np.pad(
+                    phi, ((npadx, npadx), (npady, npady)), mode='constant')
                 tmp = np.fft.fft2(phi)
                 tmp = np.multiply(np.sqrt(data[a]), np.exp(1j * np.angle(tmp)))
 
@@ -265,17 +271,20 @@ def invptycho2(data, prb, scan, init, niter, rho, gamma, hobj, lamd, folder, deb
                 iphi = np.fft.ifft2(tmp)
 
                 # Object update.
-                delphi = (iphi - phi)[npadx:npadx+prb.size, npady:npady+prb.size]
+                delphi = (iphi - phi)[npadx:npadx +
+                                      prb.size, npady:npady+prb.size]
                 num = np.multiply(np.conj(prb.complex), delphi)
                 denum = np.power(np.abs(prb.complex), 2).max()
                 _upd = np.true_divide(num, denum)
 
-                upd[scan.x[m]:scan.x[m]+prb.size, scan.y[n]:scan.y[n]+prb.size] += _upd
-                a += 1  
+                upd[scan.x[m]:scan.x[m]+prb.size,
+                    scan.y[n]:scan.y[n]+prb.size] += _upd
+                a += 1
 
         # psi += upd.copy()
         # _psi = psi + (gamma / 2) * upd.copy()
-        _psi = (1 - rho*gamma) * psi + rho*gamma * (hobj - lamd/rho) + (gamma / 2) * upd.copy()
+        _psi = (1 - rho*gamma) * psi + rho*gamma * \
+            (hobj - lamd/rho) + (gamma / 2) * upd.copy()
 
         convpsi[i] = np.linalg.norm(psi - _psi, ord='fro')
         psi = _psi.copy()
@@ -287,23 +296,24 @@ def invptycho3(data, prb, scan, init, theta, niter, rho, gamma, hobj, lamd, fold
     psi = np.zeros((init.shape), dtype='complex')
     convallpsi = np.zeros((theta.size, niter), dtype='float32')
     for m in range(theta.size):
-        psi[m], convpsi = invptycho2(data[m], prb, scan[m], init[m], niter, rho, gamma, hobj[m], lamd[m], folder, debug)
+        psi[m], convpsi = invptycho2(
+            data[m], prb, scan[m], init[m], niter, rho, gamma, hobj[m], lamd[m], folder, debug)
         convallpsi[m] = convpsi
     return psi, convallpsi
 
 
 def invtomo3(data, theta, voxelsize, energy, niter, init, eta):
     _data = 1 / wavenumber(energy) * np.log(data) / voxelsize
-    pb = tomopy.recon(-np.real(_data), theta, algorithm='grad', num_iter=niter, init_recon=init.beta.copy(), reg_par=eta)
-    pd = tomopy.recon(np.imag(_data), theta, algorithm='grad', num_iter=niter, init_recon=init.delta.copy(), reg_par=eta)
+    pb = tomopy.recon(-np.real(_data), theta, algorithm='grad',
+                      num_iter=niter, init_recon=init.beta.copy(), reg_par=eta)
+    pd = tomopy.recon(np.imag(_data), theta, algorithm='grad',
+                      num_iter=niter, init_recon=init.delta.copy(), reg_par=eta)
     obj = Object(pb, pd, 1e-6)
     return obj
 
 
-
-
 folder = 'tmp/lego-joint-noise-1'
-print (folder)
+print(folder)
 
 # Parameters.
 rho = 0.5
@@ -312,13 +322,18 @@ eta = 0.25
 NITER = 3
 piter = 1
 titer = 1
-maxint = 100
+maxint = 10
 noise = False
 debug = False
 
 # Load a 3D object.
-beta = dxchange.read_tiff('data/lego-imag.tiff')
-delta = dxchange.read_tiff('data/lego-real.tiff')
+beta = dxchange.read_tiff(
+    'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+delta = dxchange.read_tiff(
+    'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+# # Load a 3D object.
+# beta = dxchange.read_tiff('data/lego-imag.tiff')
+# delta = dxchange.read_tiff('data/lego-real.tiff')
 
 # Create object.
 obj = Object(beta, delta, 1e-6)
@@ -338,7 +353,8 @@ det = Detector(63, 63)
 theta = np.linspace(0, 2*np.pi, 360)
 
 # Raster scan parameters for each rotation angle.
-scan = scanner3(theta, beta.shape, 6, 6, margin=[prb.size, prb.size], offset=[0, 0], spiral=1)
+scan = scanner3(theta, beta.shape, 6, 6, margin=[
+                prb.size, prb.size], offset=[0, 0], spiral=1)
 
 # Project.
 psis = project(obj, theta, energy=5)
@@ -347,7 +363,8 @@ dxchange.write_tiff(np.imag(psis), folder + '/psi-phase')
 
 # Propagate.
 data = propagate3(prb, psis, scan, theta, det, noise=noise)
-dxchange.write_tiff(np.fft.fftshift(np.log(np.array(data[0]))), folder + '/data')
+dxchange.write_tiff(np.fft.fftshift(
+    np.log(np.array(data[0]))), folder + '/data')
 
 # Init.
 hobj = np.ones(psis.shape, dtype='complex')
@@ -363,33 +380,46 @@ co = np.zeros((NITER,))
 for m in range(NITER):
 
     # Ptychography.
-    psi, conv = invptycho3(data, prb, scan, psi, theta, niter=piter, rho=rho, gamma=gamma, hobj=hobj, lamd=lamd, folder=folder, debug=debug)
-    dxchange.write_tiff(np.real(psi[0]).astype('float32'), folder + '/psi-amplitude/psi-amplitude')
-    dxchange.write_tiff(np.imag(psi[0]).astype('float32'), folder + '/psi-phase/psi-phase')
-    dxchange.write_tiff(np.abs((psi + lamd/rho)[0]).astype('float32'), folder + '/psilamd-amplitude/psilamd-amplitude')
-    dxchange.write_tiff(np.angle((psi + lamd/rho)[0]).astype('float32'), folder + '/psilamd-phase/psilamd-phase')
+    psi, conv = invptycho3(data, prb, scan, psi, theta, niter=piter, rho=rho,
+                           gamma=gamma, hobj=hobj, lamd=lamd, folder=folder, debug=debug)
+    dxchange.write_tiff(np.real(psi[0]).astype(
+        'float32'), folder + '/psi-amplitude/psi-amplitude')
+    dxchange.write_tiff(np.imag(psi[0]).astype(
+        'float32'), folder + '/psi-phase/psi-phase')
+    dxchange.write_tiff(np.abs(
+        (psi + lamd/rho)[0]).astype('float32'), folder + '/psilamd-amplitude/psilamd-amplitude')
+    dxchange.write_tiff(np.angle(
+        (psi + lamd/rho)[0]).astype('float32'), folder + '/psilamd-phase/psilamd-phase')
     cp[m] = np.sqrt(np.sum(np.power(np.abs(hobj-psi), 2)))
 
     # Tomography.
-    _recobj = invtomo3(psi + lamd/rho, theta, obj.voxelsize, energy=5, niter=titer, init=recobj, eta=eta)
-    co[m] = np.sqrt(np.sum(np.power(np.abs(recobj.complexform- _recobj.complexform), 2)))
+    _recobj = invtomo3(psi + lamd/rho, theta, obj.voxelsize,
+                       energy=5, niter=titer, init=recobj, eta=eta)
+    co[m] = np.sqrt(
+        np.sum(np.power(np.abs(recobj.complexform - _recobj.complexform), 2)))
     recobj = _recobj
-    dxchange.write_tiff(recobj.beta[:, beta.shape[0] // 2], folder + '/beta/beta')
-    dxchange.write_tiff(recobj.delta[:, delta.shape[0] // 2], folder + '/delta/delta')
+    dxchange.write_tiff(
+        recobj.beta[:, beta.shape[0] // 2], folder + '/beta/beta')
+    dxchange.write_tiff(
+        recobj.delta[:, delta.shape[0] // 2], folder + '/delta/delta')
     dxchange.write_tiff(recobj.beta, folder + '/beta-full/beta')
     dxchange.write_tiff(recobj.delta, folder + '/delta-full/delta')
 
     # Lambda update.
     hobj = project(recobj, theta, energy=5)
-    dxchange.write_tiff(np.real(hobj[0]).astype('float32'), folder + '/hobj-amplitude/hobj-amplitude')
-    dxchange.write_tiff(np.imag(hobj[0]).astype('float32'), folder + '/hobj-phase/hobj-phase')
+    dxchange.write_tiff(np.real(hobj[0]).astype(
+        'float32'), folder + '/hobj-amplitude/hobj-amplitude')
+    dxchange.write_tiff(np.imag(hobj[0]).astype(
+        'float32'), folder + '/hobj-phase/hobj-phase')
     _lamd = lamd + 1 * rho * (psi - hobj)
     cl[m] = np.sqrt(np.sum(np.power(np.abs(lamd-_lamd), 2)))
     lamd = _lamd.copy()
-    dxchange.write_tiff(np.abs(lamd[0]).astype('float32'), folder + '/lamd-amplitude/lamd-amplitude')
-    dxchange.write_tiff(np.angle(lamd[0]).astype('float32'), folder + '/lamd-phase/lamd-phase')
+    dxchange.write_tiff(np.abs(lamd[0]).astype(
+        'float32'), folder + '/lamd-amplitude/lamd-amplitude')
+    dxchange.write_tiff(np.angle(lamd[0]).astype(
+        'float32'), folder + '/lamd-phase/lamd-phase')
 
-    print (m, cp[m], co[m], cl[m])
+    print(m, cp[m], co[m], cl[m])
 
     if np.isnan(cp[m]) or np.isnan(co[m]) or np.isnan(cl[m]):
         break

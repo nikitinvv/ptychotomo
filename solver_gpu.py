@@ -38,7 +38,8 @@ class Solver(object):
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
-        self.theta_gpu = tomoshape[0]//2 #number of angles for simultaneous processing by 1 gpu
+        # number of angles for simultaneous processing by 1 gpu
+        self.theta_gpu = tomoshape[0]//2
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
 
@@ -56,7 +57,7 @@ class Solver(object):
     # Radon transform (R )
     def fwd_tomo(self, psi):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
-        self.cl_tomo.fwd(res_gpu.view('float32'), psi.view('float32'))
+        self.cl_tomo.fwd(res_gpu, psi)
 
         # pb = tomopy.project(psi.imag, self.theta, pad=False)
         # pd = tomopy.project(psi.real, self.theta, pad=False)
@@ -69,7 +70,7 @@ class Solver(object):
     # adjoint Radon transform (R^*)
     def adj_tomo(self, data):
         res_gpu = np.zeros(self.objshape, dtype='complex64', order='C')
-        self.cl_tomo.adj(res_gpu.view('float32'), data.view('float32'))
+        self.cl_tomo.adj(res_gpu, data)
 
         # pb = tomopy.recon(np.imag(data), self.theta, algorithm='fbp')
         # pd = tomopy.recon(np.real(data), self.theta, algorithm='fbp')
@@ -79,7 +80,6 @@ class Solver(object):
 
         return res_gpu
 
-    @profile
     # ptychography transform (FQ)
     def fwd_ptycho(self, psi):
         res_gpu = np.zeros(self.ptychoshape, dtype='complex64', order='C')
@@ -87,9 +87,8 @@ class Solver(object):
             # process self.theta_gpu angles on 1gpu simultaneously
             ast, aend = k*self.theta_gpu, (k+1)*self.theta_gpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
-                                  self.prb.complex.view('float32'))
-            self.cl_ptycho.fwd(res_gpu[ast:aend].view(
-                'float32'), psi[ast:aend].view('float32'))
+                                  self.prb.complex)
+            self.cl_ptycho.fwd(res_gpu[ast:aend], psi[ast:aend])
 
         # res = np.zeros([self.theta.size,
         #                 self.scanax.shape[1]*self.scanay.shape[1],
@@ -131,7 +130,6 @@ class Solver(object):
         # print('fwd ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
-    @profile
     # adjoint ptychography transfrorm (Q*F*)
     def adj_ptycho(self, data):
         res_gpu = np.zeros(self.tomoshape, dtype='complex64', order='C')
@@ -139,9 +137,8 @@ class Solver(object):
             # process self.theta_gpu angles on 1gpu simultaneously
             ast, aend = k*self.theta_gpu, (k+1)*self.theta_gpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
-                                  self.prb.complex.view('float32'))
-            self.cl_ptycho.adj(res_gpu[ast:aend].view(
-                'float32'), data[ast:aend].view('float32'))
+                                  self.prb.complex)
+            self.cl_ptycho.adj(res_gpu[ast:aend], data[ast:aend])
 
         # res = np.zeros(self.tomoshape,dtype='complex64')scan
         # npadx = (self.det.x - self.prb.size) // 2
@@ -184,9 +181,8 @@ class Solver(object):
             # process self.theta_gpu angles on 1gpu simultaneously
             ast, aend = k*self.theta_gpu, (k+1)*self.theta_gpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
-                                  self.prb.complex.view('float32'))
-            self.cl_ptycho.adjfwd_prb(res_gpu[ast:aend].view(
-                'float32'), psi[ast:aend].view('float32'))
+                                  self.prb.complex)
+            self.cl_ptycho.adjfwd_prb(res_gpu[ast:aend], psi[ast:aend])
 
         # res = np.zeros([len(self.theta),psi.shape[1],psi.shape[2]],dtype='complex')
 
@@ -215,16 +211,14 @@ class Solver(object):
         # print('adjfbp_prb ptycho '+str(np.linalg.norm(res-res_gpu)/np.linalg.norm(res)))
         return res_gpu
 
-    @profile
-    # amplitude update in Gradient descent ptychography
+    # amplitude update in Gradient descent ptychography, f = sqrt(data) exp(1j * angle(f))
     def update_amp(self, init, data):
         for k in range(0, self.tomoshape[0]//self.theta_gpu):
             # process self.theta_gpu angles on 1gpu simultaneously
             ast, aend = k*self.theta_gpu, (k+1)*self.theta_gpu
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
-                                  self.prb.complex.view('float32'))
-            self.cl_ptycho.update_amp(
-                init[ast:aend].view('float32'), data[ast:aend].real)
+                                  self.prb.complex)
+            self.cl_ptycho.update_amp(init[ast:aend], data[ast:aend])
 
         # res = init.copy()
         # for k in range(self.theta.size):
@@ -250,6 +244,7 @@ class Solver(object):
     # @profile
     # Gradient descent tomography
     def grad_tomo(self, data, niter, init, rho, eta):
+        # normalization coefficient
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
         res = init.complexform/r
         for i in range(niter):
@@ -259,7 +254,6 @@ class Solver(object):
         res *= r
         return objects.Object(res.imag, res.real, self.voxelsize)
 
-    @profile
     # Gradient descent ptychography
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
         psi = init.copy()
@@ -273,28 +267,25 @@ class Solver(object):
                 np.power(np.abs(self.prb.complex), 2).max()
         return psi
 
-    @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
         for m in range(NITER):
+            # save vars from the previous iteration to check convergence
+            psi0, x0, h0, lamd0 = psi, x, h, lamd
+
             # psi update
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
             # x update
-            tmp0 = self.logtomo(psi+lamd/rho)
-            _x = self.grad_tomo(tmp0, titer, x, rho, eta)
-
+            x = self.grad_tomo(self.logtomo(psi+lamd/rho), titer, x, rho, eta)
+            # h update
+            h = self.exptomo(self.fwd_tomo(x.complexform))
             # lambda update
-            _h = self.fwd_tomo(_x.complexform)
-            _h = self.exptomo(_h)
-            _lamd = lamd + rho * (psi - _h)
-            # convergence
-            cp = np.sqrt(
-                np.sum(np.power(np.abs(_x.complexform-x.complexform), 2)))
-            print(m, cp)
+            lamd = lamd + rho * (psi - h)
 
-            lamd = _lamd
-            x = _x
-            h = _h
+            # check convergence |x-x0|->0
+            cx = np.sqrt(
+                np.sum(np.power(np.abs(x0.complexform-x.complexform), 2)))
+            print(m, cx)
 
-        dxchange.write_tiff(x.beta,  'beta2/beta')
-        dxchange.write_tiff(x.delta,  'delta2/delta')
+        dxchange.write_tiff(x.beta,  'beta/beta')
+        dxchange.write_tiff(x.delta,  'delta/delta')

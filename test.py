@@ -1,5 +1,4 @@
 import objects
-# import solver
 import solver_gpu
 import dxchange
 import tomopy
@@ -44,34 +43,37 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 
 
 if __name__ == "__main__":
+ 
     # Parameters.
     rho = 0.5
-    tau = 1e-3
     gamma = 0.25
     eta = 0.25
     piter = 1
     titer = 1
+    NITER = 10
     maxint = 10
     voxelsize = 1e-6
     energy = 5
 
-     # Load a 3D object.
-    beta = dxchange.read_tiff('data/test-beta-128.tiff').astype('float32')[::2,::2,::2]
-    delta = dxchange.read_tiff('data/test-delta-128.tiff').astype('float32')[::2,::2,::2]
+    # Load a 3D object.
+    beta = dxchange.read_tiff(
+        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+    delta = dxchange.read_tiff(
+        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe.
-    weights = gaussian(15, rin=0.8, rout=1.0)
-    prb = objects.Probe(weights, maxint=maxint)
+    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
     # Detector parameters.
-    det = objects.Detector(63,63)
+    det = objects.Detector(63, 63)
     # Define rotation angles.
     theta = np.linspace(0, 2*np.pi, 360).astype('float32')
     # Raster scan parameters for each rotation angle.
     scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+ 
     # class solver
     slv = solver_gpu.Solver(prb, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
@@ -82,29 +84,17 @@ if __name__ == "__main__":
     # Propagate.
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)**2
-    data =  np.array(data, dtype='complex64', order = 'C')
+    data = np.array(data, order='C')
     #data = np.random.poisson(data).astype('float32')
 
-    h = np.ones(psis.shape, dtype='complex64', order = 'C')
-    psi = np.ones(psis.shape, dtype='complex64', order = 'C')
-    lamd = np.zeros(psi.shape, dtype='complex64', order = 'C')
-    mu = np.zeros([3,*obj.shape], dtype='complex64', order = 'C')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32', order = 'C'), np.zeros(
-        obj.shape, dtype='float32', order = 'C'), voxelsize)
+    h = np.ones(psis.shape, dtype='complex64', order='C')
+    psi = np.ones(psis.shape, dtype='complex64', order='C')
+    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+        obj.shape, dtype='float32', order='C'), voxelsize)
 
-    slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer)
-
-
-
-
-
-
-
-
-
-
-
-
+    slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER)
 
     # Adjoint and normalization test
     # a = slv.fwd_reg(obj.complexform)
@@ -140,5 +130,3 @@ if __name__ == "__main__":
     #     s3+=np.sum(np.complex64(aa[k])*np.conj(np.complex64(aa[k])))
 
     # print("Adjoint and normalization test ptycho: "+str([s1,s2,(s1-s2)/s1,s1/s3]))
-
-    
