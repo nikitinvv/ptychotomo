@@ -1,0 +1,36 @@
+Timer unit: 1e-06 s
+
+Total time: 95.3625 s
+File: /mxn/home/viknik/ptycho/solver_gpu.py
+Function: admm at line 140
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   140                                               @profile
+   141                                               # ADMM for ptycho-tomography problem
+   142                                               def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
+   143       129        235.0      1.8      0.0          for m in range(NITER):
+   144                                           
+   145                                                       # psi update
+   146       128   26866349.0 209893.4     28.2              psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
+   147                                                       # x update
+   148       128   48628851.0 379912.9     51.0              x = self.grad_tomo(self.logtomo(psi+lamd/rho), titer, x, rho, eta)
+   149                                                       # h update
+   150       128    7898039.0  61703.4      8.3              h = self.exptomo(self.fwd_tomo(x.complexform))
+   151                                                       # lambda update
+   152       128    1059752.0   8279.3      1.1              lamd = lamd + rho * (psi - h)
+   153                                           
+   154                                                       # check convergence of the Lagrangian
+   155       128       2231.0     17.4      0.0              if (np.mod(m, 16)==0):
+   156         8        426.0     53.2      0.0                  terms = np.zeros(4, dtype='float32')  # ignore imag part
+   157         8         98.0     12.2      0.0                  terms[0] = 0.5 * np.linalg.norm(
+   158         8   10780204.0 1347525.5     11.3                          np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
+   159         8      95684.0  11960.5      0.1                  terms[1] = np.sum(np.conj(lamd)*(psi-h))
+   160         8      28413.0   3551.6      0.0                  terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
+   161         8        333.0     41.6      0.0                  terms[3] = np.sum(terms[0:3])
+   162                                           
+   163         8          9.0      1.1      0.0                  print("%d %.2e %.2e %.2e %.2e" %
+   164         8       1889.0    236.1      0.0                      (m, terms[0], terms[1], terms[2], terms[3]))
+   165                                           
+   166         1          1.0      1.0      0.0          return x
+

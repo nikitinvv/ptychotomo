@@ -48,10 +48,10 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25
-    piter = 1
+    piter = 4
     titer = 1
-    NITER = 128
-    maxint = 1
+    NITER = 3
+    maxint = 10
     voxelsize = 1e-6
     energy = 5
 
