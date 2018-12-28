@@ -139,16 +139,16 @@ class Solver(object):
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex)
             self.cl_ptycho.grad_ptycho(
-                 psi[ast:aend], data[ast:aend], hobj[ast:aend], lamd[ast:aend], rho, gamma, self.maxint, niter)
+                psi[ast:aend], data[ast:aend], hobj[ast:aend], lamd[ast:aend], rho, gamma, self.maxint, niter)
 
-        # print(np.linalg.norm(psi2-psi))       
+        # print(np.linalg.norm(psi2-psi))
         return psi
 
     @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
         for m in range(NITER):
-
+            psi0, x0 = psi, x
             # psi update
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
             # x update
@@ -159,15 +159,16 @@ class Solver(object):
             lamd = lamd + rho * (psi - h)
 
             # check convergence of the Lagrangian
-            if (np.mod(m, 16)==0):
+            if (np.mod(m, 16) == 0):
                 terms = np.zeros(4, dtype='float32')  # ignore imag part
                 terms[0] = 0.5 * np.linalg.norm(
-                        np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
+                    np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
                 terms[1] = np.sum(np.conj(lamd)*(psi-h))
                 terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
                 terms[3] = np.sum(terms[0:3])
 
                 print("%d %.2e %.2e %.2e %.2e" %
-                    (m, terms[0], terms[1], terms[2], terms[3]))
+                      (m, terms[0], terms[1], terms[2], terms[3]))
+            #print("%d %.4e %.4e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
 
         return x
