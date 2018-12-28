@@ -6,7 +6,7 @@ export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
 
 #then run:
 
-git clone https://github.com/math-vrn/ptycho
+git clone https://github.com/math-vrn/ptychotomo
 
 git clone https://github.com/math-vrn/ptychofft
 
