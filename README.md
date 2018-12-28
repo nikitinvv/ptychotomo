@@ -1,6 +1,8 @@
 # ptycho
-
+## set cuda path
 export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
+
+git clone https://github.com/math-vrn/ptycho
 
 git clone https://github.com/math-vrn/ptychofft
 
