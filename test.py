@@ -12,44 +12,41 @@ theta = np.float32(np.arange(0, Ntheta)*np.pi/Ntheta)
 cl = radonusfft.radonusfft(Ntheta, Ns, N)
 cl.setobj(theta)
 # swig does not work with complex numbers, so array sizes are doubled 2*N
-f = np.float32(np.zeros([Ns, N, 2*N]), dtype="float32")
+f = np.zeros([Ns, N, N], dtype="complex64")
 
 # real part
-f[:, :, ::2] = tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32')[0,N//2:3*N//2,N//2:3*N//2]
-# complex part
-f[:, :, 1::2] = np.fliplr(
-    tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32'))[0,N//2:3*N//2,N//2:3*N//2]
-# f[-1]*=0
+f[:] = tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32')[0, N//2:3*N//2, N//2:3*N//2]+1j*np.fliplr(
+    tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32'))[0, N//2:3*N//2, N//2:3*N//2]
 
 # fwd
 # memory for result
-g = np.float32(np.zeros([Ntheta, Ns, 2*N]), dtype="float32")
+g = np.zeros([Ntheta, Ns, N], dtype="complex64")
 # run
 cl.fwd(g, f)
 
 # adj
 # memory for result
-ff = np.float32(np.zeros([Ns, N, 2*N]), dtype="float32")
+ff = np.zeros([Ns, N, N], dtype="complex64")
 # run
 cl.adj(ff, g)
 
-f = np.float64(f)
-ff = np.float64(ff)
-g = np.float64(g)
+f = np.complex128(f)
+ff = np.complex128(ff)
+g = np.complex128(g)
 
 
 # adj test
-print((np.sum(ff*f)-np.sum(g*g))/np.sum(ff*f))
+print((np.sum(f*np.conj(ff))-np.sum(g*np.conj(g)))/np.sum(f*np.conj(ff)))
 
 
 plt.subplot(2, 2, 1)
-plt.imshow(np.squeeze(g[:, 4, ::2]))
+plt.imshow(np.squeeze(g[:, 4, :].real))
 plt.subplot(2, 2, 2)
-plt.imshow(np.squeeze(g[:, 4, 1::2]))
+plt.imshow(np.squeeze(g[:, 4, :].imag))
 
 plt.subplot(2, 2, 3)
-plt.imshow(np.squeeze(ff[4, :, ::2]))
+plt.imshow(np.squeeze(ff[4, :, :].real))
 plt.subplot(2, 2, 4)
-plt.imshow(np.squeeze(ff[4, :, 1::2]))
+plt.imshow(np.squeeze(ff[4, :, :].imag))
 
 plt.show()

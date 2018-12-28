@@ -41,18 +41,18 @@ public:
 		void setobjc(float* theta);
 
 //wrap for python
-%apply (float *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float *g, int N0, int N1, int N2)};
-%apply (float *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float *f, int N3, int N4, int N5)};
-        void fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4, int N5);
-%clear (float *g, int N0, int N1, int N2);
-%clear (float *f, int N3, int N4, int N5);
+%apply (float2 *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *g, int N0, int N1, int N2)};
+%apply (float2 *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *f, int N3, int N4, int N5)};
+        void fwd(float2* g, int N0, int N1, int N2, float2* f, int N3, int N4, int N5);
+%clear (float2 *g, int N0, int N1, int N2);
+%clear (float2 *f, int N3, int N4, int N5);
 
 
-%apply (float *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float *g, int N0, int N1, int N2)};
-%apply (float *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float *f, int N3, int N4, int N5)};
-        void adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2);
-%clear (float *g, int N0, int N1, int N2);
-%clear (float *f, int N3, int N4, int N5);
+%apply (float2 *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *g, int N0, int N1, int N2)};
+%apply (float2 *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *f, int N3, int N4, int N5)};
+        void adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2);
+%clear (float2 *g, int N0, int N1, int N2);
+%clear (float2 *f, int N3, int N4, int N5);
 
 %apply (float *IN_ARRAY1, int DIM1) {(float *theta, int N7)};
 		void setobj(float* theta, int N7);

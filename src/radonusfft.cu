@@ -144,20 +144,20 @@ void radonusfft::setobjc(float* theta_)
 }
 
 //wrap for python
-void radonusfft::fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4, int N5)
+void radonusfft::fwd(float2* g, int N0, int N1, int N2, float2* f, int N3, int N4, int N5)
 {
-	fwdR((float2*)g,(float2*)f);
+	fwdR(g,f);
 }
 
 //wrap for python
-void radonusfft::adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2)
+void radonusfft::adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2)
 {
-	adjR((float2*)f,(float2*)g);
+	adjR(f,g);
 }
 
-void radonusfft::setobj(float* theta_, int N7)
+void radonusfft::setobj(float* theta, int N7)
 {
-	setobjc(theta_);
+	setobjc(theta);
 }
 
 

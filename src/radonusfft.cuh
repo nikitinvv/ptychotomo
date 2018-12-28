@@ -32,8 +32,8 @@ public:
 	void setobjc(float* theta);
 
 	//wrap for python
-        void fwd(float* g, int N0, int N1, int N2, float* f, int N3, int N4, int N5);
-		void adj(float* f, int N3, int N4, int N5, float* g, int N0, int N1, int N2);
+        void fwd(float2* g, int N0, int N1, int N2, float2* f, int N3, int N4, int N5);
+		void adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2);
 		void setobj(float* theta, int N7);
 
 };

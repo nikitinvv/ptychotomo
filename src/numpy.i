@@ -3139,6 +3139,8 @@
 %numpy_typemaps(unsigned long long, NPY_ULONGLONG, int)
 %numpy_typemaps(float             , NPY_FLOAT    , int)
 %numpy_typemaps(double            , NPY_DOUBLE   , int)
+%numpy_typemaps(float2,  NPY_CFLOAT , int)
+%numpy_typemaps(double2, NPY_CDOUBLE, int)
 
 /* ***************************************************************
  * The follow macro expansion does not work, because C++ bool is 4
@@ -3153,7 +3155,7 @@
  *
  *    %numpy_typemaps(long double, NPY_LONGDOUBLE, int)
  */
-
+/*
 #ifdef __cplusplus
 
 %include <std_complex.i>
@@ -3161,6 +3163,6 @@
 %numpy_typemaps(std::complex<float>,  NPY_CFLOAT , int)
 %numpy_typemaps(std::complex<double>, NPY_CDOUBLE, int)
 
-#endif
+#endif*/
 
 #endif /* SWIGPYTHON */

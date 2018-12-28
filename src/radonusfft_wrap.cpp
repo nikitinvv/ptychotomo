@@ -3063,9 +3063,6 @@ namespace swig {
 #include <numpy/arrayobject.h>
 
 
-#include <complex> 
-
-
 SWIGINTERN int
 SWIG_AsVal_double (PyObject *obj, double *val)
 {
@@ -3859,11 +3856,11 @@ fail:
 SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
-  float *arg2 = (float *) 0 ;
+  float2 *arg2 = (float2 *) 0 ;
   int arg3 ;
   int arg4 ;
   int arg5 ;
-  float *arg6 = (float *) 0 ;
+  float2 *arg6 = (float2 *) 0 ;
   int arg7 ;
   int arg8 ;
   int arg9 ;
@@ -3883,10 +3880,10 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObje
   }
   arg1 = reinterpret_cast< radonusfft * >(argp1);
   {
-    array2 = obj_to_array_no_conversion(obj1, NPY_FLOAT);
+    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
     if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
       !require_native(array2)) SWIG_fail;
-    arg2 = (float*) array_data(array2);
+    arg2 = (float2*) array_data(array2);
     arg3 = (int) array_size(array2,0);
     arg4 = (int) array_size(array2,1);
     arg5 = (int) array_size(array2,2);
@@ -3895,11 +3892,11 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObje
     npy_intp size[3] = {
       -1, -1, -1 
     };
-    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_FLOAT,
+    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
       &is_new_object6);
     if (!array6 || !require_dimensions(array6, 3) ||
       !require_size(array6, size, 3)) SWIG_fail;
-    arg6 = (float*) array_data(array6);
+    arg6 = (float2*) array_data(array6);
     arg7 = (int) array_size(array6,0);
     arg8 = (int) array_size(array6,1);
     arg9 = (int) array_size(array6,2);
@@ -3927,11 +3924,11 @@ fail:
 SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
-  float *arg2 = (float *) 0 ;
+  float2 *arg2 = (float2 *) 0 ;
   int arg3 ;
   int arg4 ;
   int arg5 ;
-  float *arg6 = (float *) 0 ;
+  float2 *arg6 = (float2 *) 0 ;
   int arg7 ;
   int arg8 ;
   int arg9 ;
@@ -3951,10 +3948,10 @@ SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObje
   }
   arg1 = reinterpret_cast< radonusfft * >(argp1);
   {
-    array2 = obj_to_array_no_conversion(obj1, NPY_FLOAT);
+    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
     if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
       !require_native(array2)) SWIG_fail;
-    arg2 = (float*) array_data(array2);
+    arg2 = (float2*) array_data(array2);
     arg3 = (int) array_size(array2,0);
     arg4 = (int) array_size(array2,1);
     arg5 = (int) array_size(array2,2);
@@ -3963,11 +3960,11 @@ SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObje
     npy_intp size[3] = {
       -1, -1, -1 
     };
-    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_FLOAT,
+    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
       &is_new_object6);
     if (!array6 || !require_dimensions(array6, 3) ||
       !require_size(array6, size, 3)) SWIG_fail;
-    arg6 = (float*) array_data(array6);
+    arg6 = (float2*) array_data(array6);
     arg7 = (int) array_size(array6,0);
     arg8 = (int) array_size(array6,1);
     arg9 = (int) array_size(array6,2);
