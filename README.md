@@ -1,6 +1,10 @@
 # ptycho
 
+#specify path to CUDA:
+
 export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
+
+#then run:
 
 git clone https://github.com/math-vrn/ptycho
 
