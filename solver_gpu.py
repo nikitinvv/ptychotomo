@@ -26,6 +26,7 @@ class Solver(object):
         self.det = det
         self.voxelsize = voxelsize
         self.energy = energy
+        self.maxint = np.power(np.abs(prb.complex), 2).max().astype('float')
         self.tomoshape = tomoshape
         self.objshape = [tomoshape[1], tomoshape[2], tomoshape[2]]
         self.ptychoshape = [theta.size, scanax.shape[1]
@@ -35,7 +36,7 @@ class Solver(object):
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
         # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]
+        self.theta_gpu = tomoshape[0]//10
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
 
@@ -118,31 +119,36 @@ class Solver(object):
         return objects.Object(res.imag, res.real, self.voxelsize)
 
     # Gradient descent ptychography
+
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
         psi = init.copy()
-        for i in range(niter):
-            tmp = self.fwd_ptycho(psi)
-            tmp = self.update_amp(tmp, data)
-            upd1 = self.adj_ptycho(tmp)
-            upd2 = self.adjfwd_prb(psi)
-            psi = (1 - rho*gamma) * psi + rho*gamma * \
-                (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2) / \
-                np.power(np.abs(self.prb.complex), 2).max()
+
+        # psi2 = init.copy()
+        # for i in range(niter):
+        #     tmp = self.fwd_ptycho(psi2)
+        #     tmp = self.update_amp(tmp, data)
+        #     upd1 = self.adj_ptycho(tmp)
+        #     upd2 = self.adjfwd_prb(psi2)
+        #     psi2 = (1 - rho*gamma) * psi2 + rho*gamma * \
+        #         (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2) / self.maxint
+
+        # whole scheme on gpu
+        for k in range(0, self.tomoshape[0]//self.theta_gpu):
+            # process self.theta_gpu angles on 1gpu simultaneously
+            ast, aend = k*self.theta_gpu, (k+1)*self.theta_gpu
+            self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
+                                  self.prb.complex)
+            self.cl_ptycho.grad_ptycho(
+                psi[ast:aend], data[ast:aend], hobj[ast:aend], lamd[ast:aend], rho, gamma, self.maxint, niter)
+
+        # print(np.linalg.norm(psi2-psi))
         return psi
 
+    @profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
         for m in range(NITER):
-            # check convergence of the Lagrangian
-            terms = np.zeros(4, dtype='float32')#ignore imag part
-            terms[0] = 0.5 * \
-                np.linalg.norm(np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
-            terms[1] = np.sum(np.conj(lamd)*(psi-h))
-            terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
-            terms[3] = np.sum(terms[0:3])
-           
-            print("%d %.2e %.2e %.2e %.2e" % (m,terms[0],terms[1],terms[2],terms[3]))
-
+            psi0, x0 = psi, x
             # psi update
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
             # x update
@@ -152,6 +158,17 @@ class Solver(object):
             # lambda update
             lamd = lamd + rho * (psi - h)
 
-          
+            # check convergence of the Lagrangian
+            if (np.mod(m, 16) == 0):
+                terms = np.zeros(4, dtype='float32')  # ignore imag part
+                terms[0] = 0.5 * np.linalg.norm(
+                    np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
+                terms[1] = np.sum(np.conj(lamd)*(psi-h))
+                terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
+                terms[3] = np.sum(terms[0:3])
+
+                print("%d %.2e %.2e %.2e %.2e" %
+                      (m, terms[0], terms[1], terms[2], terms[3]))
+            #print("%d %.4e %.4e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
 
         return x
