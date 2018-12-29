@@ -110,12 +110,11 @@ class Solver(object):
     def grad_tomo(self, data, niter, init, rho, eta):
         # normalization coefficient
         r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
-        res = init.complexform/r
+        res = init.complexform
         for i in range(niter):
-            tmp0 = self.fwd_tomo(res)*r
-            tmp = self.adj_tomo(2*(tmp0-data))*r
-            res = res - eta*tmp
-        res *= r
+            tmp0 = self.fwd_tomo(res)
+            tmp = self.adj_tomo(2*(tmp0-data))
+            res = res - eta*r*r*tmp
         return objects.Object(res.imag, res.real, self.voxelsize)
 
     # Gradient descent ptychography
@@ -144,7 +143,7 @@ class Solver(object):
         # print(np.linalg.norm(psi2-psi))
         return psi
 
-    @profile
+    #@profile
     # ADMM for ptycho-tomography problem
     def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
         for m in range(NITER):
@@ -167,8 +166,9 @@ class Solver(object):
                 terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
                 terms[3] = np.sum(terms[0:3])
 
-                print("%d %.2e %.2e %.2e %.2e" %
+                print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e" %
                       (m, terms[0], terms[1], terms[2], terms[3]))
-            #print("%d %.4e %.4e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
+            # check convergence of psi and x
+            print("%d) Conv psi, x:  %.2e %.2e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
 
         return x

@@ -48,9 +48,9 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25
-    piter = 32
-    titer = 32
-    NITER = 256
+    piter = 1
+    titer = 1
+    NITER = 65
     maxint = 10
     voxelsize = 1e-6
     energy = 5
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)**2
     # Add noise
-    data = np.random.poisson(data).astype('float32')
+    #data = np.random.poisson(data).astype('float32')
 
     h = np.ones(psis.shape, dtype='complex64', order='C')
     psi = np.ones(psis.shape, dtype='complex64', order='C')
@@ -94,9 +94,6 @@ if __name__ == "__main__":
     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
         obj.shape, dtype='float32', order='C'), voxelsize)
    
-    # x=obj
-    # h=slv.exptomo(slv.fwd_tomo(obj.complexform))
-    # psi=h
     # ADMM
     x = slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER)
 
