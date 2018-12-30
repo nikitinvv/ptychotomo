@@ -46,6 +46,8 @@ if __name__ == "__main__":
 
     # Parameters.
     rho = 0.5
+    tau= 0.5
+    alpha = 1e-8
     gamma = 0.25
     eta = 0.25
     piter = 1
@@ -90,12 +92,13 @@ if __name__ == "__main__":
     h = np.ones(psis.shape, dtype='complex64', order='C')
     psi = np.ones(psis.shape, dtype='complex64', order='C')
     lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
         obj.shape, dtype='float32', order='C'), voxelsize)
    
     # ADMM
-    x = slv.admm(data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER)
+    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau, gamma, eta, alpha, piter, titer, NITER)
 
     # Save result
     dxchange.write_tiff(x.beta,  'beta/beta')

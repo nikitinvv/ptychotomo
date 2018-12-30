@@ -106,15 +106,45 @@ class Solver(object):
             self.cl_ptycho.update_amp(init[ast:aend], data[ast:aend])
         return init
 
+       # forward operator for regularization (q)
+    def fwd_reg(self, x):
+        res = np.zeros([3, *self.objshape], dtype='complex64', order='C')
+        res[0, :, :, :-1] = x[:, :, 1:]-x[:, :, :-1]
+        res[1, :, :-1, :] = x[:, 1:, :]-x[:, :-1, :]
+        res[2, :-1, :, :] = x[1:, :, :]-x[:-1, :, :]
+        return res
+
+    # adjoint operator for regularization (q^*)
+    def adj_reg(self, gr):
+        res = np.zeros(self.objshape, dtype='complex64', order='C')
+        res[:, :, 1:] = gr[0, :, :, 1:]-gr[0, :, :, :-1]
+        res[:, :, 0] = gr[0, :, :, 0]
+        res[:, 1:, :] += gr[1, :, 1:, :]-gr[1, :, :-1, :]
+        res[:, 0, :] += gr[1, :, 0, :]
+        res[1:, :, :] += gr[2, 1:, :, :]-gr[2, :-1, :, :]
+        res[0, :, :] += gr[2, 0, :, :]
+        res = -res
+        return res
+
+    def takexi(self, psi, phi, lamd, mu, rho, tau):
+        xi0 = -1j*np.log(psi+lamd/rho)/(self.voxelsize * self.wavenumber())
+        xi1 = tau/rho * \
+            1/np.linalg.norm(self.voxelsize * self.wavenumber()*(psi+lamd/rho))**2
+        xi2 = phi+mu/tau
+        return xi0, xi1, xi2
+
     # Gradient descent tomography
-    def grad_tomo(self, data, niter, init, rho, eta):
-        # normalization coefficient
-        r = 1/np.sqrt(data.shape[0]*data.shape[1]/2)
+    def grad_tomo(self, xi0, xi1, xi2, niter, init, eta):
+        # normalization coefficient for R
+        r = 1/np.sqrt(xi0.shape[0]*xi0.shape[2]/2)
+        
         res = init.complexform
         for i in range(niter):
-            tmp0 = self.fwd_tomo(res)
-            tmp = self.adj_tomo(2*(tmp0-data))
-            res = res - eta*r*r*tmp
+            tmp0 = self.adj_tomo(self.fwd_tomo(res)-xi0)
+            tmp1 = self.adj_reg(self.fwd_reg(res)-xi2)
+            #print(r*r*np.abs(tmp0).max(),np.abs(xi1*tmp1).max())
+            print(np.abs(tmp1).max(),np.abs(tmp1).max()*xi1,r*r*np.abs(tmp0).max())
+            res = res - 2*eta*(r*r*tmp0+tmp1*xi1)
         return objects.Object(res.imag, res.real, self.voxelsize)
 
     # Gradient descent ptychography
@@ -143,32 +173,57 @@ class Solver(object):
         # print(np.linalg.norm(psi2-psi))
         return psi
 
-    #@profile
+    def solve_reg(self,x,mu,tau,alpha):
+        z = self.fwd_reg(x)-mu/tau
+        z0=z.copy()
+        za = np.sqrt(np.sum(z*np.conj(z), 0))
+        #tau=tau*1e6
+        z[:, za <= alpha/tau] = 0
+        z[:, za > alpha/tau] -= 1/tau*z[:, za > alpha/tau]/za[za > alpha/tau]
+        #print(np.linalg.norm(z-z0))
+        return z
+    # @profile
     # ADMM for ptycho-tomography problem
-    def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
+    def check_approx(self,psi,x,lamd,rho):
+        h0 = self.exptomo(self.fwd_tomo(x.complexform))-psi-lamd/rho
+        h1 = (psi+lamd/rho)*(1j*self.voxelsize * self.wavenumber()*self.fwd_tomo(x.complexform)-np.log(psi+lamd/rho))
+        print(np.linalg.norm(h0),np.linalg.norm(h1))
+        
+    def admm(self, data, h, psi, phi, lamd, mu, x, rho, tau, gamma, eta, alpha, piter, titer, NITER):
         for m in range(NITER):
-            psi0, x0 = psi, x
-            # psi update
+            psi0, x0, phi0 = psi, x, phi
+            # ptychography problem
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
-            # x update
-            x = self.grad_tomo(self.logtomo(psi+lamd/rho), titer, x, rho, eta)
-            # h update
-            h = self.exptomo(self.fwd_tomo(x.complexform))
+            # tomography problem
+            xi0, xi1, xi2 = self.takexi(psi, phi, lamd, mu, rho, tau)
+            x = self.grad_tomo(xi0, xi1, xi2, titer, x, eta)
+            # regularizer problem
+            phi = self.solve_reg(x.complexform,mu, tau, alpha)
             # lambda update
+            h = self.exptomo(self.fwd_tomo(x.complexform))
+            #self.check_approx(psi,x,lamd,rho)
+
+
             lamd = lamd + rho * (psi - h)
+            # mu update
+            mu = mu + tau * (phi - self.fwd_reg(x.complexform))
 
             # check convergence of the Lagrangian
-            if (np.mod(m, 16) == 0):
-                terms = np.zeros(4, dtype='float32')  # ignore imag part
+            if (np.mod(m, 8) == 0):
+                terms = np.zeros(7, dtype='float32')
                 terms[0] = 0.5 * np.linalg.norm(
                     np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
                 terms[1] = np.sum(np.conj(lamd)*(psi-h))
                 terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
-                terms[3] = np.sum(terms[0:3])
+                terms[3] = alpha*np.sum(np.sqrt(np.sum(phi*np.conj(phi), 0)))
+                terms[4] = np.sum(np.conj(mu)*(phi-self.fwd_reg(x.complexform)))
+                terms[5] = 0.5*tau*np.linalg.norm(phi-self.fwd_reg(x.complexform))**2
+                terms[6] = np.sum(terms[0:5])
 
-                print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e" %
-                      (m, terms[0], terms[1], terms[2], terms[3]))
+                print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e" %
+                      (m, terms[0], terms[1], terms[2], terms[3], terms[4], terms[5], terms[6]))
             # check convergence of psi and x
-            print("%d) Conv psi, x:  %.2e %.2e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
+            #print("%d) Conv psi, x, phi:  %.2e %.2e %.2e" % (m, np.linalg.norm(
+             #   psi-psi0), np.linalg.norm(x.complexform-x0.complexform), np.linalg.norm(phi-phi0)))
 
         return x
