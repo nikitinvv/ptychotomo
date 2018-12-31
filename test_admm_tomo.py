@@ -4,7 +4,6 @@ import dxchange
 import tomopy
 import numpy as np
 
-
 def gaussian(size, rin=0.8, rout=1):
     r, c = np.mgrid[:size, :size] + 0.5
     rs = np.sqrt((r - size/2)**2 + (c - size/2)**2)
@@ -42,18 +41,15 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
     return scan, scanax, scanay
 
 
+
 if __name__ == "__main__":
 
-    # Parameters.
-    rho = 0.5
-    tau= 1e3*1e3  
-    alpha = 1e-2*1e3*5
-    gamma = 0.25
-    eta = 0.25/180/64/1e5*4
-    piter = 1
+    tau= 1e3
+    alpha = 1e-2
+    eta = 0.25/720/64
     titer = 1
     NITER = 257
-    maxint = 1
+    maxint = 10
     voxelsize = 1e-6
     energy = 5
 
@@ -62,7 +58,8 @@ if __name__ == "__main__":
         'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
     delta = dxchange.read_tiff(
         'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
-
+    #beta=beta/beta.max()
+    #delta=delta/delta.max()
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -71,7 +68,7 @@ if __name__ == "__main__":
     # Detector parameters.
     det = objects.Detector(63, 63)
     # Define rotation angles.
-    theta = np.linspace(0, 2*np.pi, 180).astype('float32')
+    theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     # Raster scan parameters for each rotation angle.
     scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
@@ -82,33 +79,17 @@ if __name__ == "__main__":
                             theta, det, voxelsize, energy, tomoshape)
 
     # Project
-    psis = slv.fwd_tomo(obj.complexform)
-    psis = slv.exptomo(psis)
-    # Propagate
-    data = slv.fwd_ptycho(psis)
-    data = np.abs(data)
-    data = data**2*det.x*det.y
-    data0=data
-    # Add noise
-    data = np.random.poisson(data).astype('float32')
-    print(np.amax(data))
-    print(np.amax(data-data0))
-    data=data/(det.x*det.y)
-
-    
-    h = np.ones(psis.shape, dtype='complex64', order='C')
-    psi = np.ones(psis.shape, dtype='complex64', order='C')
-    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    data = slv.fwd_tomo(obj.complexform)
     phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
         obj.shape, dtype='float32', order='C'), voxelsize)
    
     # ADMM
-    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau, gamma, eta, alpha, piter, titer, NITER)
+    x = slv.admm_tomo(data, phi, mu, x, tau, eta, alpha, titer, NITER)
 
     # Save result
-    dxchange.write_tiff(x.beta[32],  'beta/beta')
-    dxchange.write_tiff(x.delta[32],  'delta/delta')
+    dxchange.write_tiff(x.beta,  'beta/beta')
+    dxchange.write_tiff(x.delta,  'delta/delta')
 
    

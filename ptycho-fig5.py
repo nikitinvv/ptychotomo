@@ -319,11 +319,11 @@ print(folder)
 rho = 0.5
 gamma = 0.25
 eta = 0.25
-NITER = 3
+NITER = 256
 piter = 1
 titer = 1
 maxint = 10
-noise = False
+noise = True
 debug = False
 
 # Load a 3D object.
@@ -332,8 +332,8 @@ beta = dxchange.read_tiff(
 delta = dxchange.read_tiff(
     'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
 # # Load a 3D object.
-# beta = dxchange.read_tiff('data/lego-imag.tiff')
-# delta = dxchange.read_tiff('data/lego-real.tiff')
+# beta = dxchange.read_tiff('data/lego-imag.tiff')[::2, ::2, ::2]
+# delta = dxchange.read_tiff('data/lego-real.tiff')[::2, ::2, ::2]
 
 # Create object.
 obj = Object(beta, delta, 1e-6)
@@ -362,7 +362,10 @@ dxchange.write_tiff(np.real(psis), folder + '/psi-amplitude')
 dxchange.write_tiff(np.imag(psis), folder + '/psi-phase')
 
 # Propagate.
+data0 = propagate3(prb, psis, scan, theta, det, noise=False)
 data = propagate3(prb, psis, scan, theta, det, noise=noise)
+print(np.amax(data[3]))
+print(np.amax(data[3]-data0[3]))
 dxchange.write_tiff(np.fft.fftshift(
     np.log(np.array(data[0]))), folder + '/data')
 
