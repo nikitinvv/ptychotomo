@@ -16,6 +16,6 @@ cd ptychofft; python setup.py install; cd -
 
 cd radonusfft; python setup.py install; cd - 
 
-cd ptycho
+cd ptychotomo
 
 python test.py
