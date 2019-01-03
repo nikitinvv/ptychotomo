@@ -323,7 +323,7 @@ NITER = 256
 piter = 1
 titer = 1
 maxint = 10
-noise = True
+noise = False
 debug = False
 
 # Load a 3D object.
@@ -350,10 +350,10 @@ dxchange.write_tiff(prb.phase, folder + '/probe-phase')
 det = Detector(63, 63)
 
 # Define rotation angles.
-theta = np.linspace(0, 2*np.pi, 360)
+theta = np.linspace(0, 2*np.pi, 180)
 
 # Raster scan parameters for each rotation angle.
-scan = scanner3(theta, beta.shape, 6, 6, margin=[
+scan = scanner3(theta, beta.shape, 12, 12, margin=[
                 prb.size, prb.size], offset=[0, 0], spiral=1)
 
 # Project.

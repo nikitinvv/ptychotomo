@@ -36,7 +36,7 @@ class Solver(object):
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
         # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]//10
+        self.theta_gpu = tomoshape[0]
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
 
@@ -138,7 +138,7 @@ class Solver(object):
         for i in range(niter):
             tmp0 = self.adj_tomo(xi2*np.conj(xi2)*(self.fwd_tomo(res)-xi0))
             tmp1 = self.adj_reg(self.fwd_reg(res)-xi1)
-            #print(tau*np.abs(tmp1).max(), rho*np.abs(tmp0).max())
+            print(tau*np.abs(tmp1).max(), rho*np.abs(tmp0).max())
             res = res - 2*eta*(rho*tmp0+tau*tmp1)
         return objects.Object(res.imag, res.real, self.voxelsize)
 
@@ -204,7 +204,7 @@ class Solver(object):
 
 
             # check convergence of the Lagrangian
-            if (np.mod(m, 32) == 0):
+            if (np.mod(m, 128) == 0):
                 terms = np.zeros(7, dtype='float32')
                 terms[0] = 0.5 * np.linalg.norm(
                     np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
