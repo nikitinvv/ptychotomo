@@ -61,7 +61,7 @@ if __name__ == "__main__":
         'data/test-delta-128.tiff').astype('float32')#[::2, ::2, ::2]
     
     obj = objects.Object(beta, delta, voxelsize)
-    det = objects.Detector(63, 63)
+    det = objects.Detector(127, 127)
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
