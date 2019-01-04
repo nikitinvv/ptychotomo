@@ -46,14 +46,14 @@ if __name__ == "__main__":
 
     # Parameters.
     rho = 0.5
-    tau= 1e3*1e3*1e-16
-    alpha = 1e-2*1e3*5*1e-16
+    tau= 1e3*1e3
+    alpha = 1e-2*1e3*5*2
     gamma = 0.25
     eta = 0.25/720/64/1e5*5
     piter = 1
     titer = 1
-    NITER = 32
-    maxint = 10
+    NITER = 256
+    maxint = 0.1
     voxelsize = 1e-6
     energy = 5
 
@@ -62,8 +62,11 @@ if __name__ == "__main__":
         'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
     delta = dxchange.read_tiff(
         'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
-
-
+    print(np.amax(delta))
+    print(np.amin(delta))
+    print(np.amax(beta))
+    print(np.amin(beta))
+    exit()
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe.
@@ -75,17 +78,6 @@ if __name__ == "__main__":
     # Raster scan parameters for each rotation angle.
     scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
-    print(scan[54].x)
-    print(scan[54].y)
-    print(scan[55].x)
-    print(scan[55].y)
-    print(scanax[54])
-    print(scanay[54])
-    print(scanax[55])
-    print(scanay[55])
-    print(scanax.shape)
-    print(scanay.shape)
-    #exit()
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
     # class solver
@@ -95,27 +87,17 @@ if __name__ == "__main__":
     # Project
     psis = slv.fwd_tomo(obj.complexform)
     psis = slv.exptomo(psis)
-    dxchange.write_tiff(psis.real,  'data/data')
-    dxchange.write_tiff(psis.imag,  'data/data0')
-    print(np.where(np.isinf(psis)))
     # Propagate
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)
     data = data**2*det.x*det.y
+    data = np.random.poisson(data).astype('float32')
     print(np.amax(np.sqrt(data)))
-    data0=data
-    print(np.where(np.isinf(data)))
     data=data/(det.x*det.y)
-    dxchange.write_tiff(data,  'data/data')
-    dxchange.write_tiff(data0,  'data/data0')
-    exit()
-    # Add noise
-    #data = np.random.poisson(data).astype('float32')
 
-    print(np.amax(data))
-    print(np.amax(data-data0))
+    #dxchange.write_tiff(data,  'data/data')
+    #
 
-    #exit()
     
     h = np.ones(psis.shape, dtype='complex64', order='C')
     psi = np.ones(psis.shape, dtype='complex64', order='C')

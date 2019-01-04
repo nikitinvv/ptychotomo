@@ -1,5 +1,5 @@
 {
     "python.linting.pylintEnabled": false,
-    "python.pythonPath": "/mxn/home/viknik/anaconda/bin/python",
+    "python.pythonPath": "/home/beams/VNIKITIN/anaconda3/bin/python",
     "python.formatting.provider": "autopep8"
 }

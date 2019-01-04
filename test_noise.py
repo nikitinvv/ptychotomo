@@ -44,106 +44,86 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 
 if __name__ == "__main__":
 
-    # Parameters.
+    # Parameters fixed
     rho = 0.5
-    tau = 1e3*1e3
-    alpha = 1e-2*1e3*5
     gamma = 0.25
-    eta = 0.25/720/64/1e5*5
+    eta = 0.25/720/128/1e5*5
     piter = 1
     titer = 1
-    NITER = 256
+    NITER = 1024
     voxelsize = 1e-6
     energy = 5
 
     # Load a 3D object.
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')#[::2, ::2, ::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')#[::2, ::2, ::2]
+    
+    obj = objects.Object(beta, delta, voxelsize)
+    det = objects.Detector(63, 63)
+    theta = np.linspace(0, 2*np.pi, 720).astype('float32')
+    tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
-#     maxinta = [0.1, 1, 10, 100]
-#     for k in range(4):
-#         maxint = maxinta[k]
-#         obj = objects.Object(beta, delta, voxelsize)
-#         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
-#         det = objects.Detector(63, 63)
-#         theta = np.linspace(0, 2*np.pi, 720).astype('float32')
-#         scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
-#                                         prb.size, prb.size], offset=[0, 0], spiral=1)
-#         tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+    maxint = 10
+    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+    scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+                                    prb.size, prb.size], offset=[0, 0], spiral=1)
+    slv = solver_gpu.Solver(prb, scanax, scanay,
+                            theta, det, voxelsize, energy, tomoshape)
+    # data
+    psis = slv.fwd_tomo(obj.complexform)
+    data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
 
-#         slv = solver_gpu.Solver(prb, scanax, scanay,
-#                                 theta, det, voxelsize, energy, tomoshape)
+    # # rec
+    tau = 1e-16
+    alpha = 1e-16
+    h = np.ones(psis.shape, dtype='complex64', order='C')
+    psi = np.ones(psis.shape, dtype='complex64', order='C')
+    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+        obj.shape, dtype='float32', order='C'), voxelsize)
+    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
+                 gamma, eta, alpha, piter, titer, NITER)
+    dxchange.write_tiff(x.beta[64],  'beta/beta_joint_20over')
+    dxchange.write_tiff(x.delta[64],  'delta/delta_joint_20over')
 
-#         # Project
-#         psis = slv.fwd_tomo(obj.complexform)
-#         psis = slv.exptomo(psis)
-#         # Propagate
-#         data = slv.fwd_ptycho(psis)
-#         data = np.abs(data)
-#         data = data**2*det.x*det.y
-#         print(np.amax(np.sqrt(data)))
-#         rho = 0.5
-#         tau = 1e3*1e3
-#         alpha = 1e-2*1e3*5
-#         gamma = 0.25
-#         eta = 0.25/720/64/1e5*5
-#         data0 = data
-#         # Add noise
-#         #data = np.random.poisson(data).astype('float32')
-#         data = data/(det.x*det.y)
-
-#         h = np.ones(psis.shape, dtype='complex64', order='C')
-#         psi = np.ones(psis.shape, dtype='complex64', order='C')
-#         lamd = np.zeros(psi.shape, dtype='complex64', order='C')
-#         phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#         mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#         x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
-#             obj.shape, dtype='float32', order='C'), voxelsize)
-
-#         # ADMM
-#         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-#                     gamma, eta, alpha, piter, titer, NITER)
-
-      
-#         # Save result
-#         dxchange.write_tiff(x.beta[32],  'beta/beta')
-#         dxchange.write_tiff(x.delta[32],  'delta/delta')
+    # rec tv
+    tau = 1e3*1e3
+    alpha = 1e-2*1e3*5
+    h = np.ones(psis.shape, dtype='complex64', order='C')
+    psi = np.ones(psis.shape, dtype='complex64', order='C')
+    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+        obj.shape, dtype='float32', order='C'), voxelsize)
+    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
+                 gamma, eta, alpha, piter, titer, NITER)
+    dxchange.write_tiff(x.beta[40],  'beta/beta_joint_tv_20over_10maxint')
+    dxchange.write_tiff(x.delta[64],  'delta/delta_joint_tv_20over_10maxint')
 
 
-    maxinta = [0.1, 1, 10, 100]
-    for k in range(4):
+    # Denoise for different intensities
+    maxinta = [100, 10, 1, 0.1]
+    for k in range(0,1):
         maxint = maxinta[k]
-        obj = objects.Object(beta, delta, voxelsize)
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
-        det = objects.Detector(63, 63)
-        theta = np.linspace(0, 2*np.pi, 720).astype('float32')
         scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
-                                        prb.size, prb.size], offset=[0, 0], spiral=1)
-        tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
-
+            prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
                                 theta, det, voxelsize, energy, tomoshape)
+        # data
+        data = np.abs(slv.fwd_ptycho(
+            slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
+        data = np.random.poisson(
+            data*det.x*det.y).astype('float32')/(det.x*det.y)
 
-        # Project
-        psis = slv.fwd_tomo(obj.complexform)
-        psis = slv.exptomo(psis)
-        # Propagate
-        data = slv.fwd_ptycho(psis)
-        data = np.abs(data)
-        data = data**2*det.x*det.y
-        print(np.amax(np.sqrt(data)))
-        rho = 0.5
-        tau = 1e3*1e3
-        alpha = 1e-2*1e3*5
-        gamma = 0.25
-        eta = 0.25/720/64/1e5*5
-        data0 = data
-        # Add noise
-        data = np.random.poisson(data).astype('float32')
-        data = data/(det.x*det.y)
-
+        # rec
+        tau = 1e-16
+        alpha = 1e-16
         h = np.ones(psis.shape, dtype='complex64', order='C')
         psi = np.ones(psis.shape, dtype='complex64', order='C')
         lamd = np.zeros(psi.shape, dtype='complex64', order='C')
@@ -151,62 +131,28 @@ if __name__ == "__main__":
         mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
         x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
             obj.shape, dtype='float32', order='C'), voxelsize)
-
-        # ADMM
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-                    gamma, eta, alpha, piter, titer, NITER)
+                     gamma, eta, alpha, piter, titer, NITER)
+        dxchange.write_tiff(
+            x.beta[40],   'beta/beta_joint_20over_' + str(maxint)+'_maxint_noise')
+        dxchange.write_tiff(
+            x.delta[64],  'delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
 
-      
-        # Save result
-        dxchange.write_tiff(x.beta[32],  'beta/beta')
-        dxchange.write_tiff(x.delta[32],  'delta/delta')
-
-
-    maxinta = [0.1, 1, 10, 100]
-    for k in range(4):
-        maxint = maxinta[k]
-        obj = objects.Object(beta, delta, voxelsize)
-        prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
-        det = objects.Detector(63, 63)
-        theta = np.linspace(0, 2*np.pi, 720).astype('float32')
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
-                                        prb.size, prb.size], offset=[0, 0], spiral=1)
-        tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
-
-        slv = solver_gpu.Solver(prb, scanax, scanay,
-                                theta, det, voxelsize, energy, tomoshape)
-
-        # Project
-        psis = slv.fwd_tomo(obj.complexform)
-        psis = slv.exptomo(psis)
-        # Propagate
-        data = slv.fwd_ptycho(psis)
-        data = np.abs(data)
-        data = data**2*det.x*det.y
-        print(np.amax(np.sqrt(data)))
-        rho = 0.5
-        tau = 1e3*1e3*1e-20
-        alpha = 1e-2*1e3*5
-        gamma = 0.25
-        eta = 0.25/720/64/1e5*5
-        data0 = data
-        # Add noise
-        data = np.random.poisson(data).astype('float32')
-        data = data/(det.x*det.y)
-
-        h = np.ones(psis.shape, dtype='complex64', order='C')
-        psi = np.ones(psis.shape, dtype='complex64', order='C')
-        lamd = np.zeros(psi.shape, dtype='complex64', order='C')
-        phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-        mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-        x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
-            obj.shape, dtype='float32', order='C'), voxelsize)
-
-        # ADMM
-        x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-                    gamma, eta, alpha, piter, titer, NITER)
-
-      
-        # Save result
-        dxchange.write_tiff(x.beta[32],  'beta/beta')
-        dxchange.write_tiff(x.delta[32],  'delta/delta')
+        for itau in range(0, 5):
+            for ialpha in range(0, 5):
+               # rec tv
+                tau = 1e3*1e3*2**(itau-2)
+                alpha = 1e-2*1e3*5*2**(ialpha-2)
+                h = np.ones(psis.shape, dtype='complex64', order='C')
+                psi = np.ones(psis.shape, dtype='complex64', order='C')
+                lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+                phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+                mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+                x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+                    obj.shape, dtype='float32', order='C'), voxelsize)
+                x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
+                         gamma, eta, alpha, piter, titer, NITER)
+                dxchange.write_tiff(x.beta[40],   'beta/beta_joint_tv_' + str(
+                    itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
+                dxchange.write_tiff(x.delta[64],  'delta/delta_joint_tv_'+str(
+                    itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
