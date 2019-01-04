@@ -4,12 +4,13 @@
 """Module for 3D ptychography."""
 
 import dxchange
-import tomopy
+#import tomopy
 import radonusfft
 import ptychofft
 import numpy as np
 import objects
 import warnings
+import sys
 
 warnings.filterwarnings("ignore")
 
@@ -36,9 +37,11 @@ class Solver(object):
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
         # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]/4
+        self.theta_gpu = tomoshape[0]//4
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
+        print("created")
+        sys.stdout.flush()
 
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
@@ -244,4 +247,6 @@ class Solver(object):
 
                 print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e " %
                       (m, terms[0], terms[1], terms[2], terms[3]))       
+                sys.stdout.flush()
+
         return x
