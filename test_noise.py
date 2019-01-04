@@ -1,8 +1,9 @@
 import objects
 import solver_gpu
 import dxchange
-#import tomopy
+# import tomopy
 import numpy as np
+import sys
 
 
 def gaussian(size, rin=0.8, rout=1):
@@ -59,56 +60,60 @@ if __name__ == "__main__":
         'data/test-beta-128.tiff').astype('float32')#[::2, ::2, ::2]
     delta = dxchange.read_tiff(
         'data/test-delta-128.tiff').astype('float32')#[::2, ::2, ::2]
-    
+
     obj = objects.Object(beta, delta, voxelsize)
     det = objects.Detector(127, 127)
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
-#    maxint = 10
-#    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
-#    scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
-#                                     prb.size, prb.size], offset=[0, 0], spiral=1)
-#    slv = solver_gpu.Solver(prb, scanax, scanay,
-#                             theta, det, voxelsize, energy, tomoshape)
-#    # data
-#    psis = slv.fwd_tomo(obj.complexform)
-#    data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
+    if(np.bool(sys.argv[1]) == True):
+        print('compute regular')
+        maxint = 10
+        prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+                                        prb.size, prb.size], offset=[0, 0], spiral=1)
+        slv = solver_gpu.Solver(prb, scanax, scanay,
+                                 theta, det, voxelsize, energy, tomoshape)
+        # data
+        psis = slv.fwd_tomo(obj.complexform)
+        data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
 
-    # # rec
-#    tau = 1e-16
-#    alpha = 1e-16
-#    h = np.ones(tomoshape, dtype='complex64', order='C')
-#    psi = np.ones(tomoshape, dtype='complex64', order='C')
-#    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
-#    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
-#        obj.shape, dtype='float32', order='C'), voxelsize)
-#    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-#                 gamma, eta, alpha, piter, titer, NITER)
-#    dxchange.write_tiff(x.beta[40],  'beta/beta_joint_20over')
-#    dxchange.write_tiff(x.delta[64],  'delta/delta_joint_20over')
+        # rec
+        tau = 1e-16
+        alpha = 1e-16
+        h = np.ones(tomoshape, dtype='complex64', order='C')
+        psi = np.ones(tomoshape, dtype='complex64', order='C')
+        lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+        phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+        mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+        x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+            obj.shape, dtype='float32', order='C'), voxelsize)
+        x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
+                     gamma, eta, alpha, piter, titer, NITER)
+        dxchange.write_tiff(x.beta[40],  'beta/beta_joint_20over')
+        dxchange.write_tiff(x.delta[64],  'delta/delta_joint_20over')
 
-    # rec tv
-#    tau = 1e3*1e3
-#    alpha = 1e-2*1e3*5
-#    h = np.ones(tomoshape, dtype='complex64', order='C')
-#    psi = np.ones(tomoshape, dtype='complex64', order='C')
-#    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
-#    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
-#    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
-#        obj.shape, dtype='float32', order='C'), voxelsize)
-#    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-#                 gamma, eta, alpha, piter, titer, NITER)
-#    dxchange.write_tiff(x.beta[40],  'beta/beta_joint_tv_20over_10maxint')
-#    dxchange.write_tiff(x.delta[64],  'delta/delta_joint_tv_20over_10maxint')
-
+        # rec tv
+        tau = 1e3*1e3
+        alpha = 1e-2*1e3*5
+        h = np.ones(tomoshape, dtype='complex64', order='C')
+        psi = np.ones(tomoshape, dtype='complex64', order='C')
+        lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+        phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+        mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+        x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+            obj.shape, dtype='float32', order='C'), voxelsize)
+        x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
+                     gamma, eta, alpha, piter, titer, NITER)
+        dxchange.write_tiff(x.beta[40],  'beta/beta_joint_tv_20over_10maxint')
+        dxchange.write_tiff(
+            x.delta[64],  'delta/delta_joint_tv_20over_10maxint')
 
     # Denoise for different intensities
     maxinta = [100, 10, 1, 0.1]
-    for k in range(2,3):
+    idc = np.int(sys.argv[2])
+    print(idc)
+    for k in range(idc, idc+1):
         maxint = maxinta[k]
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
         scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
@@ -118,10 +123,10 @@ if __name__ == "__main__":
         # data
         data = np.abs(slv.fwd_ptycho(
             slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
-        data*=(det.x*det.y)
+        data *= (det.x*det.y)
         print(np.sqrt(np.amax(np.abs(data))))
         data = np.random.poisson(data).astype('float32')
-        data/=(det.x*det.y)
+        data /= (det.x*det.y)
 
         # rec
         tau = 1e-16
@@ -140,8 +145,8 @@ if __name__ == "__main__":
         dxchange.write_tiff(
             x.delta[64],  'delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
 
-        for itau in range(0, 4):
-            for ialpha in range(0, 4):
+        for itau in range(0, 1):
+            for ialpha in range(0, 1):
                # rec tv
                 tau = 1e3*1e3*2**(itau-1)
                 alpha = 1e-2*1e3*5*2**(ialpha-1)
@@ -153,9 +158,9 @@ if __name__ == "__main__":
                 x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
                     obj.shape, dtype='float32', order='C'), voxelsize)
                 x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
-                         gamma, eta, alpha, piter, titer, NITER)
+                             gamma, eta, alpha, piter, titer, NITER)
                 dxchange.write_tiff(x.beta[40],   'beta/beta_joint_tv_' + str(
                     itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
                 dxchange.write_tiff(x.delta[64],  'delta/delta_joint_tv_'+str(
                     itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
-        slv=[]
+        slv = []
