@@ -64,7 +64,7 @@ ext = Extension('_radonusfft',
                 # we're only going to use certain compiler args with nvcc and not with gcc
                 # the implementation of this trick is in customize_compiler() below
                 extra_compile_args={'gcc': [],
-                                    'nvcc': ['--compiler-options', "'-fPIC' '-O3' '-fopenmp'"]},
+                                    'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
 		extra_link_args=['-lgomp'],
 		include_dirs = [numpy_include, CUDA['include'], 'src'],)
 

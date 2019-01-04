@@ -15,8 +15,8 @@ cl.setobj(theta)
 f = np.zeros([Ns, N, N], dtype="complex64")
 
 # real part
-f[:] = tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32')[0, N//2:3*N//2, N//2:3*N//2]+1j*np.fliplr(
-    tomopy.misc.phantom.shepp2d(size=2*N, dtype=u'float32'))[0, N//2:3*N//2, N//2:3*N//2]
+f[:] = tomopy.misc.phantom.shepp2d(size=N, dtype=u'float32')+1j*np.fliplr(
+    tomopy.misc.phantom.shepp2d(size=N, dtype=u'float32'))
 
 # fwd
 # memory for result
