@@ -1,7 +1,7 @@
 import objects
 import solver_gpu
 import dxchange
-import tomopy
+#import tomopy
 import numpy as np
 
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
 
     # Denoise for different intensities
     maxinta = [100, 10, 1, 0.1]
-    for k in range(0,1):
+    for k in range(4,5):
         maxint = maxinta[k]
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
         scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
@@ -118,8 +118,7 @@ if __name__ == "__main__":
         # data
         data = np.abs(slv.fwd_ptycho(
             slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
-        data = np.random.poisson(
-            data*det.x*det.y).astype('float32')/(det.x*det.y)
+        data = np.random.poisson(data).astype('float32')
 
         # rec
         tau = 1e-16
