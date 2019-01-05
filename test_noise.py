@@ -49,9 +49,9 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25/720/128/1e5*5
-    piter = 1
-    titer = 1
-    NITER = 1024
+    piter = 16
+    titer = 16
+    NITER = 512
     voxelsize = 1e-6
     energy = 5
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
-    if(np.bool(sys.argv[1]) == True):
+    if(np.int(sys.argv[1]) == 1):
         print('compute regular')
         maxint = 10
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
