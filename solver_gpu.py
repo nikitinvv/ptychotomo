@@ -37,7 +37,7 @@ class Solver(object):
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
         # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]//4
+        self.theta_gpu = tomoshape[0]//8
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
         print("created")

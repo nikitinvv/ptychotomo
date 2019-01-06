@@ -59,20 +59,15 @@ if __name__ == "__main__":
 
     # Load a 3D object.
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
-    print(np.amax(delta))
-    print(np.amin(delta))
-    print(np.amax(beta))
-    print(np.amin(beta))
-    exit()
+        'data/test-delta-128.tiff').astype('float32')
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe.
     prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)  
     # Detector parameters.
-    det = objects.Detector(63, 63)
+    det = objects.Detector(128, 128)
     # Define rotation angles.
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     # Raster scan parameters for each rotation angle.
@@ -91,13 +86,14 @@ if __name__ == "__main__":
     data = slv.fwd_ptycho(psis)
     data = np.abs(data)
     data = data**2*det.x*det.y
+    data = np.int(data)
     data = np.random.poisson(data).astype('float32')
     print(np.amax(np.sqrt(data)))
     data=data/(det.x*det.y)
 
-    #dxchange.write_tiff(data,  'data/data')
-    #
-
+    dxchange.write_tiff(data[360][25],  'data_noise/data_'+str(np.int(np.amax(data))))
+    
+    exit()
     
     h = np.ones(psis.shape, dtype='complex64', order='C')
     psi = np.ones(psis.shape, dtype='complex64', order='C')

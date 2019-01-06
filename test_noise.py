@@ -49,24 +49,24 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25/720/128/1e5*5
-    piter = 1
-    titer = 1
-    NITER = 1024
+    piter = 4
+    titer = 4
+    NITER = 512
     voxelsize = 1e-6
     energy = 5
 
     # Load a 3D object.
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')#[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')#[::2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')
 
     obj = objects.Object(beta, delta, voxelsize)
     det = objects.Detector(127, 127)
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
-    if(np.bool(sys.argv[1]) == True):
+    if(sys.argv[1] == "True"):
         print('compute regular')
         maxint = 10
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
@@ -110,7 +110,7 @@ if __name__ == "__main__":
             x.delta[64],  'delta/delta_joint_tv_20over_10maxint')
 
     # Denoise for different intensities
-    maxinta = [100, 10, 1, 0.1]
+    maxinta = [40, 10, 1, 0.1]
     idc = np.int(sys.argv[2])
     print(idc)
     for k in range(idc, idc+1):
@@ -145,11 +145,11 @@ if __name__ == "__main__":
         dxchange.write_tiff(
             x.delta[64],  'delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
 
-        for itau in range(0, 1):
-            for ialpha in range(0, 1):
+        for itau in range(1, 2):
+            for ialpha in range(0, 4):
                # rec tv
-                tau = 1e3*1e3*2**(itau-1)
-                alpha = 1e-2*1e3*5*2**(ialpha-1)
+                tau = 1e3*1e3*2**(itau-2)
+                alpha = 1e-2*1e3*5*2**(ialpha-2)
                 h = np.ones(tomoshape, dtype='complex64', order='C')
                 psi = np.ones(tomoshape, dtype='complex64', order='C')
                 lamd = np.zeros(psi.shape, dtype='complex64', order='C')
