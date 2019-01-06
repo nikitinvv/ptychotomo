@@ -49,8 +49,13 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25/720/128/1e5*5
+<<<<<<< HEAD
     piter = 4
     titer = 4
+=======
+    piter = 16
+    titer = 16
+>>>>>>> 8067a752558ab5b8803f8a00eb05f3eb33019414
     NITER = 512
     voxelsize = 1e-6
     energy = 5
