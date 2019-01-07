@@ -1,4 +1,4 @@
-#/local/vnikitin/software/ParaView-5.5.2-Qt5-MPI-Linux-64bit/bin/pvpython --force-offscreen-rendering save_render_rec.py
+#/local/vnikitin/software/ParaView-5.5.2-Qt5-MPI-Linux-64bit/bin/pvpython --force-offscreen-rendering save_render_beta.py
 from shutil import copyfile
 import os
 from paraview.simple import *
