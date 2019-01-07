@@ -3,9 +3,9 @@
 
 """Module for 3D ptychography."""
 
-import xraylib as xl
+#import xraylib as xl
 import numpy as np
-import pyfftw
+#import pyfftw
 import shutil
 import warnings
 warnings.filterwarnings("ignore")
