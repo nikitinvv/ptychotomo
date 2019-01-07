@@ -46,9 +46,9 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 if __name__ == "__main__":
 
     # Parameters fixed
-    rho = 0.5
+    rho = 1e-5
     gamma = 0.25
-    eta = 0.25/720/128/1e5*5
+    eta = 0.25/720/64/1e5*5
     piter = 512
     titer = 512
     NITER = 1
@@ -57,12 +57,12 @@ if __name__ == "__main__":
 
     # Load a 3D object.
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')
+        'data/test-beta-128.tiff').astype('float32')[::2,::2,::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')
+        'data/test-delta-128.tiff').astype('float32')[::2,::2,::2]
 
     obj = objects.Object(beta, delta, voxelsize)
-    det = objects.Detector(127, 127)
+    det = objects.Detector(63, 63)
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
 
@@ -90,8 +90,8 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[40],  'beta/beta_st_20over')
-        dxchange.write_tiff(x.delta[64],  'delta/delta_st_20over')
+        dxchange.write_tiff(x.beta,  '../data_ptycho/beta2/beta_st_20over')
+        dxchange.write_tiff(x.delta,  '../data_ptycho/delta2/delta_st_20over')
 
     # Denoise for different intensities
     maxinta = [40, 10, 1, 0.1]
@@ -125,9 +125,9 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta[40],   'beta/beta_st_20over_' + str(maxint)+'_maxint_noise')
+            x.beta,   '../data_ptycho/beta2/beta_st_20over_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta[64],  'delta/delta_st_20over_'+str(maxint)+'_maxint_noise')
+            x.delta,  '../data_ptycho/delta2/delta_st_20over_'+str(maxint)+'_maxint_noise')
 
        
         slv = []

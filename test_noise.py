@@ -49,13 +49,8 @@ if __name__ == "__main__":
     rho = 0.5
     gamma = 0.25
     eta = 0.25/720/128/1e5*5
-<<<<<<< HEAD
     piter = 4
     titer = 4
-=======
-    piter = 16
-    titer = 16
->>>>>>> 8067a752558ab5b8803f8a00eb05f3eb33019414
     NITER = 512
     voxelsize = 1e-6
     energy = 5
@@ -95,8 +90,8 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[40],  'beta/beta_joint_20over')
-        dxchange.write_tiff(x.delta[64],  'delta/delta_joint_20over')
+        dxchange.write_tiff(x.beta[40],  '../data_ptycho/beta/beta_joint_20over')
+        dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_joint_20over')
 
         # rec tv
         tau = 1e3*1e3
@@ -110,9 +105,9 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[40],  'beta/beta_joint_tv_20over_10maxint')
+        dxchange.write_tiff(x.beta[40],  '../data_ptycho/beta/beta_joint_tv_20over_10maxint')
         dxchange.write_tiff(
-            x.delta[64],  'delta/delta_joint_tv_20over_10maxint')
+            x.delta[64],  '../data_ptycho/delta/delta_joint_tv_20over_10maxint')
 
     # Denoise for different intensities
     maxinta = [40, 10, 1, 0.1]
@@ -146,12 +141,12 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta[40],   'beta/beta_joint_20over_' + str(maxint)+'_maxint_noise')
+            x.beta[40],   '../data_ptycho/beta/beta_joint_20over_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta[64],  'delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
+            x.delta[64],  '../data_ptycho/delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
 
-        for itau in range(1, 2):
-            for ialpha in range(0, 4):
+        for itau in range(3, 4):
+            for ialpha in range(3, 4):
                # rec tv
                 tau = 1e3*1e3*2**(itau-2)
                 alpha = 1e-2*1e3*5*2**(ialpha-2)
@@ -164,8 +159,8 @@ if __name__ == "__main__":
                     obj.shape, dtype='float32', order='C'), voxelsize)
                 x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                              gamma, eta, alpha, piter, titer, NITER)
-                dxchange.write_tiff(x.beta[40],   'beta/beta_joint_tv_' + str(
+                dxchange.write_tiff(x.beta[40],   '../data_ptycho/beta/beta_joint_tv_' + str(
                     itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
-                dxchange.write_tiff(x.delta[64],  'delta/delta_joint_tv_'+str(
+                dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_joint_tv_'+str(
                     itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
         slv = []

@@ -44,12 +44,11 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 
 if __name__ == "__main__":
 
-    maxint = 0.1
     voxelsize = 1e-6
     energy = 5
 
-    maxinta = [4, 1, 0.1, 0.02]
-    for k in range(1):
+    maxinta = [4, 1, 0.1, 0.04]
+    for k in range(0,4):
         maxint = maxinta[k]
         # Load a 3D object.
         beta = dxchange.read_tiff(
@@ -84,5 +83,5 @@ if __name__ == "__main__":
         data = np.random.poisson(data).astype('float32')
         print(np.amax(data))        
         dxchange.write_tiff(
-            np.fft.fftshift(data[360][25]),  'data_noise/data_'+str(np.int(np.amax(data))))
+            np.fft.fftshift(data[360][25]),  '../data_ptycho/data_noise/data_'+str(maxint))
         slv = []
