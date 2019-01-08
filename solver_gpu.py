@@ -37,7 +37,7 @@ class Solver(object):
         self.cl_tomo.setobj(theta)
         # create class for the ptycho transform
         # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]//8
+        self.theta_gpu = tomoshape[0]//10
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
         print("created")
@@ -142,7 +142,10 @@ class Solver(object):
             tmp0 = self.adj_tomo(xi2*np.conj(xi2)*(self.fwd_tomo(res)-xi0))
             tmp1 = self.adj_reg(self.fwd_reg(res)-xi1)
            #print(tau*np.abs(tmp1).max(), rho*np.abs(tmp0).max())
-            res = res - 2*eta*(rho*tmp0+tau*tmp1)
+            if (rho<1e-5):#sequential (temporarily)
+                res = res - 2*eta*tmp0
+            else:
+                res = res - 2*eta*(rho*tmp0+tau*tmp1)
         return objects.Object(res.imag, res.real, self.voxelsize)
 
     # Gradient descent ptychography
