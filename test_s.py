@@ -50,7 +50,7 @@ if __name__ == "__main__":
     eta = 0.25
     voxelsize = 1e-6
     energy = 5
-    shift = 6
+    shift = 12
     # Load a 3D object.
     beta = dxchange.read_tiff(
         'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
@@ -204,4 +204,4 @@ if __name__ == "__main__":
         dxchange.write_tiff(
             x.beta[7],   '../rec_ptycho/beta_s2/beta_joint_over'+str(shift)+'_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta[7],  '../rec_ptycho/delta_s2/delta_joint_over'+str(shift)+str(maxint)+'_maxint_noise')
+            x.delta[7],  '../rec_ptycho/delta_s2/delta_joint_over'+str(shift)+'_'+ str(maxint)+'_maxint_noise')
