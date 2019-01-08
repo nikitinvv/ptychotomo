@@ -174,8 +174,8 @@ if __name__ == "__main__":
 
 
         rho = 0.5
-        piter = 250
-        titer = 250
+        piter = 1
+        titer = 1
         NITER = 250
         # rec
         h = np.ones(tomoshape, dtype='complex64', order='C')
