@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print('compute regular')
         maxint = 10
         prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
                                  theta, det, voxelsize, energy, tomoshape)
@@ -90,8 +90,8 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_joint_20over')
-        dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_joint_20over')
+        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_joint_60over')
+        dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_joint_60over')
 
         # rec tv
         tau = 1e3*1e3
@@ -105,9 +105,9 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_joint_tv_20over_10maxint')
+        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_joint_tv_60over_10maxint')
         dxchange.write_tiff(
-            x.delta[64],  '../data_ptycho/delta/delta_joint_tv_20over_10maxint')
+            x.delta[64],  '../data_ptycho/delta/delta_joint_tv_60over_10maxint')
 
     # Denoise for different intensities
     maxinta = [4, 1, 0.1, 0.04]
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     for k in range(idc, idc+1):
         maxint = maxinta[k]
         prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
             prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
                                 theta, det, voxelsize, energy, tomoshape)
@@ -141,9 +141,9 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta[64],   '../data_ptycho/beta/beta_joint_20over_' + str(maxint)+'_maxint_noise')
+            x.beta[64],   '../data_ptycho/beta/beta_joint_60over_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta[64],  '../data_ptycho/delta/delta_joint_20over_'+str(maxint)+'_maxint_noise')
+            x.delta[64],  '../data_ptycho/delta/delta_joint_60over_'+str(maxint)+'_maxint_noise')
 
         for itau in range(3, 4):
             for ialpha in range(2, 4):
@@ -160,7 +160,7 @@ if __name__ == "__main__":
                 x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                              gamma, eta, alpha, piter, titer, NITER)
                 dxchange.write_tiff(x.beta[64],   '../data_ptycho/beta/beta_joint_tv_' + str(
-                    itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
+                    itau)+'_'+str(ialpha)+'_60over_'+str(maxint)+'_maxint_noise')
                 dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_joint_tv_'+str(
-                    itau)+'_'+str(ialpha)+'_20over_'+str(maxint)+'_maxint_noise')
+                    itau)+'_'+str(ialpha)+'_60over_'+str(maxint)+'_maxint_noise')
         slv = []
