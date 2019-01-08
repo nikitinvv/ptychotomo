@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print('compute regular')
         maxint = 4
         prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
                                 theta, det, voxelsize, energy, tomoshape)
@@ -90,8 +90,8 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_st_20over12',overwrite=True)
-        dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_st_20over12',overwrite=True)
+        dxchange.write_tiff(x.beta[64],  '../data_ptycho/max_iv2/beta/beta_st_60over6',overwrite=True)
+        dxchange.write_tiff(x.delta[64],  '../data_ptycho/max_iv2/delta/delta_st_60over6',overwrite=True)
 
     # Denoise for different intensities
     maxinta = [4, 1, 0.1, 0.04]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     for k in range(0, 4):
         maxint = maxinta[k]
         prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
             prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
                                 theta, det, voxelsize, energy, tomoshape)
@@ -125,8 +125,8 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta[64],   '../data_ptycho/beta/beta_st_20over12_' + str(maxint)+'_maxint_noise', overwrite=True)
+            x.beta[64],   '../data_ptycho/max_iv2/beta/beta_st_60over6_' + str(maxint)+'_maxint_noise', overwrite=True)
         dxchange.write_tiff(
-            x.delta[64],  '../data_ptycho/delta/delta_st_20over12_'+str(maxint)+'_maxint_noise', overwrite=True)
+            x.delta[64],  '../data_ptycho/max_iv2/delta/delta_st_60over6_'+str(maxint)+'_maxint_noise', overwrite=True)
 
         slv = []
