@@ -18,8 +18,9 @@ SPEED_OF_LIGHT = 299792458e+2  # [cm/s]
 
 
 class Solver(object):
-    def __init__(self, prb, scanax, scanay, theta, det, voxelsize, energy, tomoshape):
+    def __init__(self, prb, scan, scanax, scanay, theta, det, voxelsize, energy, tomoshape):
         self.prb = prb
+        self.scan = scan
         self.scanax = scanax
         self.scanay = scanay
         self.theta = theta
@@ -39,6 +40,8 @@ class Solver(object):
         self.theta_gpu = tomoshape[0]//10
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
                                              scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
+        print(self.objshape)
+        print(self.ptychoshape)
 
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
@@ -72,6 +75,7 @@ class Solver(object):
             self.cl_ptycho.setobj(self.scanax[ast:aend], self.scanay[ast:aend],
                                   self.prb.complex)
             self.cl_ptycho.fwd(res_gpu[ast:aend], psi[ast:aend])
+
         return res_gpu
 
     # adjoint ptychography transfrorm (Q*F*)
@@ -157,17 +161,17 @@ class Solver(object):
             # lambda update
             lamd = lamd + rho * (psi - h)
 
-            # check convergence of the Lagrangian
-            if (np.mod(m, 16) == 0):
-                terms = np.zeros(4, dtype='float32')  # ignore imag part
-                terms[0] = 0.5 * np.linalg.norm(
-                    np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
-                terms[1] = np.sum(np.conj(lamd)*(psi-h))
-                terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
-                terms[3] = np.sum(terms[0:3])
+            # # check convergence of the Lagrangian
+            # if (np.mod(m, 1) == 0):
+            #     terms = np.zeros(4, dtype='float32')  # ignore imag part
+            #     terms[0] = 0.5 * np.linalg.norm(
+            #         np.abs(self.fwd_ptycho(psi))-np.sqrt(data))**2
+            #     terms[1] = np.sum(np.conj(lamd)*(psi-h))
+            #     terms[2] = 0.5*rho*np.linalg.norm(psi-h)**2
+            #     terms[3] = np.sum(terms[0:3])
 
-                print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e" %
-                      (m, terms[0], terms[1], terms[2], terms[3]))
+            #     print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e" %
+            #           (m, terms[0], terms[1], terms[2], terms[3]))
             # check convergence of psi and x
             print("%d) Conv psi, x:  %.2e %.2e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
 

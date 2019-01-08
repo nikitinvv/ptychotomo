@@ -50,7 +50,7 @@ if __name__ == "__main__":
     eta = 0.25
     piter = 1
     titer = 1
-    NITER = 65
+    NITER = 250
     maxint = 10
     voxelsize = 1e-6
     energy = 5
@@ -70,12 +70,12 @@ if __name__ == "__main__":
     # Define rotation angles.
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     # Raster scan parameters for each rotation angle.
-    scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
+    scan, scanax, scanay = scanner3(theta, beta.shape, 6, 200, margin=[
                                     prb.size, prb.size], offset=[0, 0], spiral=1)
-    tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+    tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
     # class solver
-    slv = solver_gpu.Solver(prb, scanax, scanay,
+    slv = solver_gpu.Solver(prb, scan, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
 
     # Project

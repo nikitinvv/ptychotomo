@@ -350,7 +350,7 @@ dxchange.write_tiff(prb.phase, folder + '/probe-phase')
 det = Detector(63, 63)
 
 # Define rotation angles.
-theta = np.linspace(0, 2*np.pi, 360)
+theta = np.linspace(0, 2*np.pi, 720)
 
 # Raster scan parameters for each rotation angle.
 scan = scanner3(theta, beta.shape, 6, 6, margin=[
