@@ -46,9 +46,9 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
 if __name__ == "__main__":
 
     # Parameters fixed
-    rho = 1e-5
+    rho = 1e-10
     gamma = 0.25
-    eta = 0.25/720/64/1e5*5
+    eta = 0.25/720/64/1e5
     piter = 512
     titer = 512
     NITER = 1
@@ -57,23 +57,23 @@ if __name__ == "__main__":
 
     # Load a 3D object.
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2,::2,::2]
+        'data/test-beta-128.tiff').astype('float32')
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2,::2,::2]
+        'data/test-delta-128.tiff').astype('float32')
 
     obj = objects.Object(beta, delta, voxelsize)
-    det = objects.Detector(63, 63)
+    det = objects.Detector(128, 128)
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
-    tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+    tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
     if(sys.argv[1] == "True"):
         print('compute regular')
-        maxint = 10
-        prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+        maxint = 4
+        prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
         scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
-                                 theta, det, voxelsize, energy, tomoshape)
+                                theta, det, voxelsize, energy, tomoshape)
         # data
         psis = slv.fwd_tomo(obj.complexform)
         data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
@@ -90,16 +90,16 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta,  '../data_ptycho/beta2/beta_st_20over')
-        dxchange.write_tiff(x.delta,  '../data_ptycho/delta2/delta_st_20over')
+        dxchange.write_tiff(x.beta,  '../data_ptycho/beta/beta_st_20over12')
+        dxchange.write_tiff(x.delta,  '../data_ptycho/delta/delta_st_20over12')
 
     # Denoise for different intensities
-    maxinta = [40, 10, 1, 0.1]
+    maxinta = [4, 1, 0.1, 0.04]
     idc = np.int(sys.argv[2])
     print(idc)
     for k in range(0, 4):
         maxint = maxinta[k]
-        prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+        prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
         scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
             prb.size, prb.size], offset=[0, 0], spiral=1)
         slv = solver_gpu.Solver(prb, scanax, scanay,
@@ -125,9 +125,8 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta,   '../data_ptycho/beta2/beta_st_20over_' + str(maxint)+'_maxint_noise')
+            x.beta[64],   '../data_ptycho/beta/beta_st_20over_' + str(maxint)+'_maxint_noise', overwrite=True)
         dxchange.write_tiff(
-            x.delta,  '../data_ptycho/delta2/delta_st_20over_'+str(maxint)+'_maxint_noise')
+            x.delta[64],  '../data_ptycho/delta/delta_st_20over_'+str(maxint)+'_maxint_noise', overwrite=True)
 
-       
         slv = []
