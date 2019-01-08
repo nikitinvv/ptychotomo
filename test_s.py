@@ -1,9 +1,9 @@
 import objects
 import solver_gpu
 import dxchange
-import tomopy
+#import tomopy
 import numpy as np
-
+import sys
 
 def gaussian(size, rin=0.8, rout=1):
     r, c = np.mgrid[:size, :size] + 0.5
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     eta = 0.25
     piter = 1
     titer = 1
-    NITER = 128
+    NITER = 2
     voxelsize = 1e-6
     energy = 5
 
@@ -68,12 +68,12 @@ if __name__ == "__main__":
 
     if(sys.argv[1] == "True"):
         print('compute regular')
-        maxint = 4
+        maxint = 100
         rho = 1e-10
         # Create probe.
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
         # Raster scan parameters for each rotation angle.
-        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 6, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         # data
         data = np.abs(slv.fwd_ptycho(
             slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
-        print('sigma=', np.sqrt(np.amax(np.abs(data))))
+        print('sigma=', np.sqrt(np.amax(np.abs(data))*det.x*det.y))
 
         # rec
         h = np.ones(tomoshape, dtype='complex64', order='C')
@@ -121,9 +121,9 @@ if __name__ == "__main__":
         # data
         data = np.abs(slv.fwd_ptycho(
             slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
+        print('sigma=', np.sqrt(np.amax(np.abs(data))*det.x*det.y))
         data = np.random.poisson(
             data*det.x*det.y).astype('float32')/(det.x*det.y)
-        print('sigma=', np.sqrt(np.amax(np.abs(data))))
 
         # rec
         h = np.ones(tomoshape, dtype='complex64', order='C')
