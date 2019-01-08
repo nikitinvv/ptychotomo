@@ -50,7 +50,7 @@ if __name__ == "__main__":
     eta = 0.25
     voxelsize = 1e-6
     energy = 5
-
+    shift = 6
     # Load a 3D object.
     beta = dxchange.read_tiff(
         'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
@@ -63,21 +63,24 @@ if __name__ == "__main__":
     # Define rotation angles.
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
 
-    if(sys.argv[1] == "True"):
 
+    if(np.int(sys.argv[1]) == 1):
         print('compute regular')
         maxint = 100
         rho = 1e-10
         piter = 250
         titer = 250
         NITER = 1
+        
         # Create probe.
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
         # Raster scan parameters for each rotation angle.
-        scan, scanax, scanay = scanner3(theta, beta.shape, 12, 6, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, shift, shift, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
+        print(scanax.shape)
+        print(scanay.shape)
         # class solver
         slv = solver_gpu.Solver(prb, scan, scanax, scanay,
                                 theta, det, voxelsize, energy, tomoshape)
@@ -86,6 +89,14 @@ if __name__ == "__main__":
         data = np.abs(slv.fwd_ptycho(
             slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
         print('sigma=', np.sqrt(np.amax(np.abs(data))*det.x*det.y))
+
+
+        # a = slv.exptomo(slv.fwd_tomo(obj.complexform))
+        # b = slv.fwd_ptycho(a)
+        # aa = slv.adj_ptycho(b)
+        # print(np.sum(a*np.conj(aa)))
+        # print(np.sum(b*np.conj(b)))
+
 
         # rec
         h = np.ones(tomoshape, dtype='complex64', order='C')
@@ -101,10 +112,11 @@ if __name__ == "__main__":
 
 
         # Save result
-        dxchange.write_tiff(x.beta,  '../rec_ptycho/beta_s/beta_st_over12')
+        dxchange.write_tiff(x.beta[7],  '../rec_ptycho/beta_s2/beta_st_over'+str(shift))
         dxchange.write_tiff(
-            x.delta,  '../rec_ptycho/delta_s/delta_st_over12')
+            x.delta[7],  '../rec_ptycho/delta_s2/delta_st_over'+str(shift))
 
+        #exit()
 
         rho = 0.5
         piter = 1
@@ -123,19 +135,19 @@ if __name__ == "__main__":
                      gamma, eta, piter, titer, NITER)
 
         # Save result
-        dxchange.write_tiff(x.beta,  '../rec_ptycho/beta_s/beta_joint_over12')
+        dxchange.write_tiff(x.beta[7],  '../rec_ptycho/beta_s2/beta_joint_over'+str(shift))
         dxchange.write_tiff(
-            x.delta,  '../rec_ptycho/delta_s/delta_joint_over12')
-
+            x.delta[7],  '../rec_ptycho/delta_s2/delta_joint_over'+str(shift))
 
 
     maxinta = [100,10,1,0.1]
-    for k in len(maxinta):
-        maxint = maxinta[k]
+    idc = np.int(sys.argv[2])
+    for k in range(idc,idc+1):
+        maxint = maxinta[idc]
         # Create probe.
         prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
         # Raster scan parameters for each rotation angle.
-        scan, scanax, scanay = scanner3(theta, beta.shape, 6, 6, margin=[
+        scan, scanax, scanay = scanner3(theta, beta.shape, shift, shift, margin=[
                                         prb.size, prb.size], offset=[0, 0], spiral=1)
         tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
@@ -168,9 +180,9 @@ if __name__ == "__main__":
                      gamma, eta, piter, titer, NITER)
 
         dxchange.write_tiff(
-            x.beta,   '../rec_ptycho/beta/beta_st_over12_' + str(maxint)+'_maxint_noise')
+            x.beta[7],   '../rec_ptycho/beta_s2/beta_st_over'+str(shift)+'_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta,  '../rec_ptycho/delta/delta_st_over12_'+str(maxint)+'_maxint_noise')
+            x.delta[7],  '../rec_ptycho/delta_s2/delta_st_over'+str(shift)+'_' + str(maxint)+'_maxint_noise')
 
 
         rho = 0.5
@@ -190,6 +202,6 @@ if __name__ == "__main__":
                      gamma, eta, piter, titer, NITER)
 
         dxchange.write_tiff(
-            x.beta,   '../rec_ptycho/beta/beta_joint_over12_' + str(maxint)+'_maxint_noise')
+            x.beta[7],   '../rec_ptycho/beta_s2/beta_joint_over'+str(shift)+'_' + str(maxint)+'_maxint_noise')
         dxchange.write_tiff(
-            x.delta,  '../rec_ptycho/delta/delta_joint_over12_'+str(maxint)+'_maxint_noise')
+            x.delta[7],  '../rec_ptycho/delta_s2/delta_joint_over'+str(shift)+str(maxint)+'_maxint_noise')

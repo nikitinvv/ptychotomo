@@ -145,6 +145,7 @@ class Solver(object):
                 psi[ast:aend], data[ast:aend], hobj[ast:aend], lamd[ast:aend], rho, gamma, self.maxint, niter)
 
         # print(np.linalg.norm(psi2-psi))
+        # print(np.linalg.norm(psi))
         return psi
 
     #@profile
@@ -154,6 +155,8 @@ class Solver(object):
             psi0, x0 = psi, x
             # psi update
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
+            #dxchange.write_tiff(psi.real,"../rec_ptycho/psir15")
+            #dxchange.write_tiff(psi.imag,"../rec_ptycho/psii15")
             # x update
             x = self.grad_tomo(self.logtomo(psi+lamd/rho), titer, x, rho, eta)
             # h update
@@ -173,6 +176,6 @@ class Solver(object):
             #     print("%d) Lagrangian terms:  %.2e %.2e %.2e %.2e" %
             #           (m, terms[0], terms[1], terms[2], terms[3]))
             # check convergence of psi and x
-            print("%d) Conv psi, x:  %.2e %.2e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
+            #print("%d) Conv psi, x:  %.2e %.2e" % (m, np.linalg.norm(psi-psi0),np.linalg.norm(x.complexform-x0.complexform)))
 
         return x
