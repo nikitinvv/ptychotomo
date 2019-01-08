@@ -143,7 +143,7 @@ class Solver(object):
             tmp1 = self.adj_reg(self.fwd_reg(res)-xi1)
            #print(tau*np.abs(tmp1).max(), rho*np.abs(tmp0).max())
             if (rho<1e-5):#sequential (temporarily)
-                res = res - 2*eta/1e5*tmp0
+                res = res - 2*eta*1e5*tmp0
             else:
                 res = res - 2*eta*(rho*tmp0+tau*tmp1)
         return objects.Object(res.imag, res.real, self.voxelsize)
