@@ -1,6 +1,3 @@
-compute regular
+0
 created
-Traceback (most recent call last):
-  File "test_standard.py", line 79, in <module>
-    data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
-MemoryError
+332.33972

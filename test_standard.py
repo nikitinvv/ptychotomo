@@ -90,8 +90,8 @@ if __name__ == "__main__":
             obj.shape, dtype='float32', order='C'), voxelsize)
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
-        dxchange.write_tiff(x.beta[64],  '../data_ptycho/max_iv2/beta/beta_st_60over6',overwrite=True)
-        dxchange.write_tiff(x.delta[64],  '../data_ptycho/max_iv2/delta/delta_st_60over6',overwrite=True)
+        dxchange.write_tiff(x.beta[64],  '../data_ptycho/beta/beta_st_60over6',overwrite=True)
+        dxchange.write_tiff(x.delta[64],  '../data_ptycho/delta/delta_st_60over6',overwrite=True)
 
     # Denoise for different intensities
     maxinta = [4, 1, 0.1, 0.04]
@@ -125,8 +125,8 @@ if __name__ == "__main__":
         x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau,
                      gamma, eta, alpha, piter, titer, NITER)
         dxchange.write_tiff(
-            x.beta[64],   '../data_ptycho/max_iv2/beta/beta_st_60over6_' + str(maxint)+'_maxint_noise', overwrite=True)
+            x.beta[64],   '../data_ptycho/beta/beta_st_60over6_' + str(maxint)+'_maxint_noise', overwrite=True)
         dxchange.write_tiff(
-            x.delta[64],  '../data_ptycho/max_iv2/delta/delta_st_60over6_'+str(maxint)+'_maxint_noise', overwrite=True)
+            x.delta[64],  '../data_ptycho/delta/delta_st_60over6_'+str(maxint)+'_maxint_noise', overwrite=True)
 
         slv = []
