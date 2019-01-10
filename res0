@@ -1,6 +1,16 @@
 compute regular
 created
-Traceback (most recent call last):
-  File "test_standard.py", line 79, in <module>
-    data = np.abs(slv.fwd_ptycho(slv.exptomo(psis)))**2
-MemoryError
+0) Lagrangian terms:  3.16e+02 4.81e-06 2.40e-06 0.00e+00 5.38e-20 2.69e-20 3.16e+02
+0
+created
+2.0055532
+0) Lagrangian terms:  3.70e+03 1.09e-03 5.43e-04 0.00e+00 9.58e-22 4.79e-22 3.70e+03
+created
+166.16986
+0) Lagrangian terms:  2.63e+04 4.82e-06 2.41e-06 0.00e+00 4.69e-20 2.34e-20 2.63e+04
+created
+52.547523
+0) Lagrangian terms:  1.31e+04 4.96e-06 2.48e-06 0.00e+00 3.90e-20 1.95e-20 1.31e+04
+created
+33.233974
+0) Lagrangian terms:  9.94e+03 5.24e-06 2.62e-06 0.00e+00 3.55e-20 1.78e-20 9.94e+03

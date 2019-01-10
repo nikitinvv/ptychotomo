@@ -58,7 +58,7 @@ if __name__ == "__main__":
         # Create object.
         obj = objects.Object(beta, delta, voxelsize)
         # Create probe.
-        prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+        prb = objects.Probe(gaussian(16, rin=0.8, rout=1.0), maxint=maxint)
         # Detector parameters.
         det = objects.Detector(128, 128)
         # Define rotation angles.
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         data = data**2*det.x*det.y
         data = np.int32(data)
         data = np.random.poisson(data).astype('float32')
-        print(np.amax(data))        
-        dxchange.write_tiff(
-            np.fft.fftshift(data[360][25]),  '../data_ptycho/data_noise/data_'+str(maxint))
+        print(np.amax(np.sqrt(data[360][25])))
+        # dxchange.write_tiff(
+        #     np.fft.fftshift(data[360][25]),  '../data_ptycho/data_noise/data_'+str(maxint))
         slv = []
