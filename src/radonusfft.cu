@@ -13,6 +13,10 @@ radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 
 	cudaMalloc((void**)&f,N*N*Nz*sizeof(float2));
 	cudaMalloc((void**)&g,N*Ntheta*Nz*sizeof(float2));
+	cudaMalloc((void**)&ff,N*2/3*N*2/3*Nz*sizeof(float2));
+	cudaMalloc((void**)&gg,N*2/3*Ntheta*Nz*sizeof(float2));	
+	cudaMalloc((void**)&f0,N*2/3*N*2/3*Nz*sizeof(float2));
+	cudaMalloc((void**)&g0,N*2/3*Ntheta*Nz*sizeof(float2));		
 	cudaMalloc((void**)&fde,2*N*2*N*Nz*sizeof(float2));
 	cudaMalloc((void**)&fdee,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
 
@@ -42,6 +46,10 @@ radonusfft::~radonusfft()
 {	
 	cudaFree(f);
 	cudaFree(g);
+	cudaFree(ff);
+	cudaFree(gg);	
+	cudaFree(f0);
+	cudaFree(g0);	
 	cudaFree(fde);
 	cudaFree(fdee);
 	cudaFree(x);
@@ -143,13 +151,29 @@ void radonusfft::setobjc(float* theta_)
 	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 }
 
+void radonusfft::grad_tomoc(float2* f_, float2* g_, float eta, int niter)
+{
+	cudaMemcpy(f0,f_,N*2/3*N*2/3*Nz*sizeof(float2),cudaMemcpyDefault);
+	cudaMemcpy(g0,g_,N*2/3*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
+	dim3 BS3d(32,32,1);
+	dim3 GS3d30(ceil(N*2/3/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
+	dim3 GS3d31(ceil(N*2/3/(float)BS3d.x),ceil(N*2/3*N*2/3/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
+	for (int i=0;i<niter;i++)
+	{	
+		fwdR(gg,f0);	
+		subdata<<<GS3d30,BS3d>>>(gg,g0,N*2/3,Ntheta,Nz);
+		adjR(ff,gg);
+		updatef<<<GS3d31,BS3d>>>(f0,ff,eta,N*2/3,Nz);
+	}
+	cudaMemcpy(f_,f0,N*2/3*N*2/3*Nz*sizeof(float2),cudaMemcpyDefault);
+}
+
 //wrap for python
 void radonusfft::fwd(float2* g, int N0, int N1, int N2, float2* f, int N3, int N4, int N5)
 {
 	fwdR(g,f);
 }
 
-//wrap for python
 void radonusfft::adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2)
 {
 	adjR(f,g);
@@ -161,3 +185,7 @@ void radonusfft::setobj(float* theta, int N7)
 }
 
 
+void radonusfft::grad_tomo(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2, float eta, int niter)
+{
+	grad_tomoc(f, g, eta, niter);
+}

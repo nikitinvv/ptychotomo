@@ -211,3 +211,26 @@ void __global__ pad2(float2 *f, int N, int Nz)
 	f[tx+ty*N+tz*N*N].x = f[max(N/6,min(5*N/6-1,tx))+max(N/6,min(5*N/6-1,ty))*N+tz*N*N].x;
 	f[tx+ty*N+tz*N*N].y = f[max(N/6,min(5*N/6-1,tx))+max(N/6,min(5*N/6-1,ty))*N+tz*N*N].y;
 }
+
+void __global__ subdata(float2 *f, float2* data, int N, int Ntheta, int Nz)
+{
+	int tx = blockDim.x * blockIdx.x + threadIdx.x;
+	int ty = blockDim.y * blockIdx.y + threadIdx.y;
+	int tz = blockDim.z * blockIdx.z + threadIdx.z;
+	if (tx>=N||ty>=Ntheta||tz>=Nz) return;
+	
+	f[tx+tz*N+ty*N*Nz].x -= data[tx+tz*N+ty*N*Nz].x;
+	f[tx+tz*N+ty*N*Nz].y -= data[tx+tz*N+ty*N*Nz].y;
+}
+
+
+void __global__ updatef(float2 *f, float2* ff, float eta, int N, int Nz)
+{
+	int tx = blockDim.x * blockIdx.x + threadIdx.x;
+	int ty = blockDim.y * blockIdx.y + threadIdx.y;
+	int tz = blockDim.z * blockIdx.z + threadIdx.z;
+	if (tx>=N||ty>=N||tz>=Nz) return;
+	int id0 = tx+ty*N+tz*N*N;	
+	f[id0].x-=2*eta*ff[id0].x;
+	f[id0].y-=2*eta*ff[id0].y;
+}

@@ -22,6 +22,10 @@ class radonusfft
 	
 	float2 *f;
 	float2 *g;
+	float2 *ff;
+	float2 *gg;
+	float2 *f0;
+	float2 *g0;	
 	float *theta;
 	float *x;
 	float *y;
@@ -38,6 +42,7 @@ public:
 	~radonusfft();	
         void fwdR(float2 *g, float2 *f);
         void adjR(float2 *f, float2 *g);
+		void grad_tomoc(float2* f, float2* g, float eta, int niter);
 		void setobjc(float* theta);
 
 //wrap for python
@@ -51,6 +56,12 @@ public:
 %apply (float2 *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *g, int N0, int N1, int N2)};
 %apply (float2 *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *f, int N3, int N4, int N5)};
         void adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2);
+%clear (float2 *g, int N0, int N1, int N2);
+%clear (float2 *f, int N3, int N4, int N5);
+
+%apply (float2 *IN_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *g, int N0, int N1, int N2)};
+%apply (float2 *INPLACE_ARRAY3, int DIM1, int DIM2, int DIM3) {(float2 *f, int N3, int N4, int N5)};
+        void grad_tomo(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2, float eta, int niter);
 %clear (float2 *g, int N0, int N1, int N2);
 %clear (float2 *f, int N3, int N4, int N5);
 

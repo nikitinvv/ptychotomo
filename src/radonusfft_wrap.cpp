@@ -3212,6 +3212,87 @@ SWIG_AsVal_size_t (PyObject * obj, size_t *val)
 }
 
 
+SWIGINTERN int
+SWIG_AsVal_float (PyObject * obj, float *val)
+{
+  double v;
+  int res = SWIG_AsVal_double (obj, &v);
+  if (SWIG_IsOK(res)) {
+    if ((v < -FLT_MAX || v > FLT_MAX)) {
+      return SWIG_OverflowError;
+    } else {
+      if (val) *val = static_cast< float >(v);
+    }
+  }  
+  return res;
+}
+
+
+#include <limits.h>
+#if !defined(SWIG_NO_LLONG_MAX)
+# if !defined(LLONG_MAX) && defined(__GNUC__) && defined (__LONG_LONG_MAX__)
+#   define LLONG_MAX __LONG_LONG_MAX__
+#   define LLONG_MIN (-LLONG_MAX - 1LL)
+#   define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
+# endif
+#endif
+
+
+SWIGINTERN int
+SWIG_AsVal_long (PyObject *obj, long* val)
+{
+  if (PyInt_Check(obj)) {
+    if (val) *val = PyInt_AsLong(obj);
+    return SWIG_OK;
+  } else if (PyLong_Check(obj)) {
+    long v = PyLong_AsLong(obj);
+    if (!PyErr_Occurred()) {
+      if (val) *val = v;
+      return SWIG_OK;
+    } else {
+      PyErr_Clear();
+    }
+  }
+#ifdef SWIG_PYTHON_CAST_MODE
+  {
+    int dispatch = 0;
+    long v = PyInt_AsLong(obj);
+    if (!PyErr_Occurred()) {
+      if (val) *val = v;
+      return SWIG_AddCast(SWIG_OK);
+    } else {
+      PyErr_Clear();
+    }
+    if (!dispatch) {
+      double d;
+      int res = SWIG_AddCast(SWIG_AsVal_double (obj,&d));
+      if (SWIG_IsOK(res) && SWIG_CanCastAsInteger(&d, LONG_MIN, LONG_MAX)) {
+	if (val) *val = (long)(d);
+	return res;
+      }
+    }
+  }
+#endif
+  return SWIG_TypeError;
+}
+
+
+SWIGINTERN int
+SWIG_AsVal_int (PyObject * obj, int *val)
+{
+  long v;
+  int res = SWIG_AsVal_long (obj, &v);
+  if (SWIG_IsOK(res)) {
+    if ((v < INT_MIN || v > INT_MAX)) {
+      return SWIG_OverflowError;
+    } else {
+      if (val) *val = static_cast< int >(v);
+    }
+  }  
+  return res;
+}
+
+
 #if NPY_API_VERSION < 0x00000007
 #define NPY_ARRAY_DEFAULT NPY_DEFAULT
 #define NPY_ARRAY_FARRAY  NPY_FARRAY
@@ -3823,6 +3904,63 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_radonusfft_grad_tomoc(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  radonusfft *arg1 = (radonusfft *) 0 ;
+  float2 *arg2 = (float2 *) 0 ;
+  float2 *arg3 = (float2 *) 0 ;
+  float arg4 ;
+  int arg5 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  void *argp3 = 0 ;
+  int res3 = 0 ;
+  float val4 ;
+  int ecode4 = 0 ;
+  int val5 ;
+  int ecode5 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
+  PyObject * obj4 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOOOO:radonusfft_grad_tomoc",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_grad_tomoc" "', argument " "1"" of type '" "radonusfft *""'"); 
+  }
+  arg1 = reinterpret_cast< radonusfft * >(argp1);
+  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float2, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_grad_tomoc" "', argument " "2"" of type '" "float2 *""'"); 
+  }
+  arg2 = reinterpret_cast< float2 * >(argp2);
+  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_float2, 0 |  0 );
+  if (!SWIG_IsOK(res3)) {
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_grad_tomoc" "', argument " "3"" of type '" "float2 *""'"); 
+  }
+  arg3 = reinterpret_cast< float2 * >(argp3);
+  ecode4 = SWIG_AsVal_float(obj3, &val4);
+  if (!SWIG_IsOK(ecode4)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "radonusfft_grad_tomoc" "', argument " "4"" of type '" "float""'");
+  } 
+  arg4 = static_cast< float >(val4);
+  ecode5 = SWIG_AsVal_int(obj4, &val5);
+  if (!SWIG_IsOK(ecode5)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "radonusfft_grad_tomoc" "', argument " "5"" of type '" "int""'");
+  } 
+  arg5 = static_cast< int >(val5);
+  (arg1)->grad_tomoc(arg2,arg3,arg4,arg5);
+  resultobj = SWIG_Py_Void();
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_radonusfft_setobjc(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
@@ -3989,6 +4127,92 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_radonusfft_grad_tomo(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  radonusfft *arg1 = (radonusfft *) 0 ;
+  float2 *arg2 = (float2 *) 0 ;
+  int arg3 ;
+  int arg4 ;
+  int arg5 ;
+  float2 *arg6 = (float2 *) 0 ;
+  int arg7 ;
+  int arg8 ;
+  int arg9 ;
+  float arg10 ;
+  int arg11 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  PyArrayObject *array2 = NULL ;
+  PyArrayObject *array6 = NULL ;
+  int is_new_object6 = 0 ;
+  float val10 ;
+  int ecode10 = 0 ;
+  int val11 ;
+  int ecode11 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  PyObject * obj3 = 0 ;
+  PyObject * obj4 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOOOO:radonusfft_grad_tomo",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_grad_tomo" "', argument " "1"" of type '" "radonusfft *""'"); 
+  }
+  arg1 = reinterpret_cast< radonusfft * >(argp1);
+  {
+    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
+    if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
+      !require_native(array2)) SWIG_fail;
+    arg2 = (float2*) array_data(array2);
+    arg3 = (int) array_size(array2,0);
+    arg4 = (int) array_size(array2,1);
+    arg5 = (int) array_size(array2,2);
+  }
+  {
+    npy_intp size[3] = {
+      -1, -1, -1 
+    };
+    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
+      &is_new_object6);
+    if (!array6 || !require_dimensions(array6, 3) ||
+      !require_size(array6, size, 3)) SWIG_fail;
+    arg6 = (float2*) array_data(array6);
+    arg7 = (int) array_size(array6,0);
+    arg8 = (int) array_size(array6,1);
+    arg9 = (int) array_size(array6,2);
+  }
+  ecode10 = SWIG_AsVal_float(obj3, &val10);
+  if (!SWIG_IsOK(ecode10)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "radonusfft_grad_tomo" "', argument " "10"" of type '" "float""'");
+  } 
+  arg10 = static_cast< float >(val10);
+  ecode11 = SWIG_AsVal_int(obj4, &val11);
+  if (!SWIG_IsOK(ecode11)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode11), "in method '" "radonusfft_grad_tomo" "', argument " "11"" of type '" "int""'");
+  } 
+  arg11 = static_cast< int >(val11);
+  (arg1)->grad_tomo(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
+  resultobj = SWIG_Py_Void();
+  {
+    if (is_new_object6 && array6)
+    {
+      Py_DECREF(array6); 
+    }
+  }
+  return resultobj;
+fail:
+  {
+    if (is_new_object6 && array6)
+    {
+      Py_DECREF(array6); 
+    }
+  }
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_radonusfft_setobj(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
@@ -4052,9 +4276,11 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"delete_radonusfft", _wrap_delete_radonusfft, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_fwdR", _wrap_radonusfft_fwdR, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_adjR", _wrap_radonusfft_adjR, METH_VARARGS, NULL},
+	 { (char *)"radonusfft_grad_tomoc", _wrap_radonusfft_grad_tomoc, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_setobjc", _wrap_radonusfft_setobjc, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_fwd", _wrap_radonusfft_fwd, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_adj", _wrap_radonusfft_adj, METH_VARARGS, NULL},
+	 { (char *)"radonusfft_grad_tomo", _wrap_radonusfft_grad_tomo, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_setobj", _wrap_radonusfft_setobj, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_swigregister", radonusfft_swigregister, METH_VARARGS, NULL},
 	 { NULL, NULL, 0, NULL }
