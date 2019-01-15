@@ -16,16 +16,16 @@ if __name__ == "__main__":
     eta = 0.25
     piter = 1
     titer = 1
-    NITER = 250
+    NITER = 8
     maxint = 10
     voxelsize = 1e-6
     energy = 5
 
     # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')[:30:2, ::2, ::2]
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # Define rotation angles
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
     # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 12, 12, margin=[
+    scanax, scanay = objects.scanner3(theta, beta.shape, 8, 8, margin=[
         prb.size, prb.size], offset=[0, 0], spiral=1)
     # tomography data shape
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]

@@ -1,0 +1,136 @@
+fig1
+sigma =  253.14967 noise free
+49) Lagrangian terms:  5.11e+01 -6.60e-02 1.59e-03 sum = 5.11e+01
+49) Lagrangian terms:  7.38e+01 0.00e+00 0.00e+00 sum = 7.38e+01
+0) Lagrangian terms:  7.68e+01 0.00e+00 0.00e+00 sum = 7.68e+01
+sigma =  253.14967
+49) Lagrangian terms:  3.85e+02 -7.12e-02 1.46e-03 sum = 3.85e+02
+49) Lagrangian terms:  4.07e+02 0.00e+00 0.00e+00 sum = 4.07e+02
+0) Lagrangian terms:  4.11e+02 0.00e+00 0.00e+00 sum = 4.11e+02
+sigma =  146.156
+49) Lagrangian terms:  2.74e+02 -8.20e-02 1.49e-03 sum = 2.74e+02
+49) Lagrangian terms:  2.81e+02 0.00e+00 0.00e+00 sum = 2.81e+02
+0) Lagrangian terms:  2.83e+02 0.00e+00 0.00e+00 sum = 2.83e+02
+sigma =  80.052956
+49) Lagrangian terms:  1.87e+02 -1.02e-01 1.71e-03 sum = 1.87e+02
+49) Lagrangian terms:  1.90e+02 0.00e+00 0.00e+00 sum = 1.90e+02
+0) Lagrangian terms:  1.91e+02 0.00e+00 0.00e+00 sum = 1.91e+02
+sigma =  46.21859
+49) Lagrangian terms:  1.35e+02 -1.22e-01 2.02e-03 sum = 1.35e+02
+49) Lagrangian terms:  1.36e+02 0.00e+00 0.00e+00 sum = 1.36e+02
+0) Lagrangian terms:  1.36e+02 0.00e+00 0.00e+00 sum = 1.36e+02
+
+
+fig2
+sigma =  253.15515 noise free
+49) Lagrangian terms:  1.04e+02 -1.64e-01 2.51e-03 sum = 1.04e+02
+49) Lagrangian terms:  1.39e+02 0.00e+00 0.00e+00 sum = 1.39e+02
+0) Lagrangian terms:  6.58e+02 0.00e+00 0.00e+00 sum = 6.58e+02
+sigma =  253.15515
+49) Lagrangian terms:  2.38e+02 -1.64e-01 2.37e-03 sum = 2.38e+02
+49) Lagrangian terms:  2.72e+02 0.00e+00 0.00e+00 sum = 2.72e+02
+0) Lagrangian terms:  7.89e+02 0.00e+00 0.00e+00 sum = 7.89e+02
+sigma =  146.1592
+49) Lagrangian terms:  1.37e+02 -1.65e-01 2.36e-03 sum = 1.37e+02
+49) Lagrangian terms:  1.48e+02 0.00e+00 0.00e+00 sum = 1.48e+02
+0) Lagrangian terms:  3.19e+02 0.00e+00 0.00e+00 sum = 3.19e+02
+sigma =  80.054695
+49) Lagrangian terms:  8.30e+01 -1.70e-01 2.33e-03 sum = 8.28e+01
+49) Lagrangian terms:  8.62e+01 0.00e+00 0.00e+00 sum = 8.62e+01
+0) Lagrangian terms:  1.37e+02 0.00e+00 0.00e+00 sum = 1.37e+02
+sigma =  46.219593
+49) Lagrangian terms:  5.64e+01 -1.77e-01 2.46e-03 sum = 5.62e+01
+49) Lagrangian terms:  5.74e+01 0.00e+00 0.00e+00 sum = 5.74e+01
+0) Lagrangian terms:  7.39e+01 0.00e+00 0.00e+00 sum = 7.39e+01
+
+
+fig3
+sigma =  253.15695 noise free
+49) Lagrangian terms:  2.06e+02 -3.84e-01 5.64e-03 sum = 2.05e+02
+49) Lagrangian terms:  2.82e+02 0.00e+00 0.00e+00 sum = 2.82e+02
+0) Lagrangian terms:  1.32e+03 0.00e+00 0.00e+00 sum = 1.32e+03
+sigma =  253.15695
+49) Lagrangian terms:  4.79e+02 -3.77e-01 5.46e-03 sum = 4.78e+02
+49) Lagrangian terms:  5.51e+02 0.00e+00 0.00e+00 sum = 5.51e+02
+0) Lagrangian terms:  1.57e+03 0.00e+00 0.00e+00 sum = 1.57e+03
+sigma =  146.16023
+49) Lagrangian terms:  2.79e+02 -3.75e-01 5.35e-03 sum = 2.78e+02
+49) Lagrangian terms:  3.01e+02 0.00e+00 0.00e+00 sum = 3.01e+02
+0) Lagrangian terms:  6.37e+02 0.00e+00 0.00e+00 sum = 6.37e+02
+sigma =  80.05526
+49) Lagrangian terms:  1.69e+02 -3.75e-01 5.33e-03 sum = 1.68e+02
+49) Lagrangian terms:  1.75e+02 0.00e+00 0.00e+00 sum = 1.75e+02
+0) Lagrangian terms:  2.74e+02 0.00e+00 0.00e+00 sum = 2.74e+02
+sigma =  46.21992
+49) Lagrangian terms:  1.15e+02 -3.81e-01 5.58e-03 sum = 1.14e+02
+49) Lagrangian terms:  1.17e+02 0.00e+00 0.00e+00 sum = 1.17e+02
+0) Lagrangian terms:  1.48e+02 0.00e+00 0.00e+00 sum = 1.48e+02
+
+
+fig4
+sigma =  253.15695 noise free
+49) Lagrangian terms:  2.06e+02 -3.84e-01 5.64e-03 sum = 2.05e+02
+49) Lagrangian terms:  2.82e+02 0.00e+00 0.00e+00 sum = 2.82e+02
+0) Lagrangian terms:  1.32e+03 0.00e+00 0.00e+00 sum = 1.32e+03
+sigma =  253.15695
+49) Lagrangian terms:  4.79e+02 -3.78e-01 5.45e-03 sum = 4.79e+02
+49) Lagrangian terms:  5.51e+02 0.00e+00 0.00e+00 sum = 5.51e+02
+0) Lagrangian terms:  1.57e+03 0.00e+00 0.00e+00 sum = 1.57e+03
+sigma =  146.16023
+49) Lagrangian terms:  2.78e+02 -3.74e-01 5.34e-03 sum = 2.78e+02
+49) Lagrangian terms:  3.01e+02 0.00e+00 0.00e+00 sum = 3.01e+02
+0) Lagrangian terms:  6.38e+02 0.00e+00 0.00e+00 sum = 6.38e+02
+sigma =  80.05526
+49) Lagrangian terms:  1.69e+02 -3.76e-01 5.42e-03 sum = 1.68e+02
+49) Lagrangian terms:  1.75e+02 0.00e+00 0.00e+00 sum = 1.75e+02
+0) Lagrangian terms:  2.74e+02 0.00e+00 0.00e+00 sum = 2.74e+02
+sigma =  46.21992
+49) Lagrangian terms:  1.15e+02 -3.78e-01 5.54e-03 sum = 1.14e+02
+49) Lagrangian terms:  1.17e+02 0.00e+00 0.00e+00 sum = 1.17e+02
+0) Lagrangian terms:  1.48e+02 0.00e+00 0.00e+00 sum = 1.48e+02
+
+
+fig5
+sigma =  253.09544 noise free
+49) Lagrangian terms:  2.55e+01 -3.10e-02 7.58e-04 sum = 2.55e+01
+49) Lagrangian terms:  3.73e+01 0.00e+00 0.00e+00 sum = 3.73e+01
+0) Lagrangian terms:  3.90e+01 0.00e+00 0.00e+00 sum = 3.90e+01
+sigma =  253.09544
+49) Lagrangian terms:  1.91e+02 -3.18e-02 6.71e-04 sum = 1.91e+02
+49) Lagrangian terms:  2.02e+02 0.00e+00 0.00e+00 sum = 2.02e+02
+0) Lagrangian terms:  2.05e+02 0.00e+00 0.00e+00 sum = 2.05e+02
+sigma =  146.12473
+49) Lagrangian terms:  1.35e+02 -3.20e-02 6.23e-04 sum = 1.35e+02
+49) Lagrangian terms:  1.39e+02 0.00e+00 0.00e+00 sum = 1.39e+02
+0) Lagrangian terms:  1.40e+02 0.00e+00 0.00e+00 sum = 1.40e+02
+sigma =  80.035805
+49) Lagrangian terms:  9.28e+01 -3.39e-02 6.15e-04 sum = 9.28e+01
+49) Lagrangian terms:  9.40e+01 0.00e+00 0.00e+00 sum = 9.40e+01
+0) Lagrangian terms:  9.45e+01 0.00e+00 0.00e+00 sum = 9.45e+01
+sigma =  46.208694
+49) Lagrangian terms:  6.69e+01 -3.72e-02 6.85e-04 sum = 6.68e+01
+49) Lagrangian terms:  6.73e+01 0.00e+00 0.00e+00 sum = 6.73e+01
+0) Lagrangian terms:  6.75e+01 0.00e+00 0.00e+00 sum = 6.75e+01
+
+
+fig6
+sigma =  253.00406 noise free
+49) Lagrangian terms:  5.88e+01 -8.39e-02 1.08e-03 sum = 5.87e+01
+49) Lagrangian terms:  7.49e+01 0.00e+00 0.00e+00 sum = 7.49e+01
+0) Lagrangian terms:  2.50e+02 0.00e+00 0.00e+00 sum = 2.50e+02
+sigma =  253.00406
+49) Lagrangian terms:  1.24e+02 -8.40e-02 1.05e-03 sum = 1.24e+02
+49) Lagrangian terms:  1.40e+02 0.00e+00 0.00e+00 sum = 1.40e+02
+0) Lagrangian terms:  3.14e+02 0.00e+00 0.00e+00 sum = 3.14e+02
+sigma =  146.07196
+49) Lagrangian terms:  6.92e+01 -8.48e-02 1.04e-03 sum = 6.91e+01
+49) Lagrangian terms:  7.45e+01 0.00e+00 0.00e+00 sum = 7.45e+01
+0) Lagrangian terms:  1.32e+02 0.00e+00 0.00e+00 sum = 1.32e+02
+sigma =  80.00691
+49) Lagrangian terms:  4.11e+01 -8.57e-02 1.03e-03 sum = 4.10e+01
+49) Lagrangian terms:  4.27e+01 0.00e+00 0.00e+00 sum = 4.27e+01
+0) Lagrangian terms:  5.96e+01 0.00e+00 0.00e+00 sum = 5.96e+01
+sigma =  46.192013
+49) Lagrangian terms:  2.78e+01 -8.76e-02 1.06e-03 sum = 2.77e+01
+49) Lagrangian terms:  2.83e+01 0.00e+00 0.00e+00 sum = 2.83e+01
+0) Lagrangian terms:  3.39e+01 0.00e+00 0.00e+00 sum = 3.39e+01
