@@ -1,4 +1,0 @@
-  File "test_noise.py", line 121
-    print(np.sqrt(np.amax(np.abs(data)))
-                                       ^
-TabError: inconsistent use of tabs and spaces in indentation

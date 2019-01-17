@@ -3,9 +3,9 @@
 
 """Module for 3D ptychography."""
 
-#import xraylib as xl
+import xraylib as xl
 import numpy as np
-#import pyfftw
+import pyfftw
 import shutil
 import warnings
 warnings.filterwarnings("ignore")
@@ -148,3 +148,40 @@ class Scanner(object):
     @property
     def y(self):
         return np.arange(self.offset[1], self.shape[1]-self.margin[1]+1, self.sy)
+
+
+def gaussian(size, rin=0.8, rout=1):
+    r, c = np.mgrid[:size, :size] + 0.5
+    rs = np.sqrt((r - size/2)**2 + (c - size/2)**2)
+    rmax = np.sqrt(2) * 0.5 * rout * rs.max() + 1.0
+    rmin = np.sqrt(2) * 0.5 * rin * rs.max()
+    img = np.zeros((size, size), dtype='float32')
+    img[rs < rmin] = 1.0
+    img[rs > rmax] = 0.0
+    zone = np.logical_and(rs > rmin, rs < rmax)
+    img[zone] = np.divide(rmax - rs[zone], rmax - rmin)
+    return img
+
+
+def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
+    a = spiral
+    scan = []
+    lenmaxx = 0
+    lenmaxy = 0
+
+    for m in range(len(theta)):
+        s = Scanner(shape, sx, sy, margin, offset=[
+            offset[0], np.mod(offset[1]+a, sy)])
+        scan.append(s)
+        a += spiral
+        lenmaxx = max(lenmaxx, len(s.x))
+        lenmaxy = max(lenmaxy, len(s.y))
+
+    scanax = -1+np.zeros([len(theta), lenmaxx], dtype='int32')
+    scanay = -1+np.zeros([len(theta), lenmaxy], dtype='int32')
+
+    for m in range(len(theta)):
+        scanax[m, :len(scan[m].x)] = scan[m].x
+        scanay[m, :len(scan[m].y)] = scan[m].y
+
+    return scanax, scanay

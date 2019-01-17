@@ -3,111 +3,78 @@ import solver_gpu
 import dxchange
 import tomopy
 import numpy as np
-
-
-def gaussian(size, rin=0.8, rout=1):
-    r, c = np.mgrid[:size, :size] + 0.5
-    rs = np.sqrt((r - size/2)**2 + (c - size/2)**2)
-    rmax = np.sqrt(2) * 0.5 * rout * rs.max() + 1.0
-    rmin = np.sqrt(2) * 0.5 * rin * rs.max()
-    img = np.zeros((size, size), dtype='float32')
-    img[rs < rmin] = 1.0
-    img[rs > rmax] = 0.0
-    zone = np.logical_and(rs > rmin, rs < rmax)
-    img[zone] = np.divide(rmax - rs[zone], rmax - rmin)
-    return img
-
-
-def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
-    a = spiral
-    scan = []
-    lenmaxx = 0
-    lenmaxy = 0
-
-    for m in range(len(theta)):
-        s = objects.Scanner(shape, sx, sy, margin, offset=[
-                            offset[0], np.mod(offset[1]+a, sy)])
-        scan.append(s)
-        a += spiral
-        lenmaxx = max(lenmaxx, len(s.x))
-        lenmaxy = max(lenmaxy, len(s.y))
-
-    scanax = -1+np.zeros([len(theta), lenmaxx], dtype='int32')
-    scanay = -1+np.zeros([len(theta), lenmaxy], dtype='int32')
-
-    for m in range(len(theta)):
-        scanax[m, :len(scan[m].x)] = scan[m].x
-        scanay[m, :len(scan[m].y)] = scan[m].y
-
-    return scan, scanax, scanay
+import signal
+import sys
 
 
 if __name__ == "__main__":
 
-    # Parameters.
     rho = 0.5
     tau= 1e3*1e3
     alpha = 1e-2*1e3*5*2
     gamma = 0.25
-    eta = 0.25/720/64/1e5*5
-    piter = 1
-    titer = 1
-    NITER = 256
+    eta = 0.25/1e5*5
+    piter = 4
+    titer = 4
+    NITER = 512
     maxint = 0.1
     voxelsize = 1e-6
     energy = 5
 
-    # Load a 3D object.
+    # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')
+        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')
+        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
-    # Create probe.
-    prb = objects.Probe(gaussian(15, rin=0.8, rout=1.0), maxint=maxint)  
-    # Detector parameters.
+    # Create probe
+    prb = objects.Probe(objects.gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
+    # Detector parameters
     det = objects.Detector(128, 128)
-    # Define rotation angles.
+    # Define rotation angles
     theta = np.linspace(0, 2*np.pi, 720).astype('float32')
-    # Raster scan parameters for each rotation angle.
-    scan, scanax, scanay = scanner3(theta, beta.shape, 12, 12, margin=[
-                                    prb.size, prb.size], offset=[0, 0], spiral=1)
-    tomoshape = [len(theta), obj.shape[1], obj.shape[2]]
+    # Scanner positions
+    scanax, scanay = objects.scanner3(theta, beta.shape, 12, 12, margin=[
+        prb.size, prb.size], offset=[0, 0], spiral=1)
+    # tomography data shape
+    tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
-    # class solver
+    # Class solver
     slv = solver_gpu.Solver(prb, scanax, scanay,
                             theta, det, voxelsize, energy, tomoshape)
 
-    # Project
-    psis = slv.fwd_tomo(obj.complexform)
-    psis = slv.exptomo(psis)
-    # Propagate
-    data = slv.fwd_ptycho(psis)
-    data = np.abs(data)
-    data = data**2*det.x*det.y
-    data = np.int(data)
-    data = np.random.poisson(data).astype('float32')
-    print(np.amax(np.sqrt(data)))
-    data=data/(det.x*det.y)
+    def signal_handler(sig, frame):
+        print('Remove class and free gpu memory')
+        slv = []
+        sys.exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTSTP, signal_handler)
 
-    dxchange.write_tiff(data[360][25],  'data_noise/data_'+str(np.int(np.amax(data))))
-    
-    exit()
-    
-    h = np.ones(psis.shape, dtype='complex64', order='C')
-    psi = np.ones(psis.shape, dtype='complex64', order='C')
-    lamd = np.zeros(psi.shape, dtype='complex64', order='C')
+    # Compute data  |FQ(exp(i\nu R x))|^2,
+    data = np.abs(slv.fwd_ptycho(
+        slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
+    print("sigma = ", np.amax(np.sqrt(data*det.x*det.y)))
+
+    # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
+    #data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
+
+    # Initial guess
+    h = np.ones(tomoshape, dtype='complex64', order='C')
+    psi = np.ones(tomoshape, dtype='complex64', order='C')
     phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    lamd = np.zeros(tomoshape, dtype='complex64', order='C')    
     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
         obj.shape, dtype='float32', order='C'), voxelsize)
-   
+
     # ADMM
-    x = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau, gamma, eta, alpha, piter, titer, NITER)
+    x, psi, res = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau, alpha,
+                           gamma, eta, piter, titer, NITER)
 
     # Save result
-    dxchange.write_tiff(x.beta[32],  'beta/beta2')
-    dxchange.write_tiff(x.delta[32],  'delta/delta2')
-
-   
+    dxchange.write_tiff(x.beta,  'beta/beta')
+    dxchange.write_tiff(x.delta,  'delta/delta')
+    dxchange.write_tiff(psi.real,  'psi/psi')
+    np.save('residuals', res)
