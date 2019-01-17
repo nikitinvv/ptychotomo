@@ -110,19 +110,19 @@ class Solver(object):
         r = 1/np.sqrt(data.shape[0]*data.shape[2]/2)
 
         # whole scheme on gpu
-        # res_gpu = init.complexform
-        # self.cl_tomo.grad_tomo(res_gpu, data, r*r*eta, niter)
+        res_gpu = init.complexform
+        self.cl_tomo.grad_tomo(res_gpu, data, r*r*eta, niter)
 
-        xdiff = np.zeros(niter, dtype="float32")
-        # Alternative computation
-        res = init.complexform
-        for i in range(niter):
-            tmp0 = self.fwd_tomo(res)
-            tmp = self.adj_tomo(tmp0-data)
-            xdiff[i] = np.linalg.norm(2*eta*r*r*tmp)
-            res = res - 2*eta*r*r*tmp
+        # xdiff = np.zeros(niter, dtype="float32")
+        # # Alternative computation
+        # res = init.complexform
+        # for i in range(niter):
+        #     tmp0 = self.fwd_tomo(res)
+        #     tmp = self.adj_tomo(tmp0-data)
+        #     xdiff[i] = np.linalg.norm(2*eta*r*r*tmp)
+        #     res = res - 2*eta*r*r*tmp
         # print(np.linalg.norm(res-res_gpu)/np.linalg.norm(res))
-        return objects.Object(res.imag, res.real, self.voxelsize), xdiff
+        return objects.Object(res_gpu.imag, res_gpu.real, self.voxelsize)
 
     # Gradient descent ptychography
     def grad_ptycho(self, data, init, niter, rho, gamma, hobj, lamd):
@@ -136,23 +136,22 @@ class Solver(object):
             self.cl_ptycho.grad_ptycho(
                 psi[ast:aend], data[ast:aend], hobj[ast:aend], lamd[ast:aend], rho, gamma, self.maxint, niter)
 
-        # Alternative computation
-        # psi2 = init.copy()
-        # for i in range(niter):
-        #     tmp = self.fwd_ptycho(psi2)
-        #     tmp = self.update_amp(tmp, data)
-        #     upd1 = self.adj_ptycho(tmp)
-        #     upd2 = self.adjfwd_prb(psi2)
-        #     psi2 = (1 - rho*gamma) * psi2 + rho*gamma * \
-        #         (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2) / self.maxint
-        # Compare results
-        # print(np.linalg.norm(psi2-psi)/np.linalg.norm(psi))
+    #    # Alternative computation
+    #     psi2 = init.copy()
+    #     for i in range(niter):
+    #         tmp = self.fwd_ptycho(psi2)
+    #         tmp = self.update_amp(tmp, data)
+    #         upd1 = self.adj_ptycho(tmp)
+    #         upd2 = self.adjfwd_prb(psi2)
+    #         psi2 = (1 - rho*gamma) * psi2 + rho*gamma * \
+    #             (hobj - lamd/rho) + (gamma / 2) * (upd1-upd2) / self.maxint
+    #    # Compare results
+    #     print(np.linalg.norm(psi2-psi)/np.linalg.norm(psi))
         return psi
+    
     # @profile
     # ADMM for ptycho-tomography problem
-
     def admm(self, data, h, psi, lamd, x, rho, gamma, eta, piter, titer, NITER):
-        xdiff = np.zeros(NITER*titer, dtype="float32")
         res = np.zeros([NITER, 4], dtype="float32")
         for m in range(NITER):
             # keep previous iteration
@@ -161,35 +160,37 @@ class Solver(object):
             psi = self.grad_ptycho(data, psi, piter, rho, gamma, h, lamd)
             # x update
             tmp = self.logtomo(psi+lamd/rho)
-            x, xdiff[m*titer: (m+1)*titer] = self.grad_tomo(tmp, titer, x, rho, eta)
+            x = self.grad_tomo(tmp, titer, x, rho, eta)
             # h update
             h = self.exptomo(self.fwd_tomo(x.complexform))
             # lambda update
             lamd = lamd + rho * (psi - h)
-            # if(rho < 1e-6):  # standard cases
-            #     lamd = lamd*0
-            #     psi = h
-            # else: # rho update
-            #     r = np.linalg.norm(psi - h)**2
-            #     s = np.linalg.norm(rho*(h-h0))**2
-            #     if (r > 10*s):
-            #         rho *= 2
-            #     elif (s > 10*r):
-            #         rho /= 2
+
+            if(rho < 1e-6):  # standard cases
+                lamd = lamd*0
+                psi = h
+            else:  # rho update
+                r = np.linalg.norm(psi - h)**2
+                s = np.linalg.norm(rho*(h-h0))**2
+                if (r > 10*s):
+                    rho *= 2
+                elif (s > 10*r):
+                    rho /= 2
 
             # residuals
-            if (np.mod(m, 1) == 0):
+            if (np.mod(m, 10) == 0):
                 # psi^{k+1}-h^{k+1}
-                res[m,0] = np.linalg.norm(psi-h)
+                res[m, 0] = np.linalg.norm(psi-h)
                 # h{k+1}-h^k
-                res[m,1] = np.linalg.norm(h-h0)
-                # 0.5*(Q^*Q psi^{k+1} - 0.5*Q^*F^*(FQ psi^{k+1}/ |FQ psi^{k+1}|)d ) + lamd
-                res[m,2] = np.linalg.norm(0.5*self.adjfwd_prb(psi)
-                    -0.5*self.adj_ptycho(self.update_amp(self.fwd_ptycho(psi), data))+lamd)
+                res[m, 1] = np.linalg.norm(h-h0)
+                # 0.5*Q^*Q psi^{k+1} - 0.5*Q^*F^*(FQ psi^{k+1}/ |FQ psi^{k+1}|)d  + lamd
+                res[m, 2] = np.linalg.norm(0.5*self.adjfwd_prb(psi)/self.maxint
+                                           - 0.5*self.adj_ptycho(self.update_amp(self.fwd_ptycho(psi), data))/self.maxint+lamd)
                 # R^*(Rx+i/\nu log(psi^{k+1}+lamd^{k}/rho))
-                res[m,3]=np.linalg.norm(self.adj_tomo(self.fwd_tomo(
+                r = 1/np.sqrt(data.shape[0]*data.shape[2]/2)
+                res[m, 3] = np.linalg.norm(r*r*self.adj_tomo(self.fwd_tomo(
                     x.complexform)-self.logtomo(psi-lamd0/rho)))
 
                 print("%d %f %.2e %.2e %.2e %.2e " %
                       (m, rho, res[m, 0], res[m, 1], res[m, 2], res[m, 3]))
-        return x, xdiff, res
+        return x, psi, res
