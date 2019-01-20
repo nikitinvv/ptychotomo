@@ -9,34 +9,37 @@ import sys
 
 if __name__ == "__main__":
 
-    rho = 0.5
-    tau= 1e3*1e3
-    alpha = 1e-2*1e3*5*2
+    rho = 1
+    tau= 1
+    alpha = tau*1e-7*1.5
     gamma = 0.25
-    eta = 0.25/1e5*5
+    eta = 0.25
     piter = 4
     titer = 4
-    NITER = 512
+    NITER = 100
     maxint = 0.1
     voxelsize = 1e-6
     energy = 5
-
+    scale = 1
+    prb_step = 4
+    nangles = 400
+    
     # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')[:30:2**scale, ::2**scale, ::2**scale]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')[:30:2**scale, ::2**scale, ::2**scale]
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe
     prb = objects.Probe(objects.gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
     # Detector parameters
-    det = objects.Detector(128, 128)
+    det = objects.Detector(128//2**scale, 128//2**scale)
     # Define rotation angles
-    theta = np.linspace(0, 2*np.pi, 720).astype('float32')
+    theta = np.linspace(0, 2*np.pi, nangles).astype('float32')
     # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 12, 12, margin=[
+    scanax, scanay = objects.scanner3(theta, beta.shape, prb_step, prb_step, margin=[
         prb.size, prb.size], offset=[0, 0], spiral=1)
     # tomography data shape
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
@@ -58,11 +61,12 @@ if __name__ == "__main__":
     print("sigma = ", np.amax(np.sqrt(data*det.x*det.y)))
 
     # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
-    #data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
+    data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
 
     # Initial guess
     h = np.ones(tomoshape, dtype='complex64', order='C')
     psi = np.ones(tomoshape, dtype='complex64', order='C')
+    e = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
     lamd = np.zeros(tomoshape, dtype='complex64', order='C')    
     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
@@ -70,7 +74,7 @@ if __name__ == "__main__":
         obj.shape, dtype='float32', order='C'), voxelsize)
 
     # ADMM
-    x, psi, res = slv.admm(data, h, psi, phi, lamd, mu, x, rho, tau, alpha,
+    x, psi, res = slv.admm(data, h, e, psi, phi, lamd, mu, x, rho, tau, alpha,
                            gamma, eta, piter, titer, NITER)
 
     # Save result
