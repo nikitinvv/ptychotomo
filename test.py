@@ -20,15 +20,16 @@ if __name__ == "__main__":
     maxint = 0.1
     voxelsize = 1e-6
     energy = 5
-    scale = 1
+    scale = 0
     prb_step = 4
     nangles = 400
-    
+    noise = False
     # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[:30:2**scale, ::2**scale, ::2**scale]
+        'data/lego-real.tiff').astype('float32')[::2**scale, ::2**scale, ::2**scale]#*1e-6
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[:30:2**scale, ::2**scale, ::2**scale]
+        'data/lego-imag.tiff').astype('float32')[::2**scale, ::2**scale, ::2**scale]#*1e-6
+    print(np.amax(beta))
 
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -61,7 +62,8 @@ if __name__ == "__main__":
     print("sigma = ", np.amax(np.sqrt(data*det.x*det.y)))
 
     # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
-    data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
+    if (noise==True):
+        data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
 
     # Initial guess
     h = np.ones(tomoshape, dtype='complex64', order='C')
