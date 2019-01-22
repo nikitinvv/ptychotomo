@@ -142,12 +142,12 @@ class Scanner(object):
         self.offset = offset
 
     @property
-    def x(self):
-        return np.arange(self.offset[0], self.shape[0]-self.margin[0]+1, self.sx)
+    def y(self):
+        return np.arange(self.offset[0], self.shape[0]-self.margin[0]+1, self.sy)
 
     @property
-    def y(self):
-        return np.arange(self.offset[1], self.shape[1]-self.margin[1]+1, self.sy)
+    def x(self):
+        return np.arange(self.offset[1], self.shape[1]-self.margin[1]+1, self.sx)
 
 
 def gaussian(size, rin=0.8, rout=1):
@@ -185,3 +185,19 @@ def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
         scanay[m, :len(scan[m].y)] = scan[m].y
 
     return scanax, scanay
+
+def scanner3r(theta, shape, sx, sy, margin=[0,0]):
+    scx,scy = np.meshgrid(np.arange(0,shape[1]-margin[1]+1,sx),np.arange(0,shape[0]-margin[0]+1,sy))
+    shapescan = np.size(scx)
+    scanax = -1+np.zeros([len(theta), shapescan], dtype='float32')
+    scanay = -1+np.zeros([len(theta), shapescan], dtype='float32')
+    for m in range(len(theta)):
+        scanax[m] = np.ndarray.flatten(scx)+sx/2*(np.random.random(shapescan)-0.5)
+        scanay[m] = np.ndarray.flatten(scy)#+sy/2*(np.random.random(shapescan)-0.5)
+    scanax[np.where(scanax<0)] = 0
+    scanay[np.where(scanay<0)] = 0
+    scanax[np.where(scanax>shape[1]-margin[1])] = shape[1]-margin[1]-1        
+    scanay[np.where(scanay>shape[0]-margin[0])] = shape[0]-margin[0]-1       
+    return scanax, scanay        
+        
+        

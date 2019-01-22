@@ -27,8 +27,7 @@ class Solver(object):
         self.maxint = np.power(np.abs(prb.complex), 2).max().astype('float')
         self.tomoshape = tomoshape
         self.objshape = [tomoshape[1], tomoshape[2], tomoshape[2]]
-        self.ptychoshape = [theta.size, scanax.shape[1]
-                            * scanay.shape[1], det.x, det.y]
+        self.ptychoshape = [theta.size, scanax.shape[1], det.x, det.y]
         # create class for the tomo transform
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
         self.cl_tomo.setobj(theta)
@@ -36,7 +35,7 @@ class Solver(object):
         # number of angles for simultaneous processing by 1 gpu
         self.theta_gpu = tomoshape[0]//10
         self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
-                                             scanax.shape[1], scanay.shape[1], det.x, det.y, prb.size)
+                                             scanax.shape[1], det.x, det.y, prb.size)
 
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
