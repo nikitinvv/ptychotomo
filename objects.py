@@ -163,41 +163,42 @@ def gaussian(size, rin=0.8, rout=1):
     return img
 
 
-def scanner3(theta, shape, sx, sy, margin=[0, 0], offset=[0, 0], spiral=0):
-    a = spiral
-    scan = []
-    lenmaxx = 0
-    lenmaxy = 0
-
-    for m in range(len(theta)):
-        s = Scanner(shape, sx, sy, margin, offset=[
-            offset[0], np.mod(offset[1]+a, sy)])
-        scan.append(s)
-        a += spiral
-        lenmaxx = max(lenmaxx, len(s.x))
-        lenmaxy = max(lenmaxy, len(s.y))
-
-    scanax = -1+np.zeros([len(theta), lenmaxx], dtype='int32')
-    scanay = -1+np.zeros([len(theta), lenmaxy], dtype='int32')
-
-    for m in range(len(theta)):
-        scanax[m, :len(scan[m].x)] = scan[m].x
-        scanay[m, :len(scan[m].y)] = scan[m].y
-
-    return scanax, scanay
-
-def scanner3r(theta, shape, sx, sy, margin=[0,0]):
-    scx,scy = np.meshgrid(np.arange(0,shape[1]-margin[1]+1,sx),np.arange(0,shape[0]-margin[0]+1,sy))
+def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
+    scx, scy = np.meshgrid(
+        np.arange(0, shape[1]-psize+1, sx), np.arange(0, shape[0]-psize+1, sy))
     shapescan = np.size(scx)
     scanax = -1+np.zeros([len(theta), shapescan], dtype='float32')
     scanay = -1+np.zeros([len(theta), shapescan], dtype='float32')
+    a = spiral
     for m in range(len(theta)):
-        scanax[m] = np.ndarray.flatten(scx)+sx/2*(np.random.random(shapescan)-0.5)
-        scanay[m] = np.ndarray.flatten(scy)#+sy/2*(np.random.random(shapescan)-0.5)
-    scanax[np.where(scanax<0)] = 0
-    scanay[np.where(scanay<0)] = 0
-    scanax[np.where(scanax>shape[1]-margin[1])] = shape[1]-margin[1]-1        
-    scanay[np.where(scanay>shape[0]-margin[0])] = shape[0]-margin[0]-1       
-    return scanax, scanay        
-        
-        
+        scanax[m] = np.ndarray.flatten(scx)+np.mod(a, sx)
+        scanay[m] = np.ndarray.flatten(scy)
+        a += spiral
+        if randscan:
+            scanax[m] += sx/4*(np.random.random(shapescan)-0.5)
+            scanay[m] += sy/4*(np.random.random(shapescan)-0.5)
+    scanax[np.where(np.round(scanax) < 0)] = -1
+    scanay[np.where(np.round(scanay) < 0)] = -1    
+    scanax[np.where(np.round(scanax) > shape[1]-psize)] = -1#shape[1]-psize
+    scanay[np.where(np.round(scanay) > shape[0]-psize)] = -1#shape[0]-psize
+    # plot probes
+    if save:
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as patches
+        def random_color():
+            rgbl=[1,0,0]
+            np.random.shuffle(rgbl)
+            return tuple(rgbl)
+        for j in range(0, len(theta), 1):
+            fig, ax = plt.subplots(1)
+            plt.xlim(0, shape[1])
+            plt.ylim(0, shape[0])
+            plt.gca().set_aspect('equal', adjustable='box')
+            for k in range(0, len(scanax[j])):
+                if(scanax[j, k] < 0 or scanay[j, k] < 0):
+                    continue
+                c = patches.Circle(
+                    (scanax[j, k]+psize//2, scanay[j, k]+psize//2), psize//2, fill=False, edgecolor=[*random_color(),1])
+                ax.add_patch(c)
+            plt.savefig('scans/scan'+str(j)+'.png')
+    return scanax, scanay

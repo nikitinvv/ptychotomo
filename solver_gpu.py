@@ -134,13 +134,11 @@ class Solver(object):
     def grad_tomo(self, xi0, xi1, xi2, niter, init, rho, tau, eta):
         # normalization coefficient for KR
         r = 1/(xi0.shape[0]*xi0.shape[2]/2)/np.amax(np.abs(xi2)**2)
-        # print(r,np.amax(np.abs(xi2)**2))
         res = init.complexform
         for i in range(niter):
             # R^*K^*K(Rx-xi_0)
             tmp0 = self.adj_tomo(np.conj(xi2)*xi2*(self.fwd_tomo(res)-xi0))
             tmp1 = self.adj_reg(self.fwd_reg(res)-xi1)
-          #  print(np.amax(np.abs(r*rho*tmp0)),np.amax(np.abs(tau*tmp1)))
             res = res - 2*eta*r*rho*tmp0 - 2*eta*tau*tmp1
         return objects.Object(res.imag, res.real, self.voxelsize)
 
@@ -252,7 +250,7 @@ class Solver(object):
                     np.linalg.norm(phi-e)**2
                 res[6] = np.sum(res[0:5])
 
-                print("%d) rho=%f, tau=%f, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e" %
+                print("%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e" %
                       (m, rho, tau, res[0], res[1], res[2], res[3], res[4], res[5], res[6]))
 
         return x, psi, res
