@@ -8,23 +8,23 @@ import sys
 
 if __name__ == "__main__":
     rho = 1
-    tau = 1
-    alpha = tau*1e-7/2  
+    tau = 1e-10
+    alpha = tau*1e-7/2*1e-4
     gamma = 0.25
     eta = 0.25
     piter = 4
     titer = 4
-    NITER = 200
-    maxint = 0.1
+    NITER = 50
+    maxint = 0.3
     voxelsize = 1e-6
     energy = 5
-    nangles = 100
-    noise = False
+    nangles = 400
+    noise = True
     # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Define rotation angles
     theta = np.linspace(0, 2*np.pi, nangles).astype('float32')
     # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 8, 8, prb.size, spiral=1, randscan=True, save=True)    
+    scanax, scanay = objects.scanner3(theta, beta.shape, 4, 4, prb.size, spiral=1, randscan=False, save=False)    
     # tomography data shape
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
     # Class solver
@@ -56,6 +56,10 @@ if __name__ == "__main__":
     # s2 = np.sum(g*np.conj(g))
     # print(s1,s2)
     # print((s1-s2)/s1)
+    # 
+    # g=slv.fwd_reg(obj.complexform)
+    # slv.power_method(g)
+    # exit()
     
 
     # Compute data  |FQ(exp(i\nu R x))|^2,
@@ -80,10 +84,32 @@ if __name__ == "__main__":
 
     # ADMM
     x, psi, res = slv.admm(data, h, e, psi, phi, lamd, mu, x, rho, tau, alpha,
-                           gamma, eta, piter, titer, NITER)
+                           gamma, eta, piter, titer, NITER, 'grad')
 
     # Save result
-    dxchange.write_tiff(x.beta,  'beta/beta')
-    dxchange.write_tiff(x.delta,  'delta/delta')
-    dxchange.write_tiff(psi.real,  'psi/psi')
+    dxchange.write_tiff(x.beta,  'betagr2/beta')
+    dxchange.write_tiff(x.delta,  'deltagr2/delta')
+    dxchange.write_tiff(psi.real,  'psigr2/psi')
     np.save('residuals', res)
+
+
+# ####     ML
+#      # Initial guess
+#     h = np.ones(tomoshape, dtype='complex64', order='C')
+#     psi = np.ones(tomoshape, dtype='complex64', order='C')
+#     e = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+#     phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+#     lamd = np.zeros(tomoshape, dtype='complex64', order='C')
+#     mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+#     x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+#         obj.shape, dtype='float32', order='C'), voxelsize)
+
+#     # ADMM
+#     x, psi, res = slv.admm(data, h, e, psi, phi, lamd, mu, x, rho, tau, alpha,
+#                            gamma, eta, piter, titer, NITER, 'ml')
+
+#     # Save result
+#     dxchange.write_tiff(x.beta,  'betaml/betar')
+#     dxchange.write_tiff(x.delta,  'deltaml/deltar')
+#     dxchange.write_tiff(psi.real,  'psiml/psir')
+#     np.save('residuals', res)
