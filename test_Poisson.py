@@ -8,13 +8,13 @@ import sys
 
 if __name__ == "__main__":
     rho = 1
-    tau = 1e-7
-    alpha = tau*1e-7/2*1e-4
+    tau = 1e-8
+    alpha = tau*1e-7/2*1e-5
     gamma = 0.25
     eta = 0.25
     piter = 4
     titer = 4
-    NITER = 50
+    NITER = 100
     maxint = 0.3
     voxelsize = 1e-6
     energy = 5
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Define rotation angles
     theta = np.linspace(0, 2*np.pi, nangles).astype('float32')
     # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 4, 4, prb.size, spiral=1, randscan=False, save=False)    
+    scanax, scanay = objects.scanner3(theta, beta.shape, 10, 10, prb.size, spiral=1, randscan=False, save=False)    
     # tomography data shape
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
     # Class solver
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # Compute data  |FQ(exp(i\nu R x))|^2,
     data = np.abs(slv.fwd_ptycho(
         slv.exptomo(slv.fwd_tomo(obj.complexform))))**2*det.x*det.y
-    #data = np.round(data)
+    data = np.round(data)
     print("sigma = ", np.amax(np.sqrt(data)))
 
     # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
@@ -90,7 +90,7 @@ if __name__ == "__main__":
                            gamma, eta, piter, titer, NITER, 'grad')
 
     # Save result
-    name=np.str(tau>1e-6)+np.str(noise)+'gr'
+    name='gr'+'_max'+np.str(maxint)+'_alpha'+np.str(alpha)+'_noise'+np.str(noise)
     dxchange.write_tiff(x.beta,  'beta/beta'+name)
     dxchange.write_tiff(x.delta,  'delta/delta'+name)
     dxchange.write_tiff(psi.real,  'psi/psi'+name)
@@ -112,8 +112,9 @@ if __name__ == "__main__":
     x, psi, res = slv.admm(data, h, e, psi, phi, lamd, mu, x, rho, tau, alpha,
                            gamma, eta, piter, titer, NITER, 'ml')
 
+
     # Save result
-    name=np.str(tau>1e-6)+np.str(noise)+'ml'
+    name='ml'+'_max'+np.str(maxint)+'_alpha'+np.str(alpha)+'_noise'+np.str(noise)
     dxchange.write_tiff(x.beta,  'beta/beta'+name)
     dxchange.write_tiff(x.delta,  'delta/delta'+name)
     dxchange.write_tiff(psi.real,  'psi/psi'+name)

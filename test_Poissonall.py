@@ -8,24 +8,30 @@ import sys
 
 if __name__ == "__main__":
     rho = 1
-    tau = 1e-7
-    alpha = tau*1e-7/2*1e-4
+    tau = 1
     gamma = 0.25
     eta = 0.25
     piter = 4
     titer = 4
-    NITER = 50
+    NITER = 100
     maxint = 0.3
     voxelsize = 1e-6
     energy = 5
     nangles = 400
     noise = True
+    shift=10
     # Load a 3D object
     beta = dxchange.read_tiff(
         'data/test-beta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     delta = dxchange.read_tiff(
         'data/test-delta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     
+
+    alphaa = 1e-7*2**np.arange(-3,3)
+    shifta = [8,10,12,15]
+    maxinta = [0.2,0.3,0.4,0.5,0.6]
+
+    for imaxint in range(0,len(maxinta)):
     # Create object.
     obj = objects.Object(beta, delta, voxelsize)
     # Create probe
@@ -35,7 +41,7 @@ if __name__ == "__main__":
     # Define rotation angles
     theta = np.linspace(0, 2*np.pi, nangles).astype('float32')
     # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 4, 4, prb.size, spiral=1, randscan=False, save=False)    
+    scanax, scanay = objects.scanner3(theta, beta.shape, shift, shift, prb.size, spiral=1, randscan=False, save=False)    
     # tomography data shape
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
     # Class solver
@@ -47,25 +53,15 @@ if __name__ == "__main__":
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTSTP, signal_handler)
-
-    # # Adjoint test
-    # f = slv.exptomo(slv.fwd_tomo(obj.complexform))
-    # g = slv.fwd_ptycho(f)
-    # ff = slv.adj_ptycho(g)
-    # s1 = np.sum(f*np.conj(ff))
-    # s2 = np.sum(g*np.conj(g))
-    # print(s1,s2)
-    # print((s1-s2)/s1)
-    # 
-    # g=slv.fwd_reg(obj.complexform)
-    # slv.power_method(g)
-    # exit()
     
+
+
+
 
     # Compute data  |FQ(exp(i\nu R x))|^2,
     data = np.abs(slv.fwd_ptycho(
         slv.exptomo(slv.fwd_tomo(obj.complexform))))**2*det.x*det.y
-    #data = np.round(data)
+    data = np.round(data)
     print("sigma = ", np.amax(np.sqrt(data)))
 
     # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
@@ -74,7 +70,9 @@ if __name__ == "__main__":
     
     data/=(det.x*det.y)
 
-
+    for ialpha in range(0,5):
+    
+    alpha = tau*1e-7/2*2**(ialpha-2)    
     # Initial guess
     h = np.ones(tomoshape, dtype='complex64', order='C')
     psi = np.ones(tomoshape, dtype='complex64', order='C')
@@ -90,7 +88,7 @@ if __name__ == "__main__":
                            gamma, eta, piter, titer, NITER, 'grad')
 
     # Save result
-    name=np.str(tau>1e-6)+np.str(noise)+'gr'
+    name='gr'+'_max'+np.str(maxint)+'_nang'+np.str(nangles)+'_shift'+np.str(shift)+'_alpha'+np.str(alpha)+'_noise'+np.str(noise)
     dxchange.write_tiff(x.beta,  'beta/beta'+name)
     dxchange.write_tiff(x.delta,  'delta/delta'+name)
     dxchange.write_tiff(psi.real,  'psi/psi'+name)
@@ -113,7 +111,7 @@ if __name__ == "__main__":
                            gamma, eta, piter, titer, NITER, 'ml')
 
     # Save result
-    name=np.str(tau>1e-6)+np.str(noise)+'ml'
+    name='ml'+'_max'+np.str(maxint)+'_nang'+np.str(nangles)+'_shift'+np.str(shift)+'_alpha'+np.str(alpha)+'_noise'+np.str(noise)
     dxchange.write_tiff(x.beta,  'beta/beta'+name)
     dxchange.write_tiff(x.delta,  'delta/delta'+name)
     dxchange.write_tiff(psi.real,  'psi/psi'+name)
