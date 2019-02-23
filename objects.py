@@ -133,23 +133,6 @@ class Probe(object):
         return self.amplitude * np.exp(1j * self.phase)
 
 
-class Scanner(object):
-    def __init__(self, shape, sx, sy, margin=[0, 0], offset=[0, 0]):
-        self.shape = shape
-        self.sx = sx
-        self.sy = sy
-        self.margin = margin
-        self.offset = offset
-
-    @property
-    def y(self):
-        return np.arange(self.offset[0], self.shape[0]-self.margin[0]+1, self.sy)
-
-    @property
-    def x(self):
-        return np.arange(self.offset[1], self.shape[1]-self.margin[1]+1, self.sx)
-
-
 def gaussian(size, rin=0.8, rout=1):
     r, c = np.mgrid[:size, :size] + 0.5
     rs = np.sqrt((r - size/2)**2 + (c - size/2)**2)
@@ -179,8 +162,8 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
             scanay[m] += sy/4*(np.random.random(shapescan)-0.5)
     scanax[np.where(np.round(scanax) < 0)] = -1
     scanay[np.where(np.round(scanay) < 0)] = -1    
-    scanax[np.where(np.round(scanax) > shape[1]-psize)] = -1#shape[1]-psize
-    scanay[np.where(np.round(scanay) > shape[0]-psize)] = -1#shape[0]-psize
+    scanax[np.where(np.round(scanax) > shape[1]-psize)] = -1
+    scanay[np.where(np.round(scanay) > shape[0]-psize)] = -1
     # plot probes
     if save:
         import matplotlib.pyplot as plt
@@ -201,4 +184,7 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
                     (scanax[j, k]+psize//2, scanay[j, k]+psize//2), psize//2, fill=False, edgecolor=[*random_color(),1])
                 ax.add_patch(c)
             plt.savefig('scans/scan'+str(j)+'.png')
-    return scanax, scanay
+    scan = np.zeros([2,len(theta), shapescan], dtype='float32')             
+    scan[0]=scanax
+    scan[1]=scanay
+    return scan
