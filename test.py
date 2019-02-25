@@ -8,21 +8,21 @@ import sys
 
 if __name__ == "__main__":
 
-    alpha = 1e-7
+    alpha = 1e-8
     piter = 4
     titer = 4
-    NITER = 50
-    maxint = 1
+    NITER = 2
+    maxint = 0.5
     voxelsize = 1e-6
     energy = 5
-    nangles = 400
-    noise = True
+    nangles = 200
+    noise = False
 
     # Load a 3D object
     beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')#[:30:2, ::2, ::2]
+        'data/test-beta-128.tiff').astype('float32')[:30:2, ::2, ::2]
     delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')#[:30:2, ::2, ::2]
+        'data/test-delta-128.tiff').astype('float32')[:30:2, ::2, ::2]
 
     # Create object, probe, detector, angles, scan positions
     obj = objects.Object(beta, delta, voxelsize)
@@ -79,3 +79,31 @@ if __name__ == "__main__":
     dxchange.write_tiff(x.delta,  'delta/delta'+name)
     dxchange.write_tiff(psi.real,  'psi/psi'+name)
     np.save('residuals'+name, res)
+
+
+    # Initial guess
+    h = np.ones(tomoshape, dtype='complex64', order='C')
+    psi = np.ones(tomoshape, dtype='complex64', order='C')
+    e = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    phi = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    lamd = np.zeros(tomoshape, dtype='complex64', order='C')
+    mu = np.zeros([3, *obj.shape], dtype='complex64', order='C')
+    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
+        obj.shape, dtype='float32', order='C'), voxelsize)
+
+    model = 'gaussian'
+    # ADMM
+    x, psi, res = slv.admm(data, h, e, psi, phi, lamd,
+                           mu, x, alpha, piter, titer, NITER, model)
+
+    # Subtract background value for delta
+    x.delta -= -1.4e-5
+
+    # Save result
+    name = 'reg'+np.str(alpha)+'noise'+np.str(noise)+np.str(model)
+    dxchange.write_tiff(x.beta,  'beta/beta'+name)
+    dxchange.write_tiff(x.delta,  'delta/delta'+name)
+    dxchange.write_tiff(psi.real,  'psi/psi'+name)
+    np.save('residuals'+name, res)
+
+
