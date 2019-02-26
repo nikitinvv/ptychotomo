@@ -2950,11 +2950,9 @@ SWIG_Python_NonDynamicSetAttr(PyObject *obj, PyObject *name, PyObject *value) {
 /* -------- TYPES TABLE (BEGIN) -------- */
 
 #define SWIGTYPE_p_char swig_types[0]
-#define SWIGTYPE_p_float swig_types[1]
-#define SWIGTYPE_p_float2 swig_types[2]
-#define SWIGTYPE_p_radonusfft swig_types[3]
-static swig_type_info *swig_types[5];
-static swig_module_info swig_module = {swig_types, 4, 0, 0, 0, 0};
+#define SWIGTYPE_p_radonusfft swig_types[1]
+static swig_type_info *swig_types[3];
+static swig_module_info swig_module = {swig_types, 2, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3211,557 +3209,6 @@ SWIG_AsVal_size_t (PyObject * obj, size_t *val)
   return res;
 }
 
-
-SWIGINTERN int
-SWIG_AsVal_float (PyObject * obj, float *val)
-{
-  double v;
-  int res = SWIG_AsVal_double (obj, &v);
-  if (SWIG_IsOK(res)) {
-    if ((v < -FLT_MAX || v > FLT_MAX)) {
-      return SWIG_OverflowError;
-    } else {
-      if (val) *val = static_cast< float >(v);
-    }
-  }  
-  return res;
-}
-
-
-#include <limits.h>
-#if !defined(SWIG_NO_LLONG_MAX)
-# if !defined(LLONG_MAX) && defined(__GNUC__) && defined (__LONG_LONG_MAX__)
-#   define LLONG_MAX __LONG_LONG_MAX__
-#   define LLONG_MIN (-LLONG_MAX - 1LL)
-#   define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
-# endif
-#endif
-
-
-SWIGINTERN int
-SWIG_AsVal_long (PyObject *obj, long* val)
-{
-  if (PyInt_Check(obj)) {
-    if (val) *val = PyInt_AsLong(obj);
-    return SWIG_OK;
-  } else if (PyLong_Check(obj)) {
-    long v = PyLong_AsLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_OK;
-    } else {
-      PyErr_Clear();
-    }
-  }
-#ifdef SWIG_PYTHON_CAST_MODE
-  {
-    int dispatch = 0;
-    long v = PyInt_AsLong(obj);
-    if (!PyErr_Occurred()) {
-      if (val) *val = v;
-      return SWIG_AddCast(SWIG_OK);
-    } else {
-      PyErr_Clear();
-    }
-    if (!dispatch) {
-      double d;
-      int res = SWIG_AddCast(SWIG_AsVal_double (obj,&d));
-      if (SWIG_IsOK(res) && SWIG_CanCastAsInteger(&d, LONG_MIN, LONG_MAX)) {
-	if (val) *val = (long)(d);
-	return res;
-      }
-    }
-  }
-#endif
-  return SWIG_TypeError;
-}
-
-
-SWIGINTERN int
-SWIG_AsVal_int (PyObject * obj, int *val)
-{
-  long v;
-  int res = SWIG_AsVal_long (obj, &v);
-  if (SWIG_IsOK(res)) {
-    if ((v < INT_MIN || v > INT_MAX)) {
-      return SWIG_OverflowError;
-    } else {
-      if (val) *val = static_cast< int >(v);
-    }
-  }  
-  return res;
-}
-
-
-#if NPY_API_VERSION < 0x00000007
-#define NPY_ARRAY_DEFAULT NPY_DEFAULT
-#define NPY_ARRAY_FARRAY  NPY_FARRAY
-#define NPY_FORTRANORDER  NPY_FORTRAN
-#endif
-
-
-/* Macros to extract array attributes.
- */
-#if NPY_API_VERSION < 0x00000007
-#define is_array(a)            ((a) && PyArray_Check((PyArrayObject*)a))
-#define array_type(a)          (int)(PyArray_TYPE((PyArrayObject*)a))
-#define array_numdims(a)       (((PyArrayObject*)a)->nd)
-#define array_dimensions(a)    (((PyArrayObject*)a)->dimensions)
-#define array_size(a,i)        (((PyArrayObject*)a)->dimensions[i])
-#define array_strides(a)       (((PyArrayObject*)a)->strides)
-#define array_stride(a,i)      (((PyArrayObject*)a)->strides[i])
-#define array_data(a)          (((PyArrayObject*)a)->data)
-#define array_descr(a)         (((PyArrayObject*)a)->descr)
-#define array_flags(a)         (((PyArrayObject*)a)->flags)
-#define array_enableflags(a,f) (((PyArrayObject*)a)->flags) = f
-#define array_is_fortran(a)    (PyArray_ISFORTRAN((PyArrayObject*)a))
-#else
-#define is_array(a)            ((a) && PyArray_Check(a))
-#define array_type(a)          PyArray_TYPE((PyArrayObject*)a)
-#define array_numdims(a)       PyArray_NDIM((PyArrayObject*)a)
-#define array_dimensions(a)    PyArray_DIMS((PyArrayObject*)a)
-#define array_strides(a)       PyArray_STRIDES((PyArrayObject*)a)
-#define array_stride(a,i)      PyArray_STRIDE((PyArrayObject*)a,i)
-#define array_size(a,i)        PyArray_DIM((PyArrayObject*)a,i)
-#define array_data(a)          PyArray_DATA((PyArrayObject*)a)
-#define array_descr(a)         PyArray_DESCR((PyArrayObject*)a)
-#define array_flags(a)         PyArray_FLAGS((PyArrayObject*)a)
-#define array_enableflags(a,f) PyArray_ENABLEFLAGS((PyArrayObject*)a,f)
-#define array_is_fortran(a)    (PyArray_IS_F_CONTIGUOUS((PyArrayObject*)a))
-#endif
-#define array_is_contiguous(a) (PyArray_ISCONTIGUOUS((PyArrayObject*)a))
-#define array_is_native(a)     (PyArray_ISNOTSWAPPED((PyArrayObject*)a))
-
-
-  /* Given a PyObject, return a string describing its type.
-   */
-  const char* pytype_string(PyObject* py_obj)
-  {
-    if (py_obj == NULL          ) return "C NULL value";
-    if (py_obj == Py_None       ) return "Python None" ;
-    if (PyCallable_Check(py_obj)) return "callable"    ;
-    if (PyString_Check(  py_obj)) return "string"      ;
-    if (PyInt_Check(     py_obj)) return "int"         ;
-    if (PyFloat_Check(   py_obj)) return "float"       ;
-    if (PyDict_Check(    py_obj)) return "dict"        ;
-    if (PyList_Check(    py_obj)) return "list"        ;
-    if (PyTuple_Check(   py_obj)) return "tuple"       ;
-#if PY_MAJOR_VERSION < 3
-    if (PyFile_Check(    py_obj)) return "file"        ;
-    if (PyModule_Check(  py_obj)) return "module"      ;
-    if (PyInstance_Check(py_obj)) return "instance"    ;
-#endif
-
-    return "unknown type";
-  }
-
-  /* Given a NumPy typecode, return a string describing the type.
-   */
-  const char* typecode_string(int typecode)
-  {
-    static const char* type_names[25] = {"bool",
-                                         "byte",
-                                         "unsigned byte",
-                                         "short",
-                                         "unsigned short",
-                                         "int",
-                                         "unsigned int",
-                                         "long",
-                                         "unsigned long",
-                                         "long long",
-                                         "unsigned long long",
-                                         "float",
-                                         "double",
-                                         "long double",
-                                         "complex float",
-                                         "complex double",
-                                         "complex long double",
-                                         "object",
-                                         "string",
-                                         "unicode",
-                                         "void",
-                                         "ntypes",
-                                         "notype",
-                                         "char",
-                                         "unknown"};
-    return typecode < 24 ? type_names[typecode] : type_names[24];
-  }
-
-  /* Make sure input has correct numpy type.  This now just calls
-     PyArray_EquivTypenums().
-   */
-  int type_match(int actual_type,
-                 int desired_type)
-  {
-    return PyArray_EquivTypenums(actual_type, desired_type);
-  }
-
-#ifdef SWIGPY_USE_CAPSULE
-  void free_cap(PyObject * cap)
-  {
-    void* array = (void*) PyCapsule_GetPointer(cap,SWIGPY_CAPSULE_NAME);
-    if (array != NULL) free(array);
-  }
-#endif
-
-
-
-
-  /* Given a PyObject pointer, cast it to a PyArrayObject pointer if
-   * legal.  If not, set the python error string appropriately and
-   * return NULL.
-   */
-  PyArrayObject* obj_to_array_no_conversion(PyObject* input,
-                                            int        typecode)
-  {
-    PyArrayObject* ary = NULL;
-    if (is_array(input) && (typecode == NPY_NOTYPE ||
-                            PyArray_EquivTypenums(array_type(input), typecode)))
-    {
-      ary = (PyArrayObject*) input;
-    }
-    else if is_array(input)
-    {
-      const char* desired_type = typecode_string(typecode);
-      const char* actual_type  = typecode_string(array_type(input));
-      PyErr_Format(PyExc_TypeError,
-                   "Array of type '%s' required.  Array of type '%s' given",
-                   desired_type, actual_type);
-      ary = NULL;
-    }
-    else
-    {
-      const char* desired_type = typecode_string(typecode);
-      const char* actual_type  = pytype_string(input);
-      PyErr_Format(PyExc_TypeError,
-                   "Array of type '%s' required.  A '%s' was given",
-                   desired_type,
-                   actual_type);
-      ary = NULL;
-    }
-    return ary;
-  }
-
-  /* Convert the given PyObject to a NumPy array with the given
-   * typecode.  On success, return a valid PyArrayObject* with the
-   * correct type.  On failure, the python error string will be set and
-   * the routine returns NULL.
-   */
-  PyArrayObject* obj_to_array_allow_conversion(PyObject* input,
-                                               int       typecode,
-                                               int*      is_new_object)
-  {
-    PyArrayObject* ary = NULL;
-    PyObject*      py_obj;
-    if (is_array(input) && (typecode == NPY_NOTYPE ||
-                            PyArray_EquivTypenums(array_type(input),typecode)))
-    {
-      ary = (PyArrayObject*) input;
-      *is_new_object = 0;
-    }
-    else
-    {
-      py_obj = PyArray_FROMANY(input, typecode, 0, 0, NPY_ARRAY_DEFAULT);
-      /* If NULL, PyArray_FromObject will have set python error value.*/
-      ary = (PyArrayObject*) py_obj;
-      *is_new_object = 1;
-    }
-    return ary;
-  }
-
-  /* Given a PyArrayObject, check to see if it is contiguous.  If so,
-   * return the input pointer and flag it as not a new object.  If it is
-   * not contiguous, create a new PyArrayObject using the original data,
-   * flag it as a new object and return the pointer.
-   */
-  PyArrayObject* make_contiguous(PyArrayObject* ary,
-                                 int*           is_new_object,
-                                 int            min_dims,
-                                 int            max_dims)
-  {
-    PyArrayObject* result;
-    if (array_is_contiguous(ary))
-    {
-      result = ary;
-      *is_new_object = 0;
-    }
-    else
-    {
-      result = (PyArrayObject*) PyArray_ContiguousFromObject((PyObject*)ary,
-                                                              array_type(ary),
-                                                              min_dims,
-                                                              max_dims);
-      *is_new_object = 1;
-    }
-    return result;
-  }
-
-  /* Given a PyArrayObject, check to see if it is Fortran-contiguous.
-   * If so, return the input pointer, but do not flag it as not a new
-   * object.  If it is not Fortran-contiguous, create a new
-   * PyArrayObject using the original data, flag it as a new object
-   * and return the pointer.
-   */
-  PyArrayObject* make_fortran(PyArrayObject* ary,
-                              int*           is_new_object)
-  {
-    PyArrayObject* result;
-    if (array_is_fortran(ary))
-    {
-      result = ary;
-      *is_new_object = 0;
-    }
-    else
-    {
-      Py_INCREF(array_descr(ary));
-      result = (PyArrayObject*) PyArray_FromArray(ary,
-                                                  array_descr(ary),
-#if NPY_API_VERSION < 0x00000007
-                                                  NPY_FORTRANORDER);
-#else
-                                                  NPY_ARRAY_F_CONTIGUOUS);
-#endif
-      *is_new_object = 1;
-    }
-    return result;
-  }
-
-  /* Convert a given PyObject to a contiguous PyArrayObject of the
-   * specified type.  If the input object is not a contiguous
-   * PyArrayObject, a new one will be created and the new object flag
-   * will be set.
-   */
-  PyArrayObject* obj_to_array_contiguous_allow_conversion(PyObject* input,
-                                                          int       typecode,
-                                                          int*      is_new_object)
-  {
-    int is_new1 = 0;
-    int is_new2 = 0;
-    PyArrayObject* ary2;
-    PyArrayObject* ary1 = obj_to_array_allow_conversion(input,
-                                                        typecode,
-                                                        &is_new1);
-    if (ary1)
-    {
-      ary2 = make_contiguous(ary1, &is_new2, 0, 0);
-      if ( is_new1 && is_new2)
-      {
-        Py_DECREF(ary1);
-      }
-      ary1 = ary2;
-    }
-    *is_new_object = is_new1 || is_new2;
-    return ary1;
-  }
-
-  /* Convert a given PyObject to a Fortran-ordered PyArrayObject of the
-   * specified type.  If the input object is not a Fortran-ordered
-   * PyArrayObject, a new one will be created and the new object flag
-   * will be set.
-   */
-  PyArrayObject* obj_to_array_fortran_allow_conversion(PyObject* input,
-                                                       int       typecode,
-                                                       int*      is_new_object)
-  {
-    int is_new1 = 0;
-    int is_new2 = 0;
-    PyArrayObject* ary2;
-    PyArrayObject* ary1 = obj_to_array_allow_conversion(input,
-                                                        typecode,
-                                                        &is_new1);
-    if (ary1)
-    {
-      ary2 = make_fortran(ary1, &is_new2);
-      if (is_new1 && is_new2)
-      {
-        Py_DECREF(ary1);
-      }
-      ary1 = ary2;
-    }
-    *is_new_object = is_new1 || is_new2;
-    return ary1;
-  }
-
-
-  /* Test whether a python object is contiguous.  If array is
-   * contiguous, return 1.  Otherwise, set the python error string and
-   * return 0.
-   */
-  int require_contiguous(PyArrayObject* ary)
-  {
-    int contiguous = 1;
-    if (!array_is_contiguous(ary))
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "Array must be contiguous.  A non-contiguous array was given");
-      contiguous = 0;
-    }
-    return contiguous;
-  }
-
-  /* Test whether a python object is (C_ or F_) contiguous.  If array is
-   * contiguous, return 1.  Otherwise, set the python error string and
-   * return 0.
-   */
-  int require_c_or_f_contiguous(PyArrayObject* ary)
-  {
-    int contiguous = 1;
-    if (!(array_is_contiguous(ary) || array_is_fortran(ary)))
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "Array must be contiguous (C_ or F_).  A non-contiguous array was given");
-      contiguous = 0;
-    }
-    return contiguous;
-  }
-
-  /* Require that a numpy array is not byte-swapped.  If the array is
-   * not byte-swapped, return 1.  Otherwise, set the python error string
-   * and return 0.
-   */
-  int require_native(PyArrayObject* ary)
-  {
-    int native = 1;
-    if (!array_is_native(ary))
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "Array must have native byteorder.  "
-                      "A byte-swapped array was given");
-      native = 0;
-    }
-    return native;
-  }
-
-  /* Require the given PyArrayObject to have a specified number of
-   * dimensions.  If the array has the specified number of dimensions,
-   * return 1.  Otherwise, set the python error string and return 0.
-   */
-  int require_dimensions(PyArrayObject* ary,
-                         int            exact_dimensions)
-  {
-    int success = 1;
-    if (array_numdims(ary) != exact_dimensions)
-    {
-      PyErr_Format(PyExc_TypeError,
-                   "Array must have %d dimensions.  Given array has %d dimensions",
-                   exact_dimensions,
-                   array_numdims(ary));
-      success = 0;
-    }
-    return success;
-  }
-
-  /* Require the given PyArrayObject to have one of a list of specified
-   * number of dimensions.  If the array has one of the specified number
-   * of dimensions, return 1.  Otherwise, set the python error string
-   * and return 0.
-   */
-  int require_dimensions_n(PyArrayObject* ary,
-                           int*           exact_dimensions,
-                           int            n)
-  {
-    int success = 0;
-    int i;
-    char dims_str[255] = "";
-    char s[255];
-    for (i = 0; i < n && !success; i++)
-    {
-      if (array_numdims(ary) == exact_dimensions[i])
-      {
-        success = 1;
-      }
-    }
-    if (!success)
-    {
-      for (i = 0; i < n-1; i++)
-      {
-        sprintf(s, "%d, ", exact_dimensions[i]);
-        strcat(dims_str,s);
-      }
-      sprintf(s, " or %d", exact_dimensions[n-1]);
-      strcat(dims_str,s);
-      PyErr_Format(PyExc_TypeError,
-                   "Array must have %s dimensions.  Given array has %d dimensions",
-                   dims_str,
-                   array_numdims(ary));
-    }
-    return success;
-  }
-
-  /* Require the given PyArrayObject to have a specified shape.  If the
-   * array has the specified shape, return 1.  Otherwise, set the python
-   * error string and return 0.
-   */
-  int require_size(PyArrayObject* ary,
-                   npy_intp*      size,
-                   int            n)
-  {
-    int i;
-    int success = 1;
-    int len;
-    char desired_dims[255] = "[";
-    char s[255];
-    char actual_dims[255] = "[";
-    for(i=0; i < n;i++)
-    {
-      if (size[i] != -1 &&  size[i] != array_size(ary,i))
-      {
-        success = 0;
-      }
-    }
-    if (!success)
-    {
-      for (i = 0; i < n; i++)
-      {
-        if (size[i] == -1)
-        {
-          sprintf(s, "*,");
-        }
-        else
-        {
-          sprintf(s, "%ld,", (long int)size[i]);
-        }
-        strcat(desired_dims,s);
-      }
-      len = strlen(desired_dims);
-      desired_dims[len-1] = ']';
-      for (i = 0; i < n; i++)
-      {
-        sprintf(s, "%ld,", (long int)array_size(ary,i));
-        strcat(actual_dims,s);
-      }
-      len = strlen(actual_dims);
-      actual_dims[len-1] = ']';
-      PyErr_Format(PyExc_TypeError,
-                   "Array must have shape of %s.  Given array has shape of %s",
-                   desired_dims,
-                   actual_dims);
-    }
-    return success;
-  }
-
-  /* Require the given PyArrayObject to to be Fortran ordered.  If the
-   * the PyArrayObject is already Fortran ordered, do nothing.  Else,
-   * set the Fortran ordering flag and recompute the strides.
-   */
-  int require_fortran(PyArrayObject* ary)
-  {
-    int success = 1;
-    int nd = array_numdims(ary);
-    int i;
-    npy_intp * strides = array_strides(ary);
-    if (array_is_fortran(ary)) return success;
-    /* Set the Fortran ordered flag */
-    array_enableflags(ary,NPY_ARRAY_FARRAY);
-    /* Recompute the strides */
-    strides[0] = strides[nd-1];
-    for (i=1; i < nd; ++i)
-      strides[i] = strides[i-1] * array_size(ary,i-1);
-    return success;
-  }
-
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -3826,187 +3273,17 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_radonusfft_fwdR(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  float2 *arg3 = (float2 *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  void *argp3 = 0 ;
-  int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_fwdR",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_fwdR" "', argument " "1"" of type '" "radonusfft *""'"); 
-  }
-  arg1 = reinterpret_cast< radonusfft * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_fwdR" "', argument " "2"" of type '" "float2 *""'"); 
-  }
-  arg2 = reinterpret_cast< float2 * >(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_fwdR" "', argument " "3"" of type '" "float2 *""'"); 
-  }
-  arg3 = reinterpret_cast< float2 * >(argp3);
-  (arg1)->fwdR(arg2,arg3);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_radonusfft_adjR(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  float2 *arg3 = (float2 *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  void *argp3 = 0 ;
-  int res3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOO:radonusfft_adjR",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_adjR" "', argument " "1"" of type '" "radonusfft *""'"); 
-  }
-  arg1 = reinterpret_cast< radonusfft * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_adjR" "', argument " "2"" of type '" "float2 *""'"); 
-  }
-  arg2 = reinterpret_cast< float2 * >(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_adjR" "', argument " "3"" of type '" "float2 *""'"); 
-  }
-  arg3 = reinterpret_cast< float2 * >(argp3);
-  (arg1)->adjR(arg2,arg3);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_radonusfft_grad_tomoc(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  float2 *arg3 = (float2 *) 0 ;
-  float arg4 ;
-  int arg5 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  void *argp3 = 0 ;
-  int res3 = 0 ;
-  float val4 ;
-  int ecode4 = 0 ;
-  int val5 ;
-  int ecode5 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
-  PyObject * obj4 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOOOO:radonusfft_grad_tomoc",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_grad_tomoc" "', argument " "1"" of type '" "radonusfft *""'"); 
-  }
-  arg1 = reinterpret_cast< radonusfft * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_grad_tomoc" "', argument " "2"" of type '" "float2 *""'"); 
-  }
-  arg2 = reinterpret_cast< float2 * >(argp2);
-  res3 = SWIG_ConvertPtr(obj2, &argp3,SWIGTYPE_p_float2, 0 |  0 );
-  if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "radonusfft_grad_tomoc" "', argument " "3"" of type '" "float2 *""'"); 
-  }
-  arg3 = reinterpret_cast< float2 * >(argp3);
-  ecode4 = SWIG_AsVal_float(obj3, &val4);
-  if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "radonusfft_grad_tomoc" "', argument " "4"" of type '" "float""'");
-  } 
-  arg4 = static_cast< float >(val4);
-  ecode5 = SWIG_AsVal_int(obj4, &val5);
-  if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "radonusfft_grad_tomoc" "', argument " "5"" of type '" "int""'");
-  } 
-  arg5 = static_cast< int >(val5);
-  (arg1)->grad_tomoc(arg2,arg3,arg4,arg5);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_radonusfft_setobjc(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  radonusfft *arg1 = (radonusfft *) 0 ;
-  float *arg2 = (float *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:radonusfft_setobjc",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_setobjc" "', argument " "1"" of type '" "radonusfft *""'"); 
-  }
-  arg1 = reinterpret_cast< radonusfft * >(argp1);
-  res2 = SWIG_ConvertPtr(obj1, &argp2,SWIGTYPE_p_float, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "radonusfft_setobjc" "', argument " "2"" of type '" "float *""'"); 
-  }
-  arg2 = reinterpret_cast< float * >(argp2);
-  (arg1)->setobjc(arg2);
-  resultobj = SWIG_Py_Void();
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
 SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  int arg3 ;
-  int arg4 ;
-  int arg5 ;
-  float2 *arg6 = (float2 *) 0 ;
-  int arg7 ;
-  int arg8 ;
-  int arg9 ;
+  size_t arg2 ;
+  size_t arg3 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyArrayObject *array2 = NULL ;
-  PyArrayObject *array6 = NULL ;
-  int is_new_object6 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  size_t val3 ;
+  int ecode3 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4017,44 +3294,20 @@ SWIGINTERN PyObject *_wrap_radonusfft_fwd(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_fwd" "', argument " "1"" of type '" "radonusfft *""'"); 
   }
   arg1 = reinterpret_cast< radonusfft * >(argp1);
-  {
-    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
-    if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
-      !require_native(array2)) SWIG_fail;
-    arg2 = (float2*) array_data(array2);
-    arg3 = (int) array_size(array2,0);
-    arg4 = (int) array_size(array2,1);
-    arg5 = (int) array_size(array2,2);
-  }
-  {
-    npy_intp size[3] = {
-      -1, -1, -1 
-    };
-    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
-      &is_new_object6);
-    if (!array6 || !require_dimensions(array6, 3) ||
-      !require_size(array6, size, 3)) SWIG_fail;
-    arg6 = (float2*) array_data(array6);
-    arg7 = (int) array_size(array6,0);
-    arg8 = (int) array_size(array6,1);
-    arg9 = (int) array_size(array6,2);
-  }
-  (arg1)->fwd(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "radonusfft_fwd" "', argument " "2"" of type '" "size_t""'");
+  } 
+  arg2 = static_cast< size_t >(val2);
+  ecode3 = SWIG_AsVal_size_t(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "radonusfft_fwd" "', argument " "3"" of type '" "size_t""'");
+  } 
+  arg3 = static_cast< size_t >(val3);
+  (arg1)->fwd(arg2,arg3);
   resultobj = SWIG_Py_Void();
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
   return resultobj;
 fail:
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
   return NULL;
 }
 
@@ -4062,19 +3315,14 @@ fail:
 SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  int arg3 ;
-  int arg4 ;
-  int arg5 ;
-  float2 *arg6 = (float2 *) 0 ;
-  int arg7 ;
-  int arg8 ;
-  int arg9 ;
+  size_t arg2 ;
+  size_t arg3 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyArrayObject *array2 = NULL ;
-  PyArrayObject *array6 = NULL ;
-  int is_new_object6 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
+  size_t val3 ;
+  int ecode3 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4085,130 +3333,20 @@ SWIGINTERN PyObject *_wrap_radonusfft_adj(PyObject *SWIGUNUSEDPARM(self), PyObje
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_adj" "', argument " "1"" of type '" "radonusfft *""'"); 
   }
   arg1 = reinterpret_cast< radonusfft * >(argp1);
-  {
-    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
-    if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
-      !require_native(array2)) SWIG_fail;
-    arg2 = (float2*) array_data(array2);
-    arg3 = (int) array_size(array2,0);
-    arg4 = (int) array_size(array2,1);
-    arg5 = (int) array_size(array2,2);
-  }
-  {
-    npy_intp size[3] = {
-      -1, -1, -1 
-    };
-    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
-      &is_new_object6);
-    if (!array6 || !require_dimensions(array6, 3) ||
-      !require_size(array6, size, 3)) SWIG_fail;
-    arg6 = (float2*) array_data(array6);
-    arg7 = (int) array_size(array6,0);
-    arg8 = (int) array_size(array6,1);
-    arg9 = (int) array_size(array6,2);
-  }
-  (arg1)->adj(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "radonusfft_adj" "', argument " "2"" of type '" "size_t""'");
+  } 
+  arg2 = static_cast< size_t >(val2);
+  ecode3 = SWIG_AsVal_size_t(obj2, &val3);
+  if (!SWIG_IsOK(ecode3)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "radonusfft_adj" "', argument " "3"" of type '" "size_t""'");
+  } 
+  arg3 = static_cast< size_t >(val3);
+  (arg1)->adj(arg2,arg3);
   resultobj = SWIG_Py_Void();
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
   return resultobj;
 fail:
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_radonusfft_grad_tomo(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  radonusfft *arg1 = (radonusfft *) 0 ;
-  float2 *arg2 = (float2 *) 0 ;
-  int arg3 ;
-  int arg4 ;
-  int arg5 ;
-  float2 *arg6 = (float2 *) 0 ;
-  int arg7 ;
-  int arg8 ;
-  int arg9 ;
-  float arg10 ;
-  int arg11 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  PyArrayObject *array2 = NULL ;
-  PyArrayObject *array6 = NULL ;
-  int is_new_object6 = 0 ;
-  float val10 ;
-  int ecode10 = 0 ;
-  int val11 ;
-  int ecode11 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
-  PyObject * obj4 = 0 ;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOOOO:radonusfft_grad_tomo",&obj0,&obj1,&obj2,&obj3,&obj4)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_radonusfft, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_grad_tomo" "', argument " "1"" of type '" "radonusfft *""'"); 
-  }
-  arg1 = reinterpret_cast< radonusfft * >(argp1);
-  {
-    array2 = obj_to_array_no_conversion(obj1, NPY_CFLOAT);
-    if (!array2 || !require_dimensions(array2,3) || !require_contiguous(array2) ||
-      !require_native(array2)) SWIG_fail;
-    arg2 = (float2*) array_data(array2);
-    arg3 = (int) array_size(array2,0);
-    arg4 = (int) array_size(array2,1);
-    arg5 = (int) array_size(array2,2);
-  }
-  {
-    npy_intp size[3] = {
-      -1, -1, -1 
-    };
-    array6 = obj_to_array_contiguous_allow_conversion(obj2, NPY_CFLOAT,
-      &is_new_object6);
-    if (!array6 || !require_dimensions(array6, 3) ||
-      !require_size(array6, size, 3)) SWIG_fail;
-    arg6 = (float2*) array_data(array6);
-    arg7 = (int) array_size(array6,0);
-    arg8 = (int) array_size(array6,1);
-    arg9 = (int) array_size(array6,2);
-  }
-  ecode10 = SWIG_AsVal_float(obj3, &val10);
-  if (!SWIG_IsOK(ecode10)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "radonusfft_grad_tomo" "', argument " "10"" of type '" "float""'");
-  } 
-  arg10 = static_cast< float >(val10);
-  ecode11 = SWIG_AsVal_int(obj4, &val11);
-  if (!SWIG_IsOK(ecode11)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode11), "in method '" "radonusfft_grad_tomo" "', argument " "11"" of type '" "int""'");
-  } 
-  arg11 = static_cast< int >(val11);
-  (arg1)->grad_tomo(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
-  resultobj = SWIG_Py_Void();
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
-  return resultobj;
-fail:
-  {
-    if (is_new_object6 && array6)
-    {
-      Py_DECREF(array6); 
-    }
-  }
   return NULL;
 }
 
@@ -4216,12 +3354,11 @@ fail:
 SWIGINTERN PyObject *_wrap_radonusfft_setobj(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   radonusfft *arg1 = (radonusfft *) 0 ;
-  float *arg2 = (float *) 0 ;
-  int arg3 ;
+  size_t arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  PyArrayObject *array2 = NULL ;
-  int is_new_object2 = 0 ;
+  size_t val2 ;
+  int ecode2 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   
@@ -4231,34 +3368,15 @@ SWIGINTERN PyObject *_wrap_radonusfft_setobj(PyObject *SWIGUNUSEDPARM(self), PyO
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "radonusfft_setobj" "', argument " "1"" of type '" "radonusfft *""'"); 
   }
   arg1 = reinterpret_cast< radonusfft * >(argp1);
-  {
-    npy_intp size[1] = {
-      -1 
-    };
-    array2 = obj_to_array_contiguous_allow_conversion(obj1,
-      NPY_FLOAT,
-      &is_new_object2);
-    if (!array2 || !require_dimensions(array2, 1) ||
-      !require_size(array2, size, 1)) SWIG_fail;
-    arg2 = (float*) array_data(array2);
-    arg3 = (int) array_size(array2,0);
-  }
-  (arg1)->setobj(arg2,arg3);
+  ecode2 = SWIG_AsVal_size_t(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "radonusfft_setobj" "', argument " "2"" of type '" "size_t""'");
+  } 
+  arg2 = static_cast< size_t >(val2);
+  (arg1)->setobj(arg2);
   resultobj = SWIG_Py_Void();
-  {
-    if (is_new_object2 && array2)
-    {
-      Py_DECREF(array2); 
-    }
-  }
   return resultobj;
 fail:
-  {
-    if (is_new_object2 && array2)
-    {
-      Py_DECREF(array2); 
-    }
-  }
   return NULL;
 }
 
@@ -4274,13 +3392,8 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"SWIG_PyInstanceMethod_New", (PyCFunction)SWIG_PyInstanceMethod_New, METH_O, NULL},
 	 { (char *)"new_radonusfft", _wrap_new_radonusfft, METH_VARARGS, NULL},
 	 { (char *)"delete_radonusfft", _wrap_delete_radonusfft, METH_VARARGS, NULL},
-	 { (char *)"radonusfft_fwdR", _wrap_radonusfft_fwdR, METH_VARARGS, NULL},
-	 { (char *)"radonusfft_adjR", _wrap_radonusfft_adjR, METH_VARARGS, NULL},
-	 { (char *)"radonusfft_grad_tomoc", _wrap_radonusfft_grad_tomoc, METH_VARARGS, NULL},
-	 { (char *)"radonusfft_setobjc", _wrap_radonusfft_setobjc, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_fwd", _wrap_radonusfft_fwd, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_adj", _wrap_radonusfft_adj, METH_VARARGS, NULL},
-	 { (char *)"radonusfft_grad_tomo", _wrap_radonusfft_grad_tomo, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_setobj", _wrap_radonusfft_setobj, METH_VARARGS, NULL},
 	 { (char *)"radonusfft_swigregister", radonusfft_swigregister, METH_VARARGS, NULL},
 	 { NULL, NULL, 0, NULL }
@@ -4290,26 +3403,18 @@ static PyMethodDef SwigMethods[] = {
 /* -------- TYPE CONVERSION AND EQUIVALENCE RULES (BEGIN) -------- */
 
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_float = {"_p_float", "float *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_float2 = {"_p_float2", "float2 *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_radonusfft = {"_p_radonusfft", "radonusfft *", 0, 0, (void*)0, 0};
 
 static swig_type_info *swig_type_initial[] = {
   &_swigt__p_char,
-  &_swigt__p_float,
-  &_swigt__p_float2,
   &_swigt__p_radonusfft,
 };
 
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_float[] = {  {&_swigt__p_float, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_float2[] = {  {&_swigt__p_float2, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_radonusfft[] = {  {&_swigt__p_radonusfft, 0, 0, 0},{0, 0, 0, 0}};
 
 static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_char,
-  _swigc__p_float,
-  _swigc__p_float2,
   _swigc__p_radonusfft,
 };
 
