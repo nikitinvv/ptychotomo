@@ -7,7 +7,7 @@ radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 	N = N_*3/2; //padded version
 	Ntheta = Ntheta_;
 	Nz = Nz_;
-	float eps = 1e-5;
+	float eps = 1e-6;
 	mu = -log(eps)/(2*N*N);
 	M = ceil(2*N*1/PI*sqrt(-mu*log(eps)+(mu*N)*(mu*N)/4));
 
