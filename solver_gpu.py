@@ -5,7 +5,7 @@
 
 import radonusfft
 import ptychofft
-import numpy as np
+import cupy as np
 import objects
 import warnings
 
@@ -17,91 +17,76 @@ SPEED_OF_LIGHT = 299792458e+2  # [cm/s]
 
 class Solver(object):
     def __init__(self, prb, scan, theta, det, voxelsize, energy, tomoshape):
-        self.prb = prb
-        self.scan = scan
-        self.theta = theta
-        self.det = det
         self.voxelsize = voxelsize
         self.energy = energy
+        # shapes
         self.tomoshape = tomoshape
         self.objshape = [tomoshape[1], tomoshape[2], tomoshape[2]]
-        self.ptychoshape = [theta.size, scan.shape[2], det.x, det.y]
+        self.ptychoshape = [theta.size, scan.shape[2], det[0], det[1]]
         # create class for the tomo transform
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
-        self.cl_tomo.setobj(theta)
-        # normalization coefficients
-        self.coeftomo = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2)
-        maxint = np.power(np.abs(prb.complex), 2).max().astype('float')
-        self.coefptycho = 1/np.sqrt(maxint)
-        self.coefdata = 1/(det.x*det.y*maxint)
+        self.cl_tomo.setobj(theta.data.ptr)
         # create class for the ptycho transform
-        # number of angles for simultaneous processing by 1 gpu
-        self.theta_gpu = tomoshape[0]//10
-        self.cl_ptycho = ptychofft.ptychofft(self.theta_gpu, tomoshape[1], tomoshape[2],
-                                             scan.shape[2], det.x, det.y, prb.size)
+        self.cl_ptycho = ptychofft.ptychofft(*self.tomoshape,*self.ptychoshape[1:],prb.shape[0])
+        self.cl_ptycho.setobj(scan.data.ptr, prb.data.ptr)                                             
 
+        
+        # normalization coefficients
+        self.coeftomo = 1/np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2).astype('float32')
+        maxint = np.power(np.abs(prb), 2).max().astype('float32')
+        self.coefptycho = 1/np.sqrt(maxint)
+        self.coefdata = 1/(self.ptychoshape[2]*self.ptychoshape[3]*maxint)
+        
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
 
     # Exp representation of projections, exp(i\nu\psi)
     def exptomo(self, psi):
-        return np.exp(1j * psi * self.voxelsize * self.wavenumber()/self.coeftomo)
+        return np.exp(1j*psi * self.voxelsize * self.wavenumber()/self.coeftomo)
 
     # Log representation of projections, -i/\nu log(psi)
     def logtomo(self, psi):
         return -1j / self.wavenumber() * np.log(psi) / self.voxelsize*self.coeftomo
 
     # Radon transform (R)
+    @profile
     def fwd_tomo(self, psi):
         res=np.zeros(self.tomoshape, dtype='complex64', order='C')
-        self.cl_tomo.fwd(res, psi)
-        # normalization
-        res *= self.coeftomo
+        self.cl_tomo.fwd(res.data.ptr, psi.data.ptr)
+        res *= self.coeftomo #normalization
         return res
 
     # Adjoint Radon transform (R^*)
     def adj_tomo(self, data):
         res=np.zeros(self.objshape, dtype='complex64', order='C')
-        self.cl_tomo.adj(res, data)
-        # normalization
-        res *= self.coeftomo
+        self.cl_tomo.adj(res.data.ptr, data.data.ptr)
+        res *= self.coeftomo #normalization
         return res
 
     # Ptychography transform (FQ)
+    @profile
     def fwd_ptycho(self, psi):
-        res=np.zeros(self.ptychoshape, dtype='complex64', order='C')
-        #self.cl_ptycho.fwd(res[ast:aend], psi[ast:aend])
-        for k in range(0, self.ptychoshape[0]//self.theta_gpu):
-            # process self.theta_gpu angles on 1gpu simultaneously
-            ast, aend=k*self.theta_gpu, (k+1)*self.theta_gpu
-            self.cl_ptycho.setobj(self.scan[0, ast:aend], self.scan[1, ast:aend],
-                                  self.prb.complex)
-            self.cl_ptycho.fwd(res[ast:aend], psi[ast:aend])
-        # normalization
-        res *= self.coefptycho
+        res=np.zeros(self.ptychoshape, dtype='complex64', order='C')        
+        #psi = np.array(psi, dtype='complex64',order='C')
+        self.cl_ptycho.fwd(res.data.ptr, psi.data.ptr)     
+        res *= self.coefptycho #normalization
         return res
 
     # Adjoint ptychography transform (Q*F*)
     def adj_ptycho(self, data):
         res=np.zeros(self.tomoshape, dtype='complex64', order='C')
-        for k in range(0, self.ptychoshape[0]//self.theta_gpu):
-            # process self.theta_gpu angles on 1gpu simultaneously
-            ast, aend=k*self.theta_gpu, (k+1)*self.theta_gpu
-            self.cl_ptycho.setobj(self.scan[0, ast:aend], self.scan[1, ast:aend],
-                                  self.prb.complex)
-            self.cl_ptycho.adj(res[ast:aend], data[ast:aend])
-        # normalization
-        res *= self.coefptycho
+        self.cl_ptycho.adj(res.data.ptr,data.data.ptr)        
+        res *= self.coefptycho # normalization
         return res
 
     # Forward operator for regularization (J)
-    def fwd_reg(self, x):
+    @profile
+    def fwd_reg(self, u):
         res=np.zeros([3, *self.objshape], dtype='complex64', order='C')
-        res[0, :, :, :-1]=x[:, :, 1:]-x[:, :, :-1]
-        res[1, :, :-1, :]=x[:, 1:, :]-x[:, :-1, :]
-        res[2, :-1, :, :]=x[1:, :, :]-x[:-1, :, :]
-        # normalization
-        res *= 2/np.sqrt(3)
+        res[0, :, :, :-1]=u[:, :, 1:]-u[:, :, :-1]
+        res[1, :, :-1, :]=u[:, 1:, :]-u[:, :-1, :]
+        res[2, :-1, :, :]=u[1:, :, :]-u[:-1, :, :]        
+        res *= 2/np.sqrt(3)# normalization
         return res
 
     # Adjoint operator for regularization (J^*)
@@ -113,66 +98,71 @@ class Solver(object):
         res[:, 0, :] += gr[1, :, 0, :]
         res[1:, :, :] += gr[2, 1:, :, :]-gr[2, :-1, :, :]
         res[0, :, :] += gr[2, 0, :, :]
-        res=-res
-        # normalization
-        res *= 2/np.sqrt(3)
+        res *= -2/np.sqrt(3)# normalization
         return res
 
     # xi0,K, and K for linearization of the tomography problem
+    @profile
     def takexi(self, psi, phi, lamd, mu, rho, tau):
-        K=1j*self.voxelsize * self.wavenumber()*(psi-lamd/rho)
-        # normalization
-        K=K/np.amax(np.abs(K))
+        K=1j*self.voxelsize * self.wavenumber()*(psi-lamd/rho)        
+        K=K/np.amax(np.abs(K))# normalization
         xi0=K*(-1j*np.log(psi-lamd/rho) / \
                (self.voxelsize * self.wavenumber()))*self.coeftomo
         xi1=phi-mu/tau
         return xi0, xi1, K
 
     # Line search for the step sizes gamma
-    def line_search(self,minf,gamma,x,fx,d,fd):
-        while(minf(x, fx)-minf(x+gamma*d, fx+gamma*fd) < 0 and gamma > 1e-4):
+    @profile
+    def line_search(self,minf,gamma,u,fu,d,fd):
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-5):
             gamma *= 0.5            
         return gamma
             
     # Conjugate gradients tomography
+    @profile
     def cg_tomo(self, xi0, xi1, K, niter, init, rho, tau):
-        def minf(KRx, gx): return rho*np.linalg.norm(KRx-xi0)**2+tau*np.linalg.norm(gx-xi1)**2             
-        x = init.complexform
-        gamma = 8
+        # minimization functional
+        def minf(KRu, gu): return rho*np.linalg.norm(KRu-xi0)**2+tau*np.linalg.norm(gu-xi1)**2             
+        u = init
+        gamma = 8 # init gamma as a large value
         for i in range(niter):
-            KRx = K*self.fwd_tomo(x)
-            gx = self.fwd_reg(x)
-            grad = rho*self.adj_tomo(np.conj(K)*(KRx-xi0))+tau*self.adj_reg(gx-xi1)
-            if i == 0:
-                d=-grad
-            else:                
-              d=-grad+np.linalg.norm(grad)**2/((np.sum(d*np.conj(grad-grad0))))*d
-            grad0=grad
-
-            KRd=K*self.fwd_tomo(d)
-            gd=self.fwd_reg(d)
-            gamma = self.line_search(minf,gamma,KRx,gx,KRd,gd)                   
-            #print(i, gamma, minf(KRx, gx), minf(
-                    #KRx+gamma*KRd, gx+gamma*gd))
-            x = x + gamma*d
-        return objects.Object(x.imag, x.real, self.voxelsize)        
-
-    # Conjugate gradients for the Gaussian ptychography model
-    def cg_gaussian_ptycho(self, data, init, niter, rho, h, lamd):
-        def minf(psi, fpsi): return np.linalg.norm(
-            np.abs(fpsi)-np.sqrt(data))**2+rho*np.linalg.norm(h-psi+lamd/rho)**2
-        psi=init.copy()
-        gamma=8  # init gamma as a large value
-        eps=1e-5
-        for i in range(niter):
-            fpsi=self.fwd_ptycho(psi)
-            grad=self.adj_ptycho(
-                fpsi-fpsi*eps/(np.abs(fpsi)*eps+eps*eps)*np.sqrt(data))-rho*(h - psi + lamd/rho)
+            KRu = K*self.fwd_tomo(u)
+            gu = self.fwd_reg(u)
+            grad = rho*self.adj_tomo(np.conj(K)*(KRu-xi0))+tau*self.adj_reg(gu-xi1)
+            #Dai-Yuan direction         
             if i == 0:
                 d=-grad
             else:                
                 d=-grad+np.linalg.norm(grad)**2/((np.sum(d*np.conj(grad-grad0))))*d
             grad0=grad
+            #line search
+            KRd=K*self.fwd_tomo(d)
+            gd=self.fwd_reg(d)
+            gamma = self.line_search(minf,gamma,KRu,gu,KRd,gd)                   
+            #print(i, gamma, minf(KRu, gu), minf(
+                    #KRu+gamma*KRd, gu+gamma*gd))
+            u = u + gamma*d
+        return u
+
+    # Conjugate gradients for the Gaussian ptychography model
+    @profile
+    def cg_gaussian_ptycho(self, data, init, niter, rho, h, lamd):
+        # minimization functional
+        def minf(psi, fpsi): 
+            return np.linalg.norm(np.abs(fpsi)-np.sqrt(data))**2+rho*np.linalg.norm(h-psi+lamd/rho)**2
+        psi=init.copy()
+        gamma=8  # init gamma as a large value
+        for i in range(niter):
+            fpsi=self.fwd_ptycho(psi)
+            grad=self.adj_ptycho(
+                fpsi-fpsi*1e-5/(np.abs(fpsi)*1e-5+1e-10)*np.sqrt(data))-rho*(h - psi + lamd/rho)
+            #Dai-Yuan direction                
+            if i == 0:
+                d=-grad
+            else:                
+                d=-grad+np.linalg.norm(grad)**2/((np.sum(d*np.conj(grad-grad0))))*d
+            grad0=grad
+            #line search
             fd=self.fwd_ptycho(d)
             gamma =  self.line_search(minf,gamma,psi,fpsi,d,fd)                   
             #print(i, gamma, minf(psi, fpsi), minf(
@@ -181,20 +171,22 @@ class Solver(object):
         return psi
 
     # Conjugate gradients for the Poisson ptychography model
+    @profile
     def cg_poisson_ptycho(self, data, init, niter, rho, h, lamd):
-        def minf(psi, fpsi): return np.sum(np.abs(fpsi)**2-2*data*np.log(np.abs(fpsi)+np.float32(data<1e-7))) +rho*np.linalg.norm(h-psi+lamd/rho)**2
+        def minf(psi, fpsi): return np.sum(np.abs(fpsi)**2-2*data*np.log(np.abs(fpsi)+np.float32(data<1e-5))) +rho*np.linalg.norm(h-psi+lamd/rho)**2
         psi=init.copy()
         gamma=8  # init gamma as a large value
-        eps=1e-5
         for i in range(niter):
             fpsi=self.fwd_ptycho(psi)
             grad=self.adj_ptycho(
-                fpsi-data*eps /(np.conj(fpsi)*eps+eps*eps))-rho*(h - psi + lamd/rho)            
+                fpsi-data*1e-5/(np.conj(fpsi)*1e-5+1e-10))-rho*(h - psi + lamd/rho)            
+            #Dai-Yuan
             if i == 0:
-                d=-grad
+                d=-gradfloat32
             else:
-                d=-grad+np.linalg.norm(grad)**2/((np.sum(d*np.conj(grad-grad0))))*d
-            grad0=grad
+                d=-grad+np.linalg.norm(grad)**2/((np.sum(d*np.conj(grad-grad0))))*d            
+            grad0=grad            
+            #line search
             fd=self.fwd_ptycho(d)
             gamma =  self.line_search(minf,gamma,psi,fpsi,d,fd)                   
             #print(i, gamma, minf(psi, fpsi), minf(
@@ -203,15 +195,18 @@ class Solver(object):
         return psi        
 
     # Regularizer problem
-    def solve_reg(self, x, mu, tau, alpha):
-        z=self.fwd_reg(x)+mu/tau
-        za=np.sqrt(np.sum(z*np.conj(z), 0))
+    @profile
+    def solve_reg(self, u, mu, tau, alpha):
+        z=self.fwd_reg(u)+mu/tau
+        #Soft-thresholding
+        za=np.sqrt(np.real(np.sum(z*np.conj(z), 0)))
         z[:, za <= alpha/tau]=0
         z[:, za > alpha/tau] -= alpha/tau * \
             z[:, za > alpha/tau]/za[za > alpha/tau]
         return z
 
     # Update rho, tau for a faster convergence
+    @profile
     def update_penalty(self, rho, tau, psi, h, h0, phi, e, e0):
         # rho
         r=np.linalg.norm(psi - h)**2
@@ -230,14 +225,15 @@ class Solver(object):
         return rho, tau
 
     # Lagrangian terms
+    @profile
     def take_lagr(self,psi,phi,data,h,e,lamd,mu,tau,rho,alpha,model):
         lagr = np.zeros(7, dtype="float32")
         fpsi = self.fwd_ptycho(psi)
         if (model == 'poisson'):                    
-            lagr[0]=np.sum(np.abs(fpsi)**2-2*data*np.log(np.abs(fpsi)+np.float32(data<1e-7)))
+            lagr[0]=np.sum(np.abs(fpsi)**2-2*data*np.log(np.abs(fpsi)+np.float32(data<1e-5)))
         if (model == 'gaussian'):
             lagr[0]=np.linalg.norm(np.abs(fpsi)-np.sqrt(data))
-        lagr[1]=alpha*np.sum(np.sqrt(np.sum(phi*np.conj(phi), 0)))
+        lagr[1]=alpha*np.sum(np.sqrt(np.real(np.sum(phi*np.conj(phi), 0))))
         lagr[2]=2*np.sum(np.real(np.conj(lamd)*(h-psi)))
         lagr[3]=rho*np.linalg.norm(h-psi)**2
         lagr[4]=2*np.sum(np.real(np.conj(mu)*(e-phi)))
@@ -246,17 +242,17 @@ class Solver(object):
         return lagr        
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, h, e, psi, phi, lamd, mu, x, alpha, piter, titer, NITER, model):
-        # normalization
-        data=data.copy()*self.coefdata
+    @profile
+    def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, piter, titer, NITER, model):        
+        data=data.copy()*self.coefdata # normalization
         # init penalties
         rho,tau = 1,1           
-        #Lagrangian for each iter
+        # Lagrangian for each iter
         lagr=np.zeros([NITER, 7], dtype="float32")
         lagr0 = self.take_lagr(psi,phi,data,h,e,lamd,mu,tau,rho,alpha,model)     
         for m in range(NITER):
             # keep previous iteration
-            psi0, phi0, x0, h0, e0, lamd0, mu0=psi, phi, x, h, e, lamd, mu
+            psi0, phi0, u0, h0, e0, lamd0, mu0=psi, phi, u, h, e, lamd, mu
             # ptychography problem
             if (model == 'gaussian'):
                 psi=self.cg_gaussian_ptycho(data, psi, piter, rho, h, lamd)
@@ -264,12 +260,12 @@ class Solver(object):
                 psi=self.cg_poisson_ptycho(data, psi, piter, rho, h, lamd)
             # tomography problem
             xi0, xi1, K=self.takexi(psi, phi, lamd, mu, rho, tau)
-            x=self.cg_tomo(xi0, xi1, K, titer, x, rho, tau)
+            u=self.cg_tomo(xi0, xi1, K, titer, u, rho, tau)
             # regularizer problem
-            phi=self.solve_reg(x.complexform, mu, tau, alpha)
+            phi=self.solve_reg(u, mu, tau, alpha)
             # h,e updates
-            h=self.exptomo(self.fwd_tomo(x.complexform))            
-            e=self.fwd_reg(x.complexform)
+            h=self.exptomo(self.fwd_tomo(u))            
+            e=self.fwd_reg(u)
             # lambda, mu updates
             lamd=lamd + rho * (h-psi)            
             mu=mu + tau * (e-phi)
@@ -277,10 +273,11 @@ class Solver(object):
             rho, tau = self.update_penalty(
                rho, tau, psi, h, h0, phi, e, e0)
 
-            if (np.mod(m, 1) == 0):
+            # Lagrangians difference between two iterations
+            if (np.mod(m, 4) == 0):
                 lagr[m] = self.take_lagr(psi,phi,data,h,e,lamd,mu,tau,rho,alpha,model)
                 print("%d) rho=%.2e, tau=%.2e, Terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
-                   (m, rho, tau, *(lagr[m]-lagr0)))
+                   (m, rho, tau, *(lagr0-lagr[m])))
                 lagr0=lagr[m]                
-        return x, psi, lagr
+        return u, psi, lagr
 
