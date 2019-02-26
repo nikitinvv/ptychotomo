@@ -1,0 +1,278 @@
+Timer unit: 1e-06 s
+
+Total time: 0.018867 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: fwd_tomo at line 53
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    53                                               @profile
+    54                                               def fwd_tomo(self, psi):
+    55        20        842.0     42.1      4.5          res = np.zeros(self.tomoshape, dtype='complex64', order='C')
+    56        20       3572.0    178.6     18.9          self.cl_tomo.fwd(res.data.ptr, psi.data.ptr)
+    57        20      14434.0    721.7     76.5          res *= self.coeftomo  # normalization
+    58        20         19.0      0.9      0.1          return res
+
+Total time: 0.015431 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: fwd_ptycho at line 68
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    68                                               @profile
+    69                                               def fwd_ptycho(self, psi):
+    70        22       3003.0    136.5     19.5          res = np.zeros(self.ptychoshape, dtype='complex64', order='C')
+    71                                                   #psi = np.array(psi, dtype='complex64',order='C')
+    72        22       8017.0    364.4     52.0          self.cl_ptycho.fwd(res.data.ptr, psi.data.ptr)
+    73        22       4389.0    199.5     28.4          res *= self.coefptycho  # normalization
+    74        22         22.0      1.0      0.1          return res
+
+Total time: 0.046544 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: fwd_reg at line 84
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    84                                               @profile
+    85                                               def fwd_reg(self, u):
+    86        20        403.0     20.1      0.9          res = np.zeros([3, *self.objshape], dtype='complex64', order='C')
+    87        20      18757.0    937.9     40.3          res[0, :, :, :-1] = u[:, :, 1:]-u[:, :, :-1]
+    88        20       7507.0    375.4     16.1          res[1, :, :-1, :] = u[:, 1:, :]-u[:, :-1, :]
+    89        20       4183.0    209.2      9.0          res[2, :-1, :, :] = u[1:, :, :]-u[:-1, :, :]
+    90        20      15673.0    783.6     33.7          res *= 2/np.sqrt(3)  # normalization
+    91        20         21.0      1.1      0.0          return res
+
+Total time: 0.007755 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: takexi at line 106
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   106                                               @profile
+   107                                               def takexi(self, psi, phi, lamd, mu, rho, tau):
+   108         2       1098.0    549.0     14.2          K = 1j*self.voxelsize * self.wavenumber()*(psi-lamd/rho)
+   109         2        780.0    390.0     10.1          K = K/np.amax(np.abs(K))  # normalization
+   110                                                   xi0 = K*(-1j*np.log(psi-lamd/rho) /
+   111         2       5167.0   2583.5     66.6                   (self.voxelsize * self.wavenumber()))*self.coeftomo
+   112         2        708.0    354.0      9.1          xi1 = phi-mu/tau
+   113         2          2.0      1.0      0.0          return xi0, xi1, K
+
+Total time: 4.45072 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: line_search at line 116
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   116                                               @profile
+   117                                               def line_search(self, minf, gamma, u, fu, d, fd):
+   118        35    4450669.0 127162.0    100.0          while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-5):
+   119        18         31.0      1.7      0.0              gamma *= 0.5
+   120        16         21.0      1.3      0.0          return gamma
+
+Total time: 0.37122 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: cg_tomo at line 123
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   123                                               @profile
+   124                                               def cg_tomo(self, xi0, xi1, K, niter, init, rho, tau):
+   125                                                   # minimization functional
+   126         2          3.0      1.5      0.0          def minf(KRu, gu): return rho*np.linalg.norm(KRu-xi0)**2 + \
+   127                                                       tau*np.linalg.norm(gu-xi1)**2
+   128         2          2.0      1.0      0.0          u = init
+   129         2          2.0      1.0      0.0          gamma = 8  # init gamma as a large value
+   130        10         13.0      1.3      0.0          for i in range(niter):
+   131         8       4604.0    575.5      1.2              KRu = K*self.fwd_tomo(u)
+   132         8      28296.0   3537.0      7.6              gu = self.fwd_reg(u)
+   133         8       8665.0   1083.1      2.3              grad = rho*self.adj_tomo(np.conj(K)*(KRu-xi0)) + \
+   134         8      32173.0   4021.6      8.7                  tau*self.adj_reg(gu-xi1)
+   135                                                       # Dai-Yuan direction
+   136         8         10.0      1.2      0.0              if i == 0:
+   137         2        337.0    168.5      0.1                  d = -grad
+   138                                                       else:
+   139         6       1022.0    170.3      0.3                  d = -grad+np.linalg.norm(grad)**2 / \
+   140         6      10654.0   1775.7      2.9                      ((np.sum(d*np.conj(grad-grad0))))*d
+   141         8         14.0      1.8      0.0              grad0 = grad
+   142                                                       # line search
+   143         8       4474.0    559.2      1.2              KRd = K*self.fwd_tomo(d)
+   144         8      12324.0   1540.5      3.3              gd = self.fwd_reg(d)
+   145         8     265646.0  33205.8     71.6              gamma = self.line_search(minf, gamma, KRu, gu, KRd, gd)
+   146                                                       # print(i, gamma, minf(KRu, gu), minf(
+   147                                                       # KRu+gamma*KRd, gu+gamma*gd))
+   148         8       2979.0    372.4      0.8              u = u + gamma*d
+   149         2          2.0      1.0      0.0          return u
+
+Total time: 0 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: cg_gaussian_ptycho at line 152
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   152                                               @profile
+   153                                               def cg_gaussian_ptycho(self, data, init, niter, rho, h, lamd):
+   154                                                   # minimization functional
+   155                                                   def minf(psi, fpsi):
+   156                                                       return np.linalg.norm(np.abs(fpsi)-np.sqrt(data))**2+rho*np.linalg.norm(h-psi+lamd/rho)**2
+   157                                                   psi = init.copy()
+   158                                                   gamma = 8  # init gamma as a large value
+   159                                                   for i in range(niter):
+   160                                                       fpsi = self.fwd_ptycho(psi)
+   161                                                       grad = self.adj_ptycho(
+   162                                                           fpsi-fpsi*1e-5/(np.abs(fpsi)*1e-5+1e-10)*np.sqrt(data))-rho*(h - psi + lamd/rho)
+   163                                                       # Dai-Yuan direction
+   164                                                       if i == 0:
+   165                                                           d = -grad
+   166                                                       else:
+   167                                                           d = -grad+np.linalg.norm(grad)**2 / \
+   168                                                               ((np.sum(d*np.conj(grad-grad0))))*d
+   169                                                       grad0 = grad
+   170                                                       # line search
+   171                                                       fd = self.fwd_ptycho(d)
+   172                                                       gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
+   173                                                       # print(i, gamma, minf(psi, fpsi), minf(
+   174                                                       # psi+gamma*d, fpsi+gamma*fd))
+   175                                                       psi = psi + gamma*d
+   176                                                   return psi
+
+Total time: 4.45707 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: cg_poisson_ptycho at line 179
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   179                                               @profile
+   180                                               def cg_poisson_ptycho(self, data, init, niter, rho, h, lamd):
+   181         3          6.0      2.0      0.0          def minf(psi, fpsi): return np.sum(np.abs(fpsi)**2-2*data*np.log(np.abs(fpsi) +
+   182                                                                                                                    (data < 1e-5).astype("float32"))) + rho*np.linalg.norm(h-psi+lamd/rho)**2
+   183         3       3201.0   1067.0      0.1          psi = init.copy()
+   184         3          4.0      1.3      0.0          gamma = 8  # init gamma as a large value
+   185        11         20.0      1.8      0.0          for i in range(niter):
+   186         9       5371.0    596.8      0.1              fpsi = self.fwd_ptycho(psi)
+   187         9         11.0      1.2      0.0              grad = self.adj_ptycho(
+   188         9     131552.0  14616.9      3.0                  fpsi-data*1e-5/(np.conj(fpsi)*1e-5+1e-10))-rho*(h - psi + lamd/rho)
+   189                                                       # Dai-Yuan
+   190         9         14.0      1.6      0.0              if i == 0:
+   191         3       3142.0   1047.3      0.1                  d = -grad
+   192                                                       else:
+   193         6       1017.0    169.5      0.0                  d = -grad+np.linalg.norm(grad)**2 / \
+   194         6     118528.0  19754.7      2.7                      ((np.sum(d*np.conj(grad-grad0))))*d
+   195         9         22.0      2.4      0.0              grad0 = grad
+   196                                                       # line search
+   197         9       5200.0    577.8      0.1              fd = self.fwd_ptycho(d)
+   198         9    4185249.0 465027.7     93.9              gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
+   199                                                       # print(i, gamma, minf(psi, fpsi), minf(
+   200                                                       #       psi+gamma*d, fpsi+gamma*fd))
+   201         8       3733.0    466.6      0.1              psi = psi + gamma*d
+   202         2          2.0      1.0      0.0          return psi
+
+Total time: 0.03998 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: solve_reg at line 205
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   205                                               @profile
+   206                                               def solve_reg(self, u, mu, tau, alpha):
+   207         2       3792.0   1896.0      9.5          z = self.fwd_reg(u)+mu/tau
+   208                                                   # Soft-thresholding
+   209         2       1151.0    575.5      2.9          za = np.sqrt(np.real(np.sum(z*np.conj(z), 0)))
+   210         2      18046.0   9023.0     45.1          z[:, za <= alpha/tau] = 0
+   211         2       6274.0   3137.0     15.7          z[:, za > alpha/tau] -= alpha/tau * \
+   212         2      10715.0   5357.5     26.8              z[:, za > alpha/tau]/za[za > alpha/tau]
+   213         2          2.0      1.0      0.0          return z
+
+Total time: 0.025555 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: update_penalty at line 216
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   216                                               @profile
+   217                                               def update_penalty(self, rho, tau, psi, h, h0, phi, e, e0):
+   218                                                   # rho
+   219         2       1817.0    908.5      7.1          r = np.linalg.norm(psi - h)**2
+   220         2       2218.0   1109.0      8.7          s = np.linalg.norm(rho*(h-h0))**2
+   221         2      13172.0   6586.0     51.5          if (r > 10*s):
+   222                                                       rho *= 2
+   223         2        928.0    464.0      3.6          elif (s > 10*r):
+   224                                                       rho *= 0.5
+   225                                                   # tau
+   226         2       1853.0    926.5      7.3          r = np.linalg.norm(phi - e)**2
+   227         2       2199.0   1099.5      8.6          s = np.linalg.norm(tau*(e-e0))**2
+   228         2       2565.0   1282.5     10.0          if (r > 10*s):
+   229                                                       tau *= 2
+   230         2        801.0    400.5      3.1          elif (s > 10*r):
+   231         2          2.0      1.0      0.0              tau *= 0.5
+   232         2          0.0      0.0      0.0          return rho, tau
+
+Total time: 0.16644 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: take_lagr at line 235
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   235                                               @profile
+   236                                               def take_lagr(self, psi, phi, data, h, e, lamd, mu, tau, rho, alpha, model):
+   237         2         31.0     15.5      0.0          lagr = np.zeros(7, dtype="float32")
+   238         2       2377.0   1188.5      1.4          fpsi = self.fwd_ptycho(psi)
+   239         2          2.0      1.0      0.0          if (model == 'poisson'):
+   240         2      55387.0  27693.5     33.3              lagr[0] = np.sum(np.abs(fpsi)**2-2*data *
+   241         2      28894.0  14447.0     17.4                               np.log(np.abs(fpsi)+(data < 1e-5).astype("float32")))
+   242         2          4.0      2.0      0.0          if (model == 'gaussian'):
+   243                                                       lagr[0] = np.linalg.norm(np.abs(fpsi)-np.sqrt(data))
+   244         2      65841.0  32920.5     39.6          lagr[1] = alpha*np.sum(np.sqrt(np.real(np.sum(phi*np.conj(phi), 0))))
+   245         2       4218.0   2109.0      2.5          lagr[2] = 2*np.sum(np.real(np.conj(lamd)*(h-psi)))
+   246         2       5332.0   2666.0      3.2          lagr[3] = rho*np.linalg.norm(h-psi)**2
+   247         2       1751.0    875.5      1.1          lagr[4] = 2*np.sum(np.real(np.conj(mu)*(e-phi)))
+   248         2       2444.0   1222.0      1.5          lagr[5] = tau*np.linalg.norm(e-phi)**2
+   249         2        157.0     78.5      0.1          lagr[6] = np.sum(lagr[0:5])
+   250         2          2.0      1.0      0.0          return lagr
+
+Total time: 5.21522 s
+File: /home/beams0/VNIKITIN/sw/ptycho/ptychotomoreg/solver_gpu.py
+Function: admm at line 253
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   253                                               @profile
+   254                                               def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, piter, titer, NITER, model):
+   255         1       3103.0   3103.0      0.1          data = data.copy()*self.coefdata  # normalization
+   256                                                   # init penalties
+   257         1          2.0      2.0      0.0          rho, tau = 1, 1
+   258                                                   # Lagrangian for each iter
+   259         1         26.0     26.0      0.0          lagr = np.zeros([NITER, 7], dtype="float32")
+   260         1          2.0      2.0      0.0          lagr0 = self.take_lagr(psi, phi, data, h, e, lamd,
+   261         1     159137.0 159137.0      3.1                                 mu, tau, rho, alpha, model)
+   262         3          5.0      1.7      0.0          for m in range(NITER):
+   263                                                       # keep previous iteration
+   264         3         10.0      3.3      0.0              psi0, phi0, u0, h0, e0, lamd0, mu0 = psi, phi, u, h, e, lamd, mu
+   265                                                       # ptychography problem
+   266         3          3.0      1.0      0.0              if (model == 'gaussian'):
+   267                                                           psi = self.cg_gaussian_ptycho(data, psi, piter, rho, h, lamd)
+   268         3          3.0      1.0      0.0              elif (model == 'poisson'):
+   269         3    4457255.0 1485751.7     85.5                  psi = self.cg_poisson_ptycho(data, psi, piter, rho, h, lamd)
+   270                                                       # tomography problem
+   271         2       7788.0   3894.0      0.1              xi0, xi1, K = self.takexi(psi, phi, lamd, mu, rho, tau)
+   272         2     371379.0 185689.5      7.1              u = self.cg_tomo(xi0, xi1, K, titer, u, rho, tau)
+   273                                                       # regularizer problem
+   274         2      40013.0  20006.5      0.8              phi = self.solve_reg(u, mu, tau, alpha)
+   275                                                       # h,e updates
+   276         2       2721.0   1360.5      0.1              h = self.exptomo(self.fwd_tomo(u))
+   277         2       3129.0   1564.5      0.1              e = self.fwd_reg(u)
+   278                                                       # lambda, mu updates
+   279         2       1114.0    557.0      0.0              lamd = lamd + rho * (h-psi)
+   280         2       1084.0    542.0      0.0              mu = mu + tau * (e-phi)
+   281                                                       # update rho, tau for a faster convergence
+   282         2          4.0      2.0      0.0              rho, tau = self.update_penalty(
+   283         2      25603.0  12801.5      0.5                  rho, tau, psi, h, h0, phi, e, e0)
+   284                                           
+   285                                                       # Lagrangians difference between two iterations
+   286         2       5153.0   2576.5      0.1              if (np.mod(m, 4) == 0):
+   287         1          1.0      1.0      0.0                  lagr[m] = self.take_lagr(
+   288         1       7375.0   7375.0      0.1                      psi, phi, data, h, e, lamd, mu, tau, rho, alpha, model)
+   289         1          1.0      1.0      0.0                  print("%d) rho=%.2e, tau=%.2e, Terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
+   290         1     130294.0 130294.0      2.5                        (m, rho, tau, *(lagr0-lagr[m])))
+   291         1         15.0     15.0      0.0                  lagr0 = lagr[m]
+   292                                                   return u, psi, lagr
+
