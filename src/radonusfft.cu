@@ -4,7 +4,7 @@
 
 radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 {
-	N = N_*3/2; //padded version
+	N = N_;
 	Ntheta = Ntheta_;
 	Nz = Nz_;
 	float eps = 1e-5;
@@ -13,10 +13,6 @@ radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 
 	cudaMalloc((void**)&f,N*N*Nz*sizeof(float2));
 	cudaMalloc((void**)&g,N*Ntheta*Nz*sizeof(float2));
-	cudaMalloc((void**)&ff,N*2/3*N*2/3*Nz*sizeof(float2));
-	cudaMalloc((void**)&gg,N*2/3*Ntheta*Nz*sizeof(float2));	
-	cudaMalloc((void**)&f0,N*2/3*N*2/3*Nz*sizeof(float2));
-	cudaMalloc((void**)&g0,N*2/3*Ntheta*Nz*sizeof(float2));		
 	cudaMalloc((void**)&fde,2*N*2*N*Nz*sizeof(float2));
 	cudaMalloc((void**)&fdee,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
 
@@ -45,11 +41,7 @@ radonusfft::radonusfft(size_t Ntheta_, size_t Nz_, size_t N_)
 radonusfft::~radonusfft()
 {	
 	cudaFree(f);
-	cudaFree(g);
-	cudaFree(ff);
-	cudaFree(gg);	
-	cudaFree(f0);
-	cudaFree(g0);	
+	cudaFree(g);			
 	cudaFree(fde);
 	cudaFree(fdee);
 	cudaFree(x);
@@ -59,7 +51,7 @@ radonusfft::~radonusfft()
 	cufftDestroy(plan1d);
 }
 
-void radonusfft::fwdR(float2* g_, float2* f_)
+void radonusfft::fwd(size_t g_, size_t f_)
 {	
 	dim3 BS2d(32,32);
 	dim3 BS3d(32,32,1);
@@ -70,11 +62,11 @@ void radonusfft::fwdR(float2* g_, float2* f_)
 	dim3 GS3d2(ceil((2*N+2*M)/(float)BS3d.x),ceil((2*N+2*M)/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 	dim3 GS3d3(ceil(N/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 
-	//cudaMemcpy(f,f_,N*N*Nz*sizeof(float2),cudaMemcpyDefault);
+	cudaMemcpy(f,(float2*)f_,N*N*Nz*sizeof(float2),cudaMemcpyDefault);
 	//padded version
-	cudaMemset(f,0,N*N*Nz*sizeof(float2));
-	for(int iz=0;iz<Nz;iz++)
-		cudaMemcpy2D(&f[iz*N*N+N/6*N+N/6],N*sizeof(float2),&f_[iz*N/3*2*N/3*2],N/3*2*sizeof(float2),N/3*2*sizeof(float2),N/3*2*1,cudaMemcpyDefault);
+	// cudaMemset(f,0,N*N*Nz*sizeof(float2));
+	// for(int iz=0;iz<Nz;iz++)
+	// 	cudaMemcpy2D(&f[iz*N*N+N/6*N+N/6],N*sizeof(float2),&((float2*)f_)[iz*N/3*2*N/3*2],N/3*2*sizeof(float2),N/3*2*sizeof(float2),N/3*2*1,cudaMemcpyDefault);
 
 	cudaMemset(fde,0,2*N*2*N*Nz*sizeof(float2));
 	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
@@ -95,11 +87,11 @@ void radonusfft::fwdR(float2* g_, float2* f_)
 	cufftExecC2C(plan1d, (cufftComplex*)g,(cufftComplex*)g,CUFFT_INVERSE);
 	fftshift1c<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
 
-	//cudaMemcpy(g_,g,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
-	cudaMemcpy2D(g_,N/3*2*sizeof(float2),&g[N/6],N*sizeof(float2),N/3*2*sizeof(float2),Ntheta*Nz,cudaMemcpyDefault);  	
+	cudaMemcpy((float2*)g_,g,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
+	//cudaMemcpy2D((float2*)g_,N/3*2*sizeof(float2),&g[N/6],N*sizeof(float2),N/3*2*sizeof(float2),Ntheta*Nz,cudaMemcpyDefault);  	
 }
 
-void radonusfft::adjR(float2* f_, float2* g_)
+void radonusfft::adj(size_t f_, size_t g_)
 {
 	dim3 BS2d(32,32);
 	dim3 BS3d(32,32,1);
@@ -110,9 +102,9 @@ void radonusfft::adjR(float2* f_, float2* g_)
 	dim3 GS3d2(ceil((2*N+2*M)/(float)BS3d.x),ceil((2*N+2*M)/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 	dim3 GS3d3(ceil(N/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
 
-	//cudaMemcpy(g,g_,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
-	cudaMemset(g,0,N*Ntheta*Nz*sizeof(float2));
-	cudaMemcpy2D(&g[N/6],N*sizeof(float2),g_,N/3*2*sizeof(float2),N/3*2*sizeof(float2),Ntheta*Nz,cudaMemcpyDefault);  	
+	cudaMemcpy(g,(float2*)g_,N*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
+	//cudaMemset(g,0,N*Ntheta*Nz*sizeof(float2));
+	//cudaMemcpy2D(&g[N/6],N*sizeof(float2),(float2*)g_,N/3*2*sizeof(float2),N/3*2*sizeof(float2),Ntheta*Nz,cudaMemcpyDefault);  	
 
 
 	cudaMemset(fde,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
@@ -139,53 +131,14 @@ void radonusfft::adjR(float2* f_, float2* g_)
 	unpaddivphi<<<GS3d0, BS3d>>>(f,fde,mu,N,Nz);
 	circ<<<GS3d0, BS3d>>>(f,1.0f/N,N,Nz);
 
-	//cudaMemcpy(f_,f,N*N*Nz*sizeof(float2),cudaMemcpyDefault);  	
+	cudaMemcpy((float2*)f_,f,N*N*Nz*sizeof(float2),cudaMemcpyDefault);  	
 	//padded version
-	for(int iz=0;iz<Nz;iz++)
-		cudaMemcpy2D(&f_[iz*N/3*2*N/3*2],N/3*2*sizeof(float2),&f[iz*N*N+N/6*N+N/6],N*sizeof(float2),N/3*2*sizeof(float2),N/3*2*1,cudaMemcpyDefault);
+	//for(int iz=0;iz<Nz;iz++)
+	//	cudaMemcpy2D(&((float2*)f_)[iz*N/3*2*N/3*2],N/3*2*sizeof(float2),&f[iz*N*N+N/6*N+N/6],N*sizeof(float2),N/3*2*sizeof(float2),N/3*2*1,cudaMemcpyDefault);
 
 }
 
-void radonusfft::setobjc(float* theta_)
+void radonusfft::setobj(size_t theta_)
 {
-	cudaMemcpy(theta,theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
-}
-
-void radonusfft::grad_tomoc(float2* f_, float2* g_, float eta, int niter)
-{
-	cudaMemcpy(f0,f_,N*2/3*N*2/3*Nz*sizeof(float2),cudaMemcpyDefault);
-	cudaMemcpy(g0,g_,N*2/3*Ntheta*Nz*sizeof(float2),cudaMemcpyDefault);
-	dim3 BS3d(32,32,1);
-	dim3 GS3d30(ceil(N*2/3/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
-	dim3 GS3d31(ceil(N*2/3/(float)BS3d.x),ceil(N*2/3*N*2/3/(float)BS3d.y),ceil(Nz/(float)BS3d.z));
-	for (int i=0;i<niter;i++)
-	{	
-		fwdR(gg,f0);	
-		subdata<<<GS3d30,BS3d>>>(gg,g0,N*2/3,Ntheta,Nz);
-		adjR(ff,gg);
-		updatef<<<GS3d31,BS3d>>>(f0,ff,eta,N*2/3,Nz);
-	}
-	cudaMemcpy(f_,f0,N*2/3*N*2/3*Nz*sizeof(float2),cudaMemcpyDefault);
-}
-
-//wrap for python
-void radonusfft::fwd(float2* g, int N0, int N1, int N2, float2* f, int N3, int N4, int N5)
-{
-	fwdR(g,f);
-}
-
-void radonusfft::adj(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2)
-{
-	adjR(f,g);
-}
-
-void radonusfft::setobj(float* theta, int N7)
-{
-	setobjc(theta);
-}
-
-
-void radonusfft::grad_tomo(float2* f, int N3, int N4, int N5, float2* g, int N0, int N1, int N2, float eta, int niter)
-{
-	grad_tomoc(f, g, eta, niter);
+	cudaMemcpy(theta,(float*)theta_,Ntheta*sizeof(float),cudaMemcpyDefault);  	
 }
