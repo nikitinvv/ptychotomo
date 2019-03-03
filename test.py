@@ -1,77 +1,89 @@
-import objects
-import solver_gpu
+import solver
 import dxchange
-import tomopy
+import objects
 import numpy as np
+import cupy as cp
 import signal
 import sys
 
 
 if __name__ == "__main__":
 
-    # Parameters.
-    rho = 0.5
-    gamma = 0.5
-    eta = 0.25
-    piter = 4
-    titer = 4
-    NITER = 50
-    maxint = 0.1
-    voxelsize = 1e-6
-    energy = 5
+    # Model parameters
+    voxelsize = 1e-6  # object voxel size
+    energy = 5  # xray energy
+    maxint = 0.001  # maximal probe intensity
+    prbsize = 16  # probe size
+    prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
+    det = [64, 64] # detector size
+    ntheta = 256*3//2  # number of angles (rotations)
+    noise = True  # apply discrete Poisson noise
+
+    # Reconstrucion parameters
+    model = 'poisson'  # minimization funcitonal (poisson,gaussian)
+    alpha = 1e-7  # tv regularization penalty coefficient
+    piter = 30  # ptychography iterations
+    titer = 4  # tomography iterations
+    NITER = 30  # ADMM iterations
+    cp.cuda.Device(0).use()  # gpu id to use
 
     # Load a 3D object
-    beta = dxchange.read_tiff(
-        'data/test-beta-128.tiff').astype('float32')[::2, ::2, ::2]
-    delta = dxchange.read_tiff(
-        'data/test-delta-128.tiff').astype('float32')[::2, ::2, ::2]
+    beta = dxchange.read_tiff('data/BETA256.tiff')[32:80]
+    delta = dxchange.read_tiff('data/DELTA256.tiff')[32:80]
 
-    # Create object.
-    obj = objects.Object(beta, delta, voxelsize)
-    # Create probe
-    prb = objects.Probe(objects.gaussian(15, rin=0.8, rout=1.0), maxint=maxint)
-    # Detector parameters
-    det = objects.Detector(63, 63)
-    # Define rotation angles
-    theta = np.linspace(0, 2*np.pi, 400).astype('float32')
-    # Scanner positions
-    scanax, scanay = objects.scanner3(theta, beta.shape, 10, 10, margin=[
-        prb.size, prb.size], offset=[0, 0], spiral=1)
-    # tomography data shape
+    # Create object, probe, angles, scan positions
+    obj = cp.array(delta+1j*beta)
+    prb = cp.array(objects.probe(prbsize, maxint))
+    theta = cp.linspace(0, np.pi, ntheta).astype('float32')
+    scan = cp.array(objects.scanner3(theta, obj.shape, prbshift,
+                                     prbshift, prbsize, spiral=0, randscan=True, save=False))    
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
-    # Class solver
-    slv = solver_gpu.Solver(prb, scanax, scanay,
-                            theta, det, voxelsize, energy, tomoshape)
-
+    # Class gpu solver 
+    slv = solver.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape)
+    # Free gpu memory after SIGINT, SIGSTSTP
     def signal_handler(sig, frame):
-        print('Remove class and free gpu memory')
         slv = []
         sys.exit(0)
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTSTP, signal_handler)
 
-    # Compute data  |FQ(exp(i\nu R x))|^2,
-    data = np.abs(slv.fwd_ptycho(
-        slv.exptomo(slv.fwd_tomo(obj.complexform))))**2
-    print("sigma = ", np.amax(np.sqrt(data*det.x*det.y)))
 
-    # Apply Poisson noise (warning: Poisson distribution is discrete, so the resulting values are integers)
-    data = np.random.poisson(data*det.x*det.y).astype('float32')/(det.x*det.y)
+    # Compute data
+    psi = slv.exptomo(slv.fwd_tomo(obj))
+    data = np.zeros(slv.ptychoshape, dtype='float32')
+    for k in range(0, 16):  # angle partitions in ptyocgraphy
+        ids = np.arange(k*ntheta//16, (k+1)*ntheta//16)
+        slv.cl_ptycho.setobj(scan[:, ids].data.ptr, prb.data.ptr)
+        data[ids] = (cp.abs(slv.fwd_ptycho(psi[ids]))**2/slv.coefdata).get()
+    print("max data = ", np.amax(data))        
+    if (noise == True):# Apply Poisson noise
+        data = np.random.poisson(data).astype('float32')
+    
+    # Save one angle
+    dxchange.write_tiff(np.fft.fftshift(
+        data[ntheta//2]), 'data', overwrite=True)
 
     # Initial guess
-    h = np.ones(tomoshape, dtype='complex64', order='C')
-    psi = np.ones(tomoshape, dtype='complex64', order='C')
-    lamd = np.zeros(tomoshape, dtype='complex64', order='C')
-    x = objects.Object(np.zeros(obj.shape, dtype='float32', order='C'), np.zeros(
-        obj.shape, dtype='float32', order='C'), voxelsize)
+    h = cp.zeros(tomoshape, dtype='complex64', order='C')+1
+    psi = cp.zeros(tomoshape, dtype='complex64', order='C')+1
+    e = cp.zeros([3, *obj.shape], dtype='complex64', order='C')
+    phi = cp.zeros([3, *obj.shape], dtype='complex64', order='C')
+    lamd = cp.zeros(tomoshape, dtype='complex64', order='C')
+    mu = cp.zeros([3, *obj.shape], dtype='complex64', order='C')
+    u = cp.zeros(obj.shape, dtype='complex64', order='C')
 
     # ADMM
-    x, psi, res = slv.admm(data, h, psi, lamd, x, rho,
-                           gamma, eta, piter, titer, NITER)
+    u, psi, lagr = slv.admm(data, h, e, psi, phi, lamd,
+                            mu, u, alpha, piter, titer, NITER, model)
 
     # Save result
-    dxchange.write_tiff(x.beta,  'beta/beta')
-    dxchange.write_tiff(x.delta,  'delta/delta')
-    dxchange.write_tiff(psi.real,  'psi/psi')
-    np.save('residuals', res)
+    name = 'reg'+str(alpha)+'noise'+str(noise)+'maxint' + \
+        str(maxint)+'prbshift'+str(prbshift)+'ntheta'+str(ntheta)+str(model)
+    dxchange.write_tiff(u.imag.get(),  'beta/beta'+name)
+    dxchange.write_tiff(u.real.get(),  'delta/delta'+name)
+    dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
+    dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
+    dxchange.write_tiff(psi.real.get(),  'psi/psir'+name)
+    dxchange.write_tiff(psi.imag.get(),  'psi/psii'+name)
+    np.save('lagr'+name, lagr.get())
