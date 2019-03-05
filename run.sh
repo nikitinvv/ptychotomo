@@ -1,12 +1,4 @@
-echo "fig1"
-python build_fig1.py
-echo "fig2"
-python build_fig2.py
-echo "fig3"
-python build_fig4.py
-echo "fig4"
-python build_fig4.py
-echo "fig5"
-python build_fig5.py
-echo "fig6"
-python build_fig6.py
+python testbig.py 0 &
+python testbig.py 1 &
+python testbig.py 2 &
+python testbig.py 3 &

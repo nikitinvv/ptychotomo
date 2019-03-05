@@ -43,7 +43,7 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
             rgbl=[1,0,0]
             np.random.shuffle(rgbl)
             return tuple(rgbl)
-        for j in range(0, len(theta), 1):
+        for j in range(0,1):
             fig, ax = plt.subplots(1)
             plt.xlim(0, shape[1])
             plt.ylim(0, shape[0])
@@ -54,7 +54,7 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
                 c = patches.Circle(
                     (scanax[j, k]+psize//2, scanay[j, k]+psize//2), psize//2, fill=False, edgecolor=[*random_color(),1])
                 ax.add_patch(c)
-            plt.savefig('scans/scan'+str(j)+'.png')
+            plt.savefig('scan'+str(j)+'.png')
     scan = np.zeros([2,len(theta), shapescan], dtype='float32',order='C')             
     scan[0]=scanax
     scan[1]=scanay
