@@ -1,5 +1,3 @@
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """Module for 3D ptychography."""
 
@@ -27,7 +25,7 @@ class Solver(object):
         self.tomoshape = tomoshape
         self.objshape = [tomoshape[1], tomoshape[2], tomoshape[2]]
         self.ptychoshape = [tomoshape[0], scan.shape[2], det[0], det[1]]
-        self.ptychoshapep = [tomoshape[0]//16, scan.shape[2], det[0], det[1]]
+        self.ptychoshapep = [tomoshape[0]//16, scan.shape[2], det[0], det[1]]# ptychography angle partitions
         self.tomoshapep = [tomoshape[0]//16, tomoshape[1], tomoshape[2]]
         # create class for the tomo transform
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
@@ -43,13 +41,12 @@ class Solver(object):
             (self.ptychoshapep[2]*self.ptychoshapep[3]
              * (cp.abs(prb)**2).max().get())
 
-    # Modified logarithm 
-    def mlog(self, psi):
+    def mlog(self,psi):
         res = psi.copy()
-        res[cp.abs(res) < 1e-32] = 1e-32
+        res[cp.abs(res)<1e-32]=1e-32
         res = cp.log(res)
         return res
-
+    
     # Wave number index
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
@@ -122,20 +119,20 @@ class Solver(object):
 
     # Line search for the step sizes gamma
     def line_search(self, minf, gamma, u, fu, d, fd):
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-8):
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-16):
             gamma *= 0.5
-        if(gamma <= 1e-8):  # direction not found
+        if(gamma <= 1e-16):# direction not found  
             gamma = 0
         return gamma
 
     # Conjugate gradients tomography
-    def cg_tomo(self, xi0, xi1, K, init, psi, lamd, rho, tau, titer):
+    def cg_tomo(self, xi0, xi1, K, init, psi, lamd, rho, tau, titer):        
         # minimization functional
         def minf(KRu, gu): return rho*cp.linalg.norm(KRu-xi0)**2 + \
             tau*cp.linalg.norm(gu-xi1)**2
 
         u = init.copy()
-        gamma = 2  # init gamma as a large value
+        gamma = 8 # init gamma as a large value
         for i in range(titer):
             KRu = K*self.fwd_tomo(u)
             gu = self.fwd_reg(u)
@@ -152,6 +149,8 @@ class Solver(object):
                 minf, gamma, KRu, gu, K*self.fwd_tomo(d), self.fwd_reg(d))
             # update step
             u = u + gamma*d
+            #if(gamma>1):
+                #print(i,gamma)
         return u
 
     # Conjugate gradients for ptychography
@@ -161,20 +160,19 @@ class Solver(object):
             if model == 'gaussian':
                 f = cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(data))**2
             elif model == 'poisson':
-                f = cp.sum(cp.abs(fpsi)**2-2*data * (self.mlog(cp.abs(fpsi))))
+                f = cp.sum(cp.abs(fpsi)**2-2*data * self.mlog(cp.abs(fpsi)))
             f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
             return f
-
+        
         psi = init.copy()
-        gamma = 2  # init gamma as a large value
+        gamma = 8  # init gamma as a large value
         for i in range(piter):
             fpsi = self.fwd_ptycho(psi)
             if model == 'gaussian':
-                grad = self.adj_ptycho(
-                    fpsi-fpsi/(cp.abs(fpsi)+1e-32)*cp.sqrt(data))
+                grad = self.adj_ptycho(fpsi-cp.sqrt(data)*cp.exp(1j*cp.angle(fpsi)))
             elif model == 'poisson':
-                grad = self.adj_ptycho(fpsi-fpsi/(cp.abs(fpsi)**2+1e-32)*data)
-            grad -= rho*(h - psi + lamd/rho)
+                grad = self.adj_ptycho(fpsi-data*fpsi/(cp.abs(fpsi)**2+1e-32))                
+            grad -= rho*(h - psi + lamd/rho)            
             # Dai-Yuan direction
             if i == 0:
                 d = -grad
@@ -185,7 +183,7 @@ class Solver(object):
             # line search
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
-            psi = psi + gamma*d
+            psi = psi + gamma*d                 
         return psi
 
     # Solve ptycho by angles partitions
@@ -206,7 +204,7 @@ class Solver(object):
         za = cp.sqrt(cp.real(cp.sum(z*cp.conj(z), 0)))
         z[:, za <= alpha/tau] = 0
         z[:, za > alpha/tau] -= alpha/tau * \
-            z[:, za > alpha/tau]/za[za > alpha/tau]
+            z[:, za > alpha/tau]/(za[za > alpha/tau])
         return z
 
     # Update rho, tau for a faster convergence
@@ -262,7 +260,7 @@ class Solver(object):
         for m in range(NITER):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
-            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter, model)
+            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+32*(m<2), model)
             # tomography problem
             xi0, xi1, K = self.takexi(psi, phi, lamd, mu, rho, tau)
             u = self.cg_tomo(xi0, xi1, K, u, psi, lamd, rho, tau, titer)
@@ -278,12 +276,17 @@ class Solver(object):
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 5) == 0):
+            if (np.mod(m, 10) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho,tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
                       (m, NITER, rho, tau, *(lagr0-lagr[m])))
                 lagr0 = lagr[m]
+                name = 'reg'+str(model)+str(piter)+str(titer)+str(NITER)+str(np.amax(data))
                 dxchange.write_tiff(
-                    u[u.shape[0]//2].imag.get(),  'betap/beta')
+                    u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
+                dxchange.write_tiff(
+                    u[u.shape[0]//2].real.get(),  'deltap/delta'+name)                    
+                dxchange.write_tiff(
+                    cp.abs(psi).get(),  'betap/psi'+name)                    
         return u, psi, lagr
