@@ -85,10 +85,10 @@ if __name__ == "__main__":
                             mu, u, alpha, piter, titer, NITER, model)
 
 
-    dxchange.write_tiff(u.imag.get(),  'beta2/beta'+name)
-    dxchange.write_tiff(u.real.get(),  'delta2/delta'+name)
-    dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betap2/beta'+name)
-    dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltap2/delta'+name)
-    dxchange.write_tiff(psi.imag.get(),  'psi2/psii'+name)
-    dxchange.write_tiff(psi.real.get(),  'psi2/psir'+name)    
+    dxchange.write_tiff(u.imag.get(),  'beta/beta'+name)
+    dxchange.write_tiff(u.real.get(),  'delta/delta'+name)
+    dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
+    dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
+    dxchange.write_tiff(psi.imag.get(),  'psi/psii'+name)
+    dxchange.write_tiff(psi.real.get(),  'psi/psir'+name)    
     

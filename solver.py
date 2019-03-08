@@ -126,11 +126,10 @@ class Solver(object):
         return gamma
 
     # Conjugate gradients tomography
-    def cg_tomo(self, xi0, xi1, K, init, psi, lamd, rho, tau, titer):        
+    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):        
         # minimization functional
         def minf(KRu, gu): return rho*cp.linalg.norm(KRu-xi0)**2 + \
             tau*cp.linalg.norm(gu-xi1)**2
-
         u = init.copy()
         gamma = 8 # init gamma as a large value
         for i in range(titer):
@@ -149,8 +148,6 @@ class Solver(object):
                 minf, gamma, KRu, gu, K*self.fwd_tomo(d), self.fwd_reg(d))
             # update step
             u = u + gamma*d
-            #if(gamma>1):
-                #print(i,gamma)
         return u
 
     # Conjugate gradients for ptychography
@@ -263,7 +260,7 @@ class Solver(object):
             psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+32*(m<2), model)
             # tomography problem
             xi0, xi1, K = self.takexi(psi, phi, lamd, mu, rho, tau)
-            u = self.cg_tomo(xi0, xi1, K, u, psi, lamd, rho, tau, titer)
+            u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
             # regularizer problem
             phi = self.solve_reg(u, mu, tau, alpha)
             # h,e updates
@@ -289,6 +286,12 @@ class Solver(object):
                     u[u.shape[0]//2].real.get(),  'deltap/delta'+name)                    
                 dxchange.write_tiff(
                     cp.abs(psi).get(),  'betap/psi'+name) 
+        
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
-                            mu, tau, rho, alpha, model)                                       
+                            mu, tau, rho, alpha, model)  
+
+        #subtract background                                                                 
+        coef = cp.mean(self.fwd_tomo(u)[:,u.shape[0]//2-2:u.shape[0]//2+2,1:5])#take mean where the object is not scanned
+        print(coef)
+        u-=self.cg_tomo(psi*0+coef, e*0, K*0+1, u*0, 1, 0, 300)                                    
         return u, psi, lagrr
