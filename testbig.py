@@ -15,17 +15,22 @@ if __name__ == "__main__":
     # Model parameters
     voxelsize = 1e-6  # object voxel size
     energy = 5  # xray energy
-    maxinta = [0.01]  # maximal probe intensity
+    maxinta = [0.001,0.01,0.1,1]  # maximal probe intensity
     prbsize = 16 # probe size
     prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [64, 64] # detector size
     ntheta = 256*3//2  # number of angles (rotations)
-    noisea = [True]  # apply discrete Poisson noise
+    noisea = [True,False]  # apply discrete Poisson noise
 
     # Reconstrucion parameters
-    modela = ['poisson']  # minimization funcitonal (poisson,gaussian)
-    alphaa = 1/2**np.arange(14,38)  # tv regularization penalty coefficient    
-    alphaa = alphaa[igpu*6:(igpu+1)*6]
+    modela = ['poisson','gaussian']  # minimization funcitonal (poisson,gaussian)
+    alphaa = np.zeros(12)
+    alphaa[0]=2e-7
+    alphaa[1]=4e-7
+    alphaa[2]=6e-7
+    alphaa[3]=8e-7
+    alphaa[4:]=1/10**np.arange(5,13) # tv regularization penalty coefficient        
+    #alphaa = alphaa[igpu*3:(igpu+1)*3]
     print(igpu,alphaa)
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
@@ -38,7 +43,7 @@ if __name__ == "__main__":
 
     for imaxint in range(0,len(maxinta)):
         for inoise in range(0,len(noisea)):
-            maxint = maxinta[imaxint]
+            maxint = maxinta[igpu]
             noise = noisea[inoise]
             
             # Create object, probe, angles, scan positions
@@ -90,11 +95,11 @@ if __name__ == "__main__":
                     name = 'reg'+str(alpha)+'noise'+str(noise)+'maxint' + \
                         str(maxint)+'prbshift'+str(prbshift)+'ntheta'+str(ntheta)+str(model)+str(piter)+str(titer)+str(NITER)
                     print(name)
-                    dxchange.write_tiff(u.imag.get(),  'beta4/beta'+name)
-                    dxchange.write_tiff(u.real.get(),  'delta4/delta'+name)
-                    dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betaslice4/beta'+name)
-                    dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltaslice4/delta'+name)
-                    dxchange.write_tiff(psi.imag.get(),  'psi4/psii'+name)
-                    dxchange.write_tiff(psi.real.get(),  'psi4/psir'+name)    
-                    np.save('lagr4/lagr'+name,lagr.get())
+                    dxchange.write_tiff(u.imag.get(),  'beta/beta'+name)
+                    dxchange.write_tiff(u.real.get(),  'delta/delta'+name)
+                    dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betaslice/beta'+name)
+                    dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltaslice/delta'+name)
+                    dxchange.write_tiff(psi.imag.get(),  'psi/psii'+name)
+                    dxchange.write_tiff(psi.real.get(),  'psi/psir'+name)    
+                    np.save('lagr/lagr'+name,lagr.get())
 

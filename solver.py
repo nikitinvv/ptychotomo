@@ -289,9 +289,10 @@ class Solver(object):
         
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                             mu, tau, rho, alpha, model)  
-
+        print(lagrr)
         #subtract background                                                                 
         coef = cp.mean(self.fwd_tomo(u)[:,u.shape[0]//2-2:u.shape[0]//2+2,1:5])#take mean where the object is not scanned
         print(coef)
+        #print(coef)
         u-=self.cg_tomo(psi*0+coef, e*0, K*0+1, u*0, 1, 0, 300)                                    
         return u, psi, lagrr
