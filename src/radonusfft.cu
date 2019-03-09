@@ -71,7 +71,7 @@ void radonusfft::fwd(size_t g_, size_t f_)
 	cudaMemset(fde,0,2*N*2*N*Nz*sizeof(float2));
 	cudaMemset(fdee,0,(2*N+2*M)*(2*N+2*M)*Nz*sizeof(float2));
 
-	//pad2<<<GS3d0, BS3d>>>(f,N,Nz);
+	pad2<<<GS3d0, BS3d>>>(f,N,Nz);
 	circ<<<GS3d0, BS3d>>>(f,1.0f/N,N,Nz);
 	takexy<<<GS2d0, BS2d>>>(x,y,theta,N,Ntheta);
 
@@ -112,7 +112,7 @@ void radonusfft::adj(size_t f_, size_t g_)
 
 
 	//padded version
-	//pad<<<GS3d3,BS3d>>>(g,N,Ntheta,Nz);
+	pad<<<GS3d3,BS3d>>>(g,N,Ntheta,Nz);
 	takexy<<<GS2d0, BS2d>>>(x,y,theta,N,Ntheta);
 
 	fftshift1c<<<GS3d3, BS3d>>>(g,N,Ntheta,Nz);
