@@ -254,8 +254,6 @@ class Solver(object):
         lagr = cp.zeros([NITER, 7], dtype="float32")
         lagr0 = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
-        print(lagr0)
-        exit()
         for m in range(NITER):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
