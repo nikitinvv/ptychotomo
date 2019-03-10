@@ -35,7 +35,7 @@ class Solver(object):
             *self.tomoshapep, *self.ptychoshapep, prb.shape[0])
         # normalization coefficients
         self.coeftomo = 1 / \
-            np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2).astype('float32')
+            np.sqrt(self.tomoshape[0]*self.tomoshape[2]/2*2/3).astype('float32')
         self.coefptycho = 1/cp.abs(prb).max().get()
         self.coefdata = 1 / \
             (self.ptychoshapep[2]*self.ptychoshapep[3]
@@ -254,6 +254,8 @@ class Solver(object):
         lagr = cp.zeros([NITER, 7], dtype="float32")
         lagr0 = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
+        print(lagr0)
+        exit()
         for m in range(NITER):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
@@ -290,9 +292,4 @@ class Solver(object):
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                             mu, tau, rho, alpha, model)  
         print(lagrr)
-        #subtract background                                                                 
-        coef = cp.mean(self.fwd_tomo(u)[:,u.shape[0]//2-2:u.shape[0]//2+2,1:5])#take mean where the object is not scanned
-        print(coef)
-        #print(coef)
-        u-=self.cg_tomo(psi*0+coef, e*0, K*0+1, u*0, 1, 0, 300)                                    
         return u, psi, lagrr

@@ -15,7 +15,7 @@ if __name__ == "__main__":
     # Model parameters
     voxelsize = 1e-6  # object voxel size
     energy = 5  # xray energy
-    maxinta = [0.001,0.01,0.1,1]  # maximal probe intensity
+    maxinta = [0.01,0.1,1.0]  # maximal probe intensity
     prbsize = 16 # probe size
     prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [64, 64] # detector size
@@ -24,13 +24,10 @@ if __name__ == "__main__":
 
     # Reconstrucion parameters
     modela = ['poisson','gaussian']  # minimization funcitonal (poisson,gaussian)
-    alphaa = np.zeros(12)
-    alphaa[0]=2e-7
-    alphaa[1]=4e-7
-    alphaa[2]=6e-7
-    alphaa[3]=8e-7
-    alphaa[4:]=1/10**np.arange(5,13) # tv regularization penalty coefficient        
-    #alphaa = alphaa[igpu*3:(igpu+1)*3]
+    alphaa = np.zeros(8)
+    alphaa[0]=3e-7
+    alphaa[1:]=1/10**np.arange(5,12) # tv regularization penalty coefficient        
+    alphaa = alphaa[igpu*2:(igpu+1)*2]
     print(igpu,alphaa)
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
@@ -43,7 +40,7 @@ if __name__ == "__main__":
 
     for imaxint in range(0,len(maxinta)):
         for inoise in range(0,len(noisea)):
-            maxint = maxinta[igpu]
+            maxint = maxinta[imaxint]
             noise = noisea[inoise]
             
             # Create object, probe, angles, scan positions
