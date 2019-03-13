@@ -4,7 +4,7 @@
 
 export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
 
-# Install ptychography and tomography solvers:
+#Install ptychography and tomography solvers:
 
 git clone https://github.com/math-vrn/ptychotomo
 
@@ -18,6 +18,6 @@ cd radonusfft; python setup.py install; cd -
 
 cd ptychotomo
 
-# Run test on gpu with id=0
+#Run test on gpu with id=0
 
 python test.py 0
