@@ -16,7 +16,6 @@ if __name__ == "__main__":
     # Model parameters
     voxelsize = 1e-6  # object voxel size
     energy = 5  # xray energy
-<<<<<<< HEAD
     maxint = 0.1  # maximal probe intensity
     prbsize = 16  # probe size
     prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
@@ -27,33 +26,12 @@ if __name__ == "__main__":
     # Reconstrucion parameters
     model = 'poisson'  # minimization funcitonal (poisson,gaussian)
     alpha = 3e-7  # tv regularization penalty coefficient
-=======
-    maxint = 3.0  # maximal probe intensity
-    prbsize = 16 # probe size
-    prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
-    det = [64, 64] # detector size
-    ntheta = 256*3//2  # number of angles (rotations)
-    noise = False  # apply discrete Poisson noise
-
-    # Reconstrucion parameters
-    model = 'poisson'  # minimization funcitonal (poisson,gaussian)
-    alpha = 1e-8 # tv regularization penalty coefficient
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
     NITER = 300  # ADMM iterations
 
-<<<<<<< HEAD
     # NEW: number of angular partitions for simultaneous processing in ptychography (decrease if GPU is out of memory)
     ptheta = 8
-=======
-    ptheta = 16 # NEW: number of angular partitions for simultaneous processing in ptychography
-    initshift = 0.8 # NEW: Initial phase shift
-
-    # Load a 3D object
-    beta = dxchange.read_tiff('data/BETA256.tiff')[32:128]#:2,::2,::2]
-    delta = dxchange.read_tiff('data/DELTA256.tiff')[32:128]#:2,::2,::2]
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
 
     # Load a 3D object
     beta = dxchange.read_tiff('data/BETA128.tiff')[32:64].astype('float32')
@@ -64,20 +42,12 @@ if __name__ == "__main__":
     prb = cp.array(objects.probe(prbsize, maxint))  # ,rout=1.03))
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(objects.scanner3(theta, obj.shape, prbshift,
-<<<<<<< HEAD
                                      prbshift, prbsize, spiral=0, randscan=True, save=False))
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
     # Class gpu solver
     slv = solver.Solver(prb, scan, theta, det, voxelsize,
                         energy, tomoshape, ptheta)
-=======
-                                     prbshift, prbsize, spiral=0, randscan=False, save=False)) 
-    tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
-
-    # Class gpu solver 
-    slv = solver.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape, ptheta)
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
     # Free gpu memory after SIGINT, SIGSTSTP
 
     def signal_handler(sig, frame):
@@ -92,11 +62,6 @@ if __name__ == "__main__":
         str(ntheta)+str(model)+str(piter)+str(titer)+str(NITER)
     # Compute data
     psi = slv.exptomo(slv.fwd_tomo(obj))
-<<<<<<< HEAD
-=======
-    dxchange.write_tiff(cp.abs(psi).get(), 'psiinitabs'+name)
-    dxchange.write_tiff(cp.angle(psi).get(), 'psiinitangle'+name)    
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
     data = np.zeros(slv.ptychoshape, dtype='float32')
     for k in range(0, ptheta):  # angle partitions in ptyocgraphy
         ids = np.arange(k*ntheta//ptheta, (k+1)*ntheta//ptheta)

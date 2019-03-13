@@ -26,13 +26,9 @@ class Solver(object):
         self.tomoshape = tomoshape
         self.objshape = [tomoshape[1], tomoshape[2], tomoshape[2]]
         self.ptychoshape = [tomoshape[0], scan.shape[2], det[0], det[1]]
-<<<<<<< HEAD
         # ptychography angle partitions
         self.ptychoshapep = [tomoshape[0] //
                              ptheta, scan.shape[2], det[0], det[1]]
-=======
-        self.ptychoshapep = [tomoshape[0]//ptheta, scan.shape[2], det[0], det[1]]# ptychography angle partitions
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
         self.tomoshapep = [tomoshape[0]//ptheta, tomoshape[1], tomoshape[2]]
         # create class for the tomo transform
         self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
@@ -118,7 +114,6 @@ class Solver(object):
 
     # xi0,K, and K for linearization of the tomography problem
     def takexi(self, psi, phi, lamd, mu, rho, tau):
-<<<<<<< HEAD
 
         r = self.prb.shape[0]/2
         m1 = cp.mean(
@@ -132,13 +127,6 @@ class Solver(object):
         K = 1j*self.voxelsize * self.wavenumber()*t/self.coeftomo
         K = K/cp.amax(cp.abs(K))  # normalization
         xi0 = K*(-1j*(self.mlog(t)) /
-=======
-        #t = psi-lamd/rho
-        #t *= cp.exp(1j*0.76)
-        K = 1j*self.voxelsize * self.wavenumber()*(psi-lamd/rho)/self.coeftomo
-        K = K/cp.amax(cp.abs(K))  # normalization
-        xi0 = K*(-1j*(self.mlog(psi-lamd/rho)) /
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
                  (self.voxelsize * self.wavenumber()))*self.coeftomo
         xi1 = phi-mu/tau
         return xi0, xi1, K, pshift
@@ -301,11 +289,7 @@ class Solver(object):
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
             # Lagrangians difference between two iterations
-<<<<<<< HEAD
             if (np.mod(m, 10) == 0):
-=======
-            if (np.mod(m, 50) == 0):
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
@@ -320,15 +304,8 @@ class Solver(object):
                 dxchange.write_tiff(
                     cp.abs(psi).get(),  'psip/psiamp'+name)
                 dxchange.write_tiff(
-<<<<<<< HEAD
                     cp.angle(psi).get(),  'psip/psiangle'+name)
 
-=======
-                    cp.abs(psi).get(),  'psip/psiamp'+name) 
-                dxchange.write_tiff(
-                    cp.angle(psi).get(),  'psip/psiangle'+name)                     
-        
->>>>>>> de9a84e06ad50f7451b9679818a47cf56b8e4813
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
         print(lagrr)
