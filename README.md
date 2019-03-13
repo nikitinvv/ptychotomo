@@ -4,6 +4,10 @@
 
 export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
 
+#Install cupy, e.g.
+
+pip install cupy-cuda91
+
 #Install ptychography and tomography solvers:
 
 git clone https://github.com/math-vrn/ptychotomo
