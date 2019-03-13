@@ -152,9 +152,10 @@ class Solver(object):
             grad = rho*self.adj_tomo(cp.conj(K)*(KRu-xi0)) + \
                 tau*self.adj_reg(gu-xi1)
             # Dai-Yuan direction
-            d = -grad
-            if i > 0:
-                d += cp.linalg.norm(grad)**2 / \
+            if i == 0:
+                d = -grad
+            else:
+                d = -grad+cp.linalg.norm(grad)**2 / \
                     ((cp.sum(cp.conj(d)*(grad-grad0))))*d
             grad0 = grad
             # line search
