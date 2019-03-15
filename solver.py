@@ -133,19 +133,19 @@ class Solver(object):
 
     # Line search for the step sizes gamma
     def line_search(self, minf, gamma, u, fu, d, fd):
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-8):
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-32):
             gamma *= 0.5
-        if(gamma <= 1e-8):  # direction not found
+        if(gamma <= 1e-32):  # direction not found
             gamma = 0
         return gamma
 
     # Conjugate gradients tomography
-    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):
+    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):        
         # minimization functional
         def minf(KRu, gu): return rho*cp.linalg.norm(KRu-xi0)**2 + \
             tau*cp.linalg.norm(gu-xi1)**2
         u = init.copy()
-        gamma = 8  # init gamma as a large value
+        gamma = 8 # init gamma as a large value
         for i in range(titer):
             KRu = K*self.fwd_tomo(u)
             gu = self.fwd_reg(u)
@@ -173,7 +173,7 @@ class Solver(object):
                 f = cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(data))**2
             elif model == 'poisson':
                 f = cp.sum(cp.abs(fpsi)**2-2*data * self.mlog(cp.abs(fpsi)))
-            f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
+            f += rho*cp.linalg.norm(h-psi+lamd/rho)**2######
             return f
 
         psi = init.copy()
@@ -185,7 +185,7 @@ class Solver(object):
                     fpsi-cp.sqrt(data)*cp.exp(1j*cp.angle(fpsi)))
             elif model == 'poisson':
                 grad = self.adj_ptycho(fpsi-data*fpsi/(cp.abs(fpsi)**2+1e-32))
-            grad -= rho*(h - psi + lamd/rho)
+            grad -= rho*(h - psi + lamd/rho)######
             # Dai-Yuan direction
             if i == 0:
                 d = -grad
@@ -197,7 +197,6 @@ class Solver(object):
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
             psi = psi + gamma*d
-            # print(i,minf(psi,fpsi))
         return psi
 
     # Solve ptycho by angles partitions
@@ -251,9 +250,9 @@ class Solver(object):
             datap = cp.array(data[ids])
             if (model == 'poisson'):
                 lagr[0] += cp.sum(cp.abs(fpsi)**2-2*datap *
-                                  self.mlog(cp.abs(fpsi)))
+                                  self.mlog(cp.abs(fpsi))-(datap-2*datap*self.mlog(cp.sqrt(datap))))
             if (model == 'gaussian'):
-                lagr[0] += cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(datap))**2
+                lagr[0] += cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(datap))**2                        
         lagr[1] = alpha*cp.sum(np.sqrt(cp.real(cp.sum(phi*cp.conj(phi), 0))))
         lagr[2] = 2*cp.sum(cp.real(cp.conj(lamd)*(h-psi)))
         lagr[3] = rho*cp.linalg.norm(h-psi)**2
@@ -274,12 +273,14 @@ class Solver(object):
         for m in range(NITER):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
-            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter, model)
+            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+32*(m<1), model)
             # tomography problem
+            
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
+            #tau=0######if seq approach
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
             # regularizer problem
-            phi = self.solve_reg(u, mu, tau, alpha)
+            phi = self.solve_reg(u, mu, tau, alpha)######
             # h,e updates
             h = self.exptomo(self.fwd_tomo(u))*cp.exp(1j*pshift)
             e = self.fwd_reg(u)
@@ -290,22 +291,22 @@ class Solver(object):
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 10) == 0):
+            if (np.mod(m, 50) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
-                      (m, NITER, rho, tau, *(lagr0-lagr[m])))
-                lagr0 = lagr[m]
-                name = 'reg'+str(model)+str(piter)+str(titer) + \
-                    str(NITER)+str(np.amax(data))
-                dxchange.write_tiff(
-                    u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
-                dxchange.write_tiff(
-                    u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
-                dxchange.write_tiff(
-                    cp.abs(psi).get(),  'psip/psiamp'+name)
-                dxchange.write_tiff(
-                    cp.angle(psi).get(),  'psip/psiangle'+name)
+                      (m, NITER, rho, tau, *(lagr[m])))
+                # lagr0 = lagr[m]
+                # name = 'reg'+str(model)+str(piter)+str(titer) + \
+                #     str(NITER)+str(np.amax(data))
+                # dxchange.write_tiff(
+                #     u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
+                # dxchange.write_tiff(
+                #     u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
+                # dxchange.write_tiff(
+                #     cp.abs(psi).get(),  'psip/psiamp'+name)
+                # dxchange.write_tiff(
+                #     cp.angle(psi).get(),  'psip/psiangle'+name)
 
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
