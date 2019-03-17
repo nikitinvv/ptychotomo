@@ -297,7 +297,7 @@ class Solver(object):
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 50) == 0):
+            if (np.mod(m, 10) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
@@ -310,9 +310,9 @@ class Solver(object):
                 dxchange.write_tiff(
                     u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
                 dxchange.write_tiff(
-                    cp.abs(psi).get(),  'psip/psiamp'+name)
+                    cp.abs(psi[psi.shape[0]//2]).get(),  'psip/psiamp'+name)
                 dxchange.write_tiff(
-                    cp.angle(psi).get(),  'psip/psiangle'+name)
+                    cp.angle(psi[psi.shape[0]//2]).get(),  'psip/psiangle'+name)
 
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
