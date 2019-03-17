@@ -39,7 +39,7 @@ class Solver(object):
         # normalization coefficients
         self.coeftomo = 1 / \
             np.sqrt(self.tomoshape[0] *
-                    self.tomoshape[2]/2*2/3).astype('float32')
+                    self.tomoshape[2]/2).astype('float32')
         self.coefptycho = 1/cp.abs(prb).max().get()
         self.coefdata = 1 / \
             (self.ptychoshapep[2]*self.ptychoshapep[3]
@@ -47,8 +47,8 @@ class Solver(object):
 
     def mlog(self, psi):
         res = psi.copy()
-        res[cp.abs(res) < 1e-32] = 1e-32
-        res = cp.log(res)
+        res[cp.abs(psi)<1e-32] = 1e-32
+        res = cp.log(res)        
         return res
 
     # Wave number index
@@ -121,12 +121,15 @@ class Solver(object):
         m2 = cp.mean(cp.angle(
             psi[:, psi.shape[1]/2-r:psi.shape[1]/2+r, psi.shape[2]-2*r:psi.shape[2]-r]))
         pshift = (m1+m2)/2
+
+
         t = psi-lamd/rho
         t *= cp.exp(-1j*pshift)
+        logt = self.mlog(t)
 
         K = 1j*self.voxelsize * self.wavenumber()*t/self.coeftomo
         K = K/cp.amax(cp.abs(K))  # normalization
-        xi0 = K*(-1j*(self.mlog(t)) /
+        xi0 = K*(-1j*(logt) /
                  (self.voxelsize * self.wavenumber()))*self.coeftomo
         xi1 = phi-mu/tau
         return xi0, xi1, K, pshift
@@ -136,6 +139,7 @@ class Solver(object):
         while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-32):
             gamma *= 0.5
         if(gamma <= 1e-32):  # direction not found
+            print('no direction')
             gamma = 0
         return gamma
 
@@ -197,6 +201,8 @@ class Solver(object):
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
             psi = psi + gamma*d
+        if(cp.amax(cp.abs(cp.angle(psi)))>3.13):            
+            print('possible phase wrap, max computed angle',cp.amax(cp.abs(cp.angle(psi))))                                
         return psi
 
     # Solve ptycho by angles partitions
@@ -273,7 +279,7 @@ class Solver(object):
         for m in range(NITER):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
-            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+32*(m<1), model)
+            psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+(m<2)*32, model)
             # tomography problem
             
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
@@ -286,7 +292,7 @@ class Solver(object):
             e = self.fwd_reg(u)
             # lambda, mu updates
             lamd = lamd + rho * (h-psi)
-            mu = mu + tau * (e-phi)
+            mu = mu + tau * (e-phi)            
             # update rho, tau for a faster convergence
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
@@ -297,16 +303,16 @@ class Solver(object):
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
                       (m, NITER, rho, tau, *(lagr[m])))
                 # lagr0 = lagr[m]
-                # name = 'reg'+str(model)+str(piter)+str(titer) + \
-                #     str(NITER)+str(np.amax(data))
-                # dxchange.write_tiff(
-                #     u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
-                # dxchange.write_tiff(
-                #     u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
-                # dxchange.write_tiff(
-                #     cp.abs(psi).get(),  'psip/psiamp'+name)
-                # dxchange.write_tiff(
-                #     cp.angle(psi).get(),  'psip/psiangle'+name)
+                name = 'reg'+str(model)+str(piter)+str(titer) + \
+                    str(NITER)+str(np.amax(data))
+                dxchange.write_tiff(
+                    u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
+                dxchange.write_tiff(
+                    u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
+                dxchange.write_tiff(
+                    cp.abs(psi).get(),  'psip/psiamp'+name)
+                dxchange.write_tiff(
+                    cp.angle(psi).get(),  'psip/psiangle'+name)
 
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)

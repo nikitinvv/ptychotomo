@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # Model parameters
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
-    maxinta = [1,0.1,0.01,0.03]  # maximal probe intensity
+    maxinta = [1,0.0001]  # maximal probe intensity
     prbsize = 16 # probe size
     prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [64, 64] # detector size
@@ -25,29 +25,25 @@ if __name__ == "__main__":
     noise = True  # apply discrete Poisson noise
 
     # Reconstrucion parameters
-    modela = ['poisson','gaussian']  # minimization funcitonal (poisson,gaussian)
-    alphaa = [1e-11,3e-7] # tv regularization penalty coefficient
+    modela = ['poisson']  # minimization funcitonal (poisson,gaussian)
+    alphaa = [1e-11] # tv regularization penalty coefficient
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
     NITER = 400  # ADMM iterations
 
     ptheta = 4 # NEW: number of angular partitions for simultaneous processing in ptychography
-    initshift = 0.0# NEW: Initial phase shift bubles: 128:0.8, chip 128: 0.0046, 256:0.0081
-
+    
     # Load a 3D object
-    beta0 = dxchange.read_tiff('data/beta-pad2-256.tiff')[42:42+16]#[32:32+16*bbin:bbin,::bbin,::bbin]#:2,::2,::2]
-    delta0 = -dxchange.read_tiff('data/delta-pad2-256.tiff')[42:42+16]#[32:32+16*bbin:bbin,::bbin,::bbin]#:2,::2,::2]
+    beta0 = dxchange.read_tiff('data/beta-pad2-256.tiff')[42:42+16]
+    delta0 = -dxchange.read_tiff('data/delta-pad2-256.tiff')[42:42+16]
     beta = np.zeros([2*prbsize+beta0.shape[0],beta0.shape[1],beta0.shape[2]],dtype='float32')
     delta = np.zeros([2*prbsize+beta0.shape[0],beta0.shape[1],beta0.shape[2]],dtype='float32')    
     beta[prbsize:-prbsize] = beta0
     delta[prbsize:-prbsize] = delta0
-    # print(beta.shape)
 
     maxint = maxinta[igpu]
-    if(maxint>0.9):
-        noise = False
     obj = cp.array(delta+1j*beta)
-    prb = cp.array(objects.probe(prbsize, maxint))#,rout=1.03))
+    prb = cp.array(objects.probe(prbsize, maxint))
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(objects.scanner3(theta, obj.shape, prbshift,
                                     prbshift, prbsize, spiral=0, randscan=True, save=False)) 
@@ -83,8 +79,8 @@ if __name__ == "__main__":
             alpha = alphaa[ialpha]
 
             # Initial guess
-            h = cp.zeros(tomoshape, dtype='complex64', order='C')+1*cp.exp(1j*initshift).astype('complex64')
-            psi = cp.zeros(tomoshape, dtype='complex64', order='C')+1*cp.exp(1j*initshift).astype('complex64')
+            h = cp.zeros(tomoshape, dtype='complex64', order='C')+1
+            psi = cp.zeros(tomoshape, dtype='complex64', order='C')+1
             e = cp.zeros([3, *obj.shape], dtype='complex64', order='C')
             phi = cp.zeros([3, *obj.shape], dtype='complex64', order='C')
             lamd = cp.zeros(tomoshape, dtype='complex64', order='C')
@@ -104,4 +100,4 @@ if __name__ == "__main__":
             dxchange.write_tiff(u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
             dxchange.write_tiff(cp.angle(psi).get(),  'psi/psiangle'+name)
             dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name)    
-            # print(cp.linalg.norm(psi[0,32:32+64,32:32+64]-psi0[0,32:32+64,32:32+64]))
+            

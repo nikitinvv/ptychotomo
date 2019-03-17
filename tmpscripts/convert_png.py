@@ -2,17 +2,28 @@ from __future__ import print_function
 import dxchange
 import os
 import scipy.misc
+import numpy as np
 
-files = os.listdir('betap')
-for name in files:
-	print(name)
-	a = dxchange.read_tiff('betap/'+name)
-	print(a.shape)
-	scipy.misc.toimage(a, cmin=0, cmax=0.0000311).save('png/beta/'+str(os.path.splitext(name)[0])+'.png')
 
-files = os.listdir('deltap')
+# files = os.listdir('gendata')
+# for name in files:
+# 	b = dxchange.read_tiff('gendata/'+name)[0,:,:]
+# 	a = b.copy()
+# 	a[a==0]=1
+# 	print(np.amax(np.log(a)))
+# 	scipy.misc.toimage(np.log(a), cmin=0, cmax=9).save('png/gendata/'+str(os.path.splitext(name)[0])+'.png')
+
+
+
+files = os.listdir('old/delta')
 for name in files:
-	a = dxchange.read_tiff('deltap/'+name)+0.0000183
-	scipy.misc.toimage(a, cmin=-0.0000508+0.0000183, cmax=0.000127+0.0000183).save('png/delta/'+str(os.path.splitext(name)[0])+'.png')
+	a = dxchange.read_tiff('old/delta/'+name)[24,45:-40,45:-40]
+	scipy.misc.toimage(a, cmin=0, cmax=4e-5).save('png/delta/'+str(os.path.splitext(name)[0])+'.png')
+
+
+files = os.listdir('old/beta')
+for name in files:
+	a = dxchange.read_tiff('old/beta/'+name)[24,45:-40,45:-40]
+	scipy.misc.toimage(a, cmin=0, cmax=3e-6).save('png/beta/'+str(os.path.splitext(name)[0])+'.png')
 
 
