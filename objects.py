@@ -28,10 +28,10 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
         scanay[m] = np.ndarray.flatten(scy)
         a += spiral
         if randscan:
-            scanax[m] += sx*(np.random.random(shapescan)-0.5)
-            scanay[m] += sy*(np.random.random(shapescan)-0.5)            
-            #scanay[m,np.where(scanay[m]==0)] += sy*(np.random.random(shapescan))*0.25
-            #scanay[m,np.where(scanay[m]==np.amax(scy))] -= sy*(np.random.random(shapescan))*0.25            
+            scanax[m] += sx*(np.random.random(1)-0.25)
+            scanay[m] += sy*(np.random.random(1)-0.25)            
+            scanay[m] += sy*(np.random.random(shapescan))*0.15
+            scanay[m] += sy*(np.random.random(shapescan))*0.15           
             # print(scanax[m])        
     scanax[np.where(np.round(scanax) < 0)] = 0
     scanay[np.where(np.round(scanay) < 0)] = 0
