@@ -201,7 +201,7 @@ class Solver(object):
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
             psi = psi + gamma*d
-        if(cp.amax(cp.abs(cp.angle(psi)))>3.13):            
+        if(cp.amax(cp.abs(cp.angle(psi)))>3.14):            
             print('possible phase wrap, max computed angle',cp.amax(cp.abs(cp.angle(psi))))                                
         return psi
 
@@ -300,19 +300,10 @@ class Solver(object):
             if (np.mod(m, 10) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
-                print("%d/%d) rho=%.2e, tau=%.2e, Lagr terms diff:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
+                print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
                       (m, NITER, rho, tau, *(lagr[m])))
-                # lagr0 = lagr[m]
                 name = 'reg'+str(model)+str(piter)+str(titer) + \
-                    str(NITER)+str(np.amax(data))
-                dxchange.write_tiff(
-                    u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
-                dxchange.write_tiff(
-                    u[u.shape[0]//2].real.get(),  'deltap/delta'+name)
-                dxchange.write_tiff(
-                    cp.abs(psi[psi.shape[0]//2]).get(),  'psip/psiamp'+name)
-                dxchange.write_tiff(
-                    cp.angle(psi[psi.shape[0]//2]).get(),  'psip/psiangle'+name)
+                    str(NITER)+str(np.amax(data))                
 
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
