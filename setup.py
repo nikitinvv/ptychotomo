@@ -121,11 +121,13 @@ class custom_build_ext(build_ext):
         customize_compiler_for_nvcc(self.compiler)
         build_ext.build_extensions(self)
 
+
 setup(name='radonusfft',
       # random metadata. there's more you can supploy
       author='Viktor Nikitin',
       version='0.1',
 
+      package_dir = {'': 'src'},
       # this is necessary so that the swigged python file gets picked up
       py_modules=['radonusfft'],
    
