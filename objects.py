@@ -1,4 +1,3 @@
-
 import numpy as np
 
 # Probe as a gaussian
