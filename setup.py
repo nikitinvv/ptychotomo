@@ -26,9 +26,15 @@ def locate_cuda():
     is based on finding 'nvcc' in the PATH.
     """
 
+    conda_cuda = pjoin(os.environ['CONDA_PREFIX'], 'pkgs', 'cudatoolkit-dev')
     # first check if the CUDAHOME env variable is in use
     if 'CUDAHOME' in os.environ:
         home = os.environ['CUDAHOME']
+        nvcc = pjoin(home, 'bin', 'nvcc')
+        libdir = pjoin(home, 'lib64')
+    elif os.path.exists(conda_cuda):
+        # otherwise, use the cudatoolkit from conda
+        home = conda_cuda
         nvcc = pjoin(home, 'bin', 'nvcc')
         libdir = pjoin(home, 'lib64')
     else:
@@ -56,7 +62,7 @@ except AttributeError:
     numpy_include = numpy.get_numpy_include()
 
 
-ext = Extension('_radonusfft', 
+ext = Extension('_radonusfft',
                 sources=['src/radonusfft.cu','src/radonusfft_wrap.cpp'],
                 library_dirs=[CUDA['lib']],
                 libraries=['cudart','cufft','cublas'],
@@ -80,13 +86,13 @@ else:
 def customize_compiler_for_nvcc(self):
     """inject deep into distutils to customize how the dispatch
     to gcc/nvcc works.
-    
+
     If you subclass UnixCCompiler, it's not trivial to get your subclass
     injected in, and still have the right customizations (i.e.
     distutils.sysconfig.customize_compiler) run on it. So instead of going
     the OO route, I have this. Note, it's kindof like a wierd functional
     subclassing going on."""
-    
+
     # tell the compiler it can processes .cu
     self.src_extensions.append('.cu')
 
@@ -124,11 +130,11 @@ class custom_build_ext(build_ext):
 setup(name='radonusfft',
       # random metadata. there's more you can supploy
       author='Viktor Nikitin',
-      version='0.1',
+      version='0.1.0',
 
       # this is necessary so that the swigged python file gets picked up
       py_modules=['radonusfft'],
-   
+
       ext_modules = [ext],
 
       # inject our custom trigger
