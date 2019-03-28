@@ -1,6 +1,7 @@
 import  os
 from os.path import join as pjoin
 from setuptools import setup
+from setuptools.command.build_py import build_py as _build_py
 from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
 import subprocess
@@ -63,7 +64,8 @@ except AttributeError:
 
 
 ext = Extension('_radonusfft',
-                sources=['src/radonusfft.cu','src/radonusfft_wrap.cpp'],
+                swig_opts=['-c++'],
+                sources=['src/radonusfft.i', 'src/radonusfft.cu'],
                 library_dirs=[CUDA['lib']],
                 libraries=['cudart','cufft','cublas'],
                 # this syntax is specific to this build system
@@ -73,14 +75,6 @@ ext = Extension('_radonusfft',
                                     'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
 		extra_link_args=['-lgomp'],
 		include_dirs = [numpy_include, CUDA['include'], 'src'],)
-
-
-# check for swig
-if find_in_path('swig', os.environ['PATH']):
-    subprocess.check_call('swig -python -c++ -o src/radonusfft_wrap.cpp src/radonusfft.i', shell=True)
-else:
-    raise EnvironmentError('the swig executable was not found in your PATH')
-
 
 
 def customize_compiler_for_nvcc(self):
@@ -127,18 +121,24 @@ class custom_build_ext(build_ext):
         customize_compiler_for_nvcc(self.compiler)
         build_ext.build_extensions(self)
 
-setup(name='radonusfft',
-      # random metadata. there's more you can supploy
-      author='Viktor Nikitin',
-      version='0.1.0',
+# custom build_py does build_ext first so SWIG generated python module is
+# copied after it is created
+class build_py(_build_py):
+    def run(self):
+        self.run_command("build_ext")
+        return super().run()
 
-      # this is necessary so that the swigged python file gets picked up
-      py_modules=['radonusfft'],
-
-      ext_modules = [ext],
-
-      # inject our custom trigger
-      cmdclass={'build_ext': custom_build_ext},
-
-      # since the package has c code, the egg cannot be zipped
-      zip_safe=False)
+setup(
+    name='radonusfft',
+    author='Viktor Nikitin',
+    version='0.1.0',
+    # this is necessary so that the swigged python file gets picked up
+    package_dir={"": "src"},
+    py_modules=['radonusfft'],
+    ext_modules = [ext],
+    cmdclass={
+        'build_py' : build_py,
+        'build_ext': custom_build_ext,
+    },
+    zip_safe=False
+)
