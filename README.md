@@ -1,29 +1,22 @@
-#specify path to CUDA, e.g.
+#Install ptychotomo, e.g.
 
-export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
+## Clone the repository
 
-#Install cupy, e.g.
-
-pip install cupy-cuda91
-
-#Install ptychography and tomography solvers:
-
-git clone https://github.com/math-vrn/ptychotomo
-
-git clone https://github.com/math-vrn/ptychofft
-
-git clone https://github.com/math-vrn/radonusfft
-
-cd ptychofft; python setup.py install; cd -
-
-cd radonusfft; python setup.py install; cd -
+$ git clone https://github.com/math-vrn/ptychotomo
 
 cd ptychotomo
+
+## Install dependencies using conda
+
+conda env create -n ptychotomo -f envs/python-3.6.yaml
+
+## Install ptychotomo
+
+python setup.py install
 
 #Run test on gpu with id=0
 
 python test.py 0
-
 
 #Notes:
 
