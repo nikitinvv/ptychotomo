@@ -1,4 +1,4 @@
-import  os
+import os
 from os.path import join as pjoin
 from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
@@ -63,18 +63,30 @@ except AttributeError:
     numpy_include = numpy.get_numpy_include()
 
 
-ext = Extension('_radonusfft',
-                swig_opts=['-c++'],
-                sources=['src/radonusfft.i', 'src/radonusfft.cu'],
-                library_dirs=[CUDA['lib']],
-                libraries=['cudart','cufft','cublas'],
-                # this syntax is specific to this build system
-                # we're only going to use certain compiler args with nvcc and not with gcc
-                # the implementation of this trick is in customize_compiler() below
-                extra_compile_args={'gcc': [],
-                                    'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
-		extra_link_args=['-lgomp'],
-		include_dirs = [numpy_include, CUDA['include'], 'src'],)
+_radonusfft = Extension(
+    '_radonusfft',
+    swig_opts=['-c++'],
+    sources=['src/radonusfft.i', 'src/radonusfft.cu'],
+    library_dirs=[CUDA['lib']],
+    libraries=['cudart','cufft','cublas'],
+    # this syntax is specific to this build system
+    # we're only going to use certain compiler args with nvcc and not with gcc
+    # the implementation of this trick is in customize_compiler() below
+    extra_compile_args={'gcc': [],
+                        'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
+    extra_link_args=['-lgomp'],
+    include_dirs = [numpy_include, CUDA['include'], 'src'],)
+
+_ptychofft = Extension(
+    '_ptychofft',
+    swig_opts=['-c++'],
+    sources=['src/ptychofft.i', 'src/ptychofft.cu'],
+    library_dirs=[CUDA['lib']],
+    libraries=['cudart','cufft','cublas'],
+    extra_compile_args={'gcc': [],
+                        'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
+    extra_link_args=['-lgomp'],
+    include_dirs = [numpy_include, CUDA['include'], 'src'],)
 
 
 def customize_compiler_for_nvcc(self):
@@ -114,7 +126,6 @@ def customize_compiler_for_nvcc(self):
     # inject our redefined _compile method into the class
     self._compile = _compile
 
-
 # run the customize_compiler
 class custom_build_ext(build_ext):
     def build_extensions(self):
@@ -134,8 +145,8 @@ setup(
     version='0.1.0',
     # this is necessary so that the swigged python file gets picked up
     package_dir={"": "src"},
-    py_modules=['radonusfft'],
-    ext_modules = [ext],
+    py_modules=['radonusfft', 'ptychofft'],
+    ext_modules = [_radonusfft, _ptychofft],
     cmdclass={
         'build_py' : build_py,
         'build_ext': custom_build_ext,
