@@ -1,6 +1,6 @@
 import os
 from os.path import join as pjoin
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 from setuptools.command.build_py import build_py as _build_py
 from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
@@ -145,7 +145,7 @@ setup(
     version='0.3.0',
     # this is necessary so that the swigged python file gets picked up
     package_dir={"": "src"},
-    py_modules=['ptychotomo.radonusfft', 'ptychotomo.ptychofft'],
+    packages=find_namespace_packages(where='src', include=['ptychotomo*']),
     ext_modules = [_radonusfft, _ptychofft],
     cmdclass={
         'build_py' : build_py,
