@@ -64,9 +64,9 @@ except AttributeError:
 
 
 _radonusfft = Extension(
-    '_radonusfft',
-    swig_opts=['-c++'],
-    sources=['src/radonusfft.i', 'src/radonusfft.cu'],
+    'ptychotomo._radonusfft',
+    swig_opts=['-c++', '-Isrc/include'],
+    sources=['src/ptychotomo/radonusfft.i', 'src/cuda/radonusfft.cu'],
     library_dirs=[CUDA['lib']],
     libraries=['cudart','cufft','cublas'],
     # this syntax is specific to this build system
@@ -75,18 +75,18 @@ _radonusfft = Extension(
     extra_compile_args={'gcc': [],
                         'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
     extra_link_args=['-lgomp'],
-    include_dirs = [numpy_include, CUDA['include'], 'src'],)
+    include_dirs = [numpy_include, CUDA['include'], 'src/include'],)
 
 _ptychofft = Extension(
-    '_ptychofft',
-    swig_opts=['-c++'],
-    sources=['src/ptychofft.i', 'src/ptychofft.cu'],
+    'ptychotomo._ptychofft',
+    swig_opts=['-c++', '-Isrc/include'],
+    sources=['src/ptychotomo/ptychofft.i', 'src/cuda/ptychofft.cu'],
     library_dirs=[CUDA['lib']],
     libraries=['cudart','cufft','cublas'],
     extra_compile_args={'gcc': [],
                         'nvcc': ['--compiler-options', "'-fPIC' '-O3' "]},
     extra_link_args=['-lgomp'],
-    include_dirs = [numpy_include, CUDA['include'], 'src'],)
+    include_dirs = [numpy_include, CUDA['include'], 'src/include'],)
 
 
 def customize_compiler_for_nvcc(self):
@@ -140,12 +140,12 @@ class build_py(_build_py):
         return super().run()
 
 setup(
-    name='radonusfft',
+    name='ptychotomo',
     author='Viktor Nikitin',
     version='0.1.0',
     # this is necessary so that the swigged python file gets picked up
     package_dir={"": "src"},
-    py_modules=['radonusfft', 'ptychofft'],
+    py_modules=['ptychotomo.radonusfft', 'ptychotomo.ptychofft'],
     ext_modules = [_radonusfft, _ptychofft],
     cmdclass={
         'build_py' : build_py,
