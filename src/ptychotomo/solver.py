@@ -3,7 +3,6 @@
 import warnings
 
 import cupy as cp
-import dxchange
 import numpy as np
 
 from ptychotomo.radonusfft import radonusfft
