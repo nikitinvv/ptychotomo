@@ -1,20 +1,19 @@
-import solver
-import dxchange
-import objects
-import numpy as np
-import cupy as cp
+import os
 import signal
 import sys
-import os
-import sys
 
+import cupy as cp
+import dxchange
+import numpy as np
+
+import ptychotomo as pt
 
 if __name__ == "__main__":
     igpu = np.int(sys.argv[1])
     cp.cuda.Device(igpu).use()  # gpu id to use
     print("gpu id:",igpu)
 
-    
+
     # Model parameters
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
@@ -32,20 +31,20 @@ if __name__ == "__main__":
     NITER = 100  # ADMM iterations
 
     ptheta = 32 # NEW: number of angular partitions for simultaneous processing in ptychography
-    
+
     # Load a 3D object
     beta = dxchange.read_tiff('data/beta-chip-128.tiff')
-    delta = -dxchange.read_tiff('data/delta-chip-128.tiff')    
+    delta = -dxchange.read_tiff('data/delta-chip-128.tiff')
 
     obj = cp.array(delta+1j*beta)
-    prb = cp.array(objects.probe(prbsize, maxint))
+    prb = cp.array(pt.probe(prbsize, maxint))
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
-    scan = cp.array(objects.scanner3(theta, obj.shape, prbshift,
-                                    prbshift, prbsize, spiral=0, randscan=True, save=True)) 
+    scan = cp.array(pt.scanner3(theta, obj.shape, prbshift,
+                                    prbshift, prbsize, spiral=0, randscan=True, save=True))
     tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
 
-    # Class gpu solver 
-    slv = solver.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape, ptheta)
+    # Class gpu solver
+    slv = pt.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape, ptheta)
     # Free gpu memory after SIGINT, SIGSTSTP
     def signal_handler(sig, frame):
         slv = []
@@ -62,9 +61,9 @@ if __name__ == "__main__":
         data0 = cp.abs(slv.fwd_ptycho(psi[ids]))**2/slv.coefdata
         if (noise == True):# Apply Poisson noise
             data[ids] = (cp.random.poisson(data0).astype('float32')).get()
-    print("max intensity on the detector: ", np.amax(data))      
+    print("max intensity on the detector: ", np.amax(data))
 
-    
+
     # Initial guess
     h = cp.zeros(tomoshape, dtype='complex64', order='C')+1
     psi = cp.zeros(tomoshape, dtype='complex64', order='C')+1
@@ -90,7 +89,7 @@ if __name__ == "__main__":
     dxchange.write_tiff(u[u.shape[0]//2].imag.get(),  'betap/beta'+name)
     dxchange.write_tiff(-u[u.shape[0]//2].real.get(),  'deltap/delta'+name)# note sign change
     dxchange.write_tiff(cp.angle(psi).get(),  'psi/psiangle'+name)
-    dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name)    
+    dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name)
     if not os.path.exists('lagr'):
         os.makedirs('lagr')
     np.save('lagr/lagr'+name,lagr.get())

@@ -1,12 +1,12 @@
 """Module for 3D ptychography."""
 
-import radonusfft
-import ptychofft
-import numpy as np
-import cupy as cp
-import objects
 import warnings
-import dxchange
+
+import cupy as cp
+import numpy as np
+
+from ptychotomo.radonusfft import radonusfft
+from ptychotomo.ptychofft import ptychofft
 
 warnings.filterwarnings("ignore")
 
@@ -30,10 +30,10 @@ class Solver(object):
                              ptheta, scan.shape[2], det[0], det[1]]
         self.tomoshapep = [tomoshape[0]//ptheta, tomoshape[1], tomoshape[2]]
         # create class for the tomo transform
-        self.cl_tomo = radonusfft.radonusfft(*self.tomoshape)
+        self.cl_tomo = radonusfft(*self.tomoshape)
         self.cl_tomo.setobj(theta.data.ptr)
         # create class for the ptycho transform
-        self.cl_ptycho = ptychofft.ptychofft(
+        self.cl_ptycho = ptychofft(
             *self.tomoshapep, *self.ptychoshapep, prb.shape[0])
         # normalization coefficients
         self.coeftomo = 1 / \
@@ -47,7 +47,7 @@ class Solver(object):
     def mlog(self, psi):
         res = psi.copy()
         res[cp.abs(psi)<1e-32] = 1e-32
-        res = cp.log(res)        
+        res = cp.log(res)
         return res
 
     # Wave number index
@@ -143,7 +143,7 @@ class Solver(object):
         return gamma
 
     # Conjugate gradients tomography
-    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):        
+    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):
         # minimization functional
         def minf(KRu, gu): return rho*cp.linalg.norm(KRu-xi0)**2 + \
             tau*cp.linalg.norm(gu-xi1)**2
@@ -200,8 +200,8 @@ class Solver(object):
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
             psi = psi + gamma*d
-        if(cp.amax(cp.abs(cp.angle(psi)))>3.14):            
-            print('possible phase wrap, max computed angle',cp.amax(cp.abs(cp.angle(psi))))                                
+        if(cp.amax(cp.abs(cp.angle(psi)))>3.14):
+            print('possible phase wrap, max computed angle',cp.amax(cp.abs(cp.angle(psi))))
         return psi
 
     # Solve ptycho by angles partitions
@@ -257,7 +257,7 @@ class Solver(object):
                 lagr[0] += cp.sum(cp.abs(fpsi)**2-2*datap *
                                   self.mlog(cp.abs(fpsi))-(datap-2*datap*self.mlog(cp.sqrt(datap))))
             if (model == 'gaussian'):
-                lagr[0] += cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(datap))**2                        
+                lagr[0] += cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(datap))**2
         lagr[1] = alpha*cp.sum(np.sqrt(cp.real(cp.sum(phi*cp.conj(phi), 0))))
         lagr[2] = 2*cp.sum(cp.real(cp.conj(lamd)*(h-psi)))
         lagr[3] = rho*cp.linalg.norm(h-psi)**2
@@ -280,7 +280,7 @@ class Solver(object):
             h0, e0 = h, e
             psi = self.cg_ptycho_batch(data, psi, h, lamd, rho, piter+(m<2)*32, model)
             # tomography problem
-            
+
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
             #tau=0######if seq approach
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
@@ -291,7 +291,7 @@ class Solver(object):
             e = self.fwd_reg(u)
             # lambda, mu updates
             lamd = lamd + rho * (h-psi)
-            mu = mu + tau * (e-phi)            
+            mu = mu + tau * (e-phi)
             # update rho, tau for a faster convergence
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
@@ -302,7 +302,7 @@ class Solver(object):
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
                       (m, NITER, rho, tau, *(lagr[m])))
                 name = 'reg'+str(model)+str(piter)+str(titer) + \
-                    str(NITER)+str(np.amax(data))                
+                    str(NITER)+str(np.amax(data))
 
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
