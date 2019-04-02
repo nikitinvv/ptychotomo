@@ -1,0 +1,60 @@
+{% set version = "0.3.0" %}
+
+package:
+    name: ptychotomo
+    version: {{ version }}
+
+source:
+    # url: https://github.com/math-vrn/ptychotomo/archive/{{ version }}.tar.gz
+    # fn: ptychotomo-{{ version }}.tar.gz
+    # sha256: 3fbf03e2577c23d0a97118a4bc68d331330a5d7f29893e4279293504aa18172a
+    path: ..
+
+build:
+  number: 1
+  skip: true  # [win or py2k]
+  merge_build_host: True  # [win]
+  script:
+    - "{{ PYTHON }} -m pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - cudatoolkit-dev={{ cuda }}
+    - swig
+  host:
+    - numpy
+    - pip
+    - python
+    - setuptools
+  run:
+    - cudatoolkit={{ cuda }}
+    - cupy
+    - {{ pin_compatible('numpy') }}
+    - python
+
+test:
+  imports:
+    - ptychotomo
+    - ptychotomo.objects
+    - ptychotomo.ptychofft
+    - ptychotomo.radonusfft
+    - ptychotomo.solver
+
+app:
+    own_environment: True
+
+about:
+    home: https://github.com/math-vrn/ptychotomo
+    # license: BSD 3-Clause TODO: Fill out this package info
+    # license_family: BSD
+    # license_file: LICENSE
+    # summary:
+    # description: |
+    # doc_url: http://tomopy.readthedocs.io
+    dev_url: https://github.com/math-vrn/ptychotomo
+
+extra:
+    recipe-maintainers:
+        - carterbox
+        - math-vrn

@@ -1,11 +1,12 @@
 import os
 from os.path import join as pjoin
+
+import numpy
 from setuptools import setup, find_namespace_packages
 from setuptools.command.build_py import build_py as _build_py
-from distutils.extension import Extension
-from distutils.command.build_ext import build_ext
+from setuptools.extension import Extension
+from setuptools.command.build_ext import build_ext
 import subprocess
-import numpy
 
 def find_in_path(name, path):
     "Find a file in a search path"
@@ -23,19 +24,23 @@ def locate_cuda():
     Returns a dict with keys 'home', 'nvcc', 'include', and 'lib'
     and values giving the absolute path to each directory.
 
-    Starts by looking for the CUDAHOME env variable. If not found, everything
-    is based on finding 'nvcc' in the PATH.
+    Three search strategies are employed:
+    (1) looks for the CUDAHOME env variable.
+    (2) Checks if this is a Conda evironment or Conda build environment.
+    (3) Finds CUDAHOME based on the location of 'nvcc' in the PATH.
     """
 
-    conda_cuda = pjoin(os.environ['CONDA_PREFIX'], 'pkgs', 'cudatoolkit-dev')
-    # first check if the CUDAHOME env variable is in use
     if 'CUDAHOME' in os.environ:
         home = os.environ['CUDAHOME']
         nvcc = pjoin(home, 'bin', 'nvcc')
         libdir = pjoin(home, 'lib64')
-    elif os.path.exists(conda_cuda):
-        # otherwise, use the cudatoolkit from conda
-        home = conda_cuda
+    elif 'CONDA_PREFIX' in os.environ or 'CONDA_BUILD' in os.environ:
+        if 'CONDA_BUILD' in os.environ and os.environ['CONDA_BUILD'] == 1:
+            conda = os.environ['BUILD_PREFIX']
+        else:
+            conda = os.environ['CONDA_PREFIX']
+        conda = pjoin(conda, 'pkgs', 'cudatoolkit-dev')
+        home = conda
         nvcc = pjoin(home, 'bin', 'nvcc')
         libdir = pjoin(home, 'lib64')
     else:

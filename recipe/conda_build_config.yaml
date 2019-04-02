@@ -1,0 +1,5 @@
+cuda:
+  - 9
+  - 10
+pin_run_as_build:
+  cuda: x.x
