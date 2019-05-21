@@ -6,7 +6,7 @@ ptychofft::ptychofft(size_t Ntheta_, size_t Nz_, size_t N_, size_t Ntheta0,
 	size_t Nscan_, size_t detx_, size_t dety_, size_t Nprb_)
 {
 	N = N_;	
-	Ntheta = Ntheta_/1;
+	Ntheta = Ntheta_;
 	Nz = Nz_;
 	Nscan = Nscan_;
 	detx = detx_;
