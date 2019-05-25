@@ -150,10 +150,11 @@ class Solver(object):
         # bg subtraction parameters
         r = self.prb.shape[0]/2
         m1 = cp.mean(
-            cp.angle(psi[:, psi.shape[1]/2-r:psi.shape[1]/2+r, r:2*r]))
+            cp.angle(psi[:, :, r:2*r]))
         m2 = cp.mean(cp.angle(
-            psi[:, psi.shape[1]/2-r:psi.shape[1]/2+r, psi.shape[2]-2*r:psi.shape[2]-r]))
+            psi[:,:, psi.shape[2]-2*r:psi.shape[2]-r]))        
         pshift = (m1+m2)/2
+
         t = psi-lamd/rho
         t *= cp.exp(-1j*pshift)
         logt = self.mlog(t)
@@ -181,7 +182,7 @@ class Solver(object):
         def minf(KRu, gu):
             return rho*cp.linalg.norm(KRu-xi0)**2+tau*cp.linalg.norm(gu-xi1)**2
         u = init.copy()
-        gamma = 4  # init gamma as a large value
+        gamma = 2  # init gamma as a large value
         for i in range(titer):
             KRu = K*self.fwd_tomo_batch(u)
             gu = self.fwd_reg(u)
@@ -213,7 +214,7 @@ class Solver(object):
             return f
 
         psi = init.copy()
-        gamma = 4  # init gamma as a large value
+        gamma = 2  # init gamma as a large value
         for i in range(piter):
             fpsi = self.fwd_ptycho(psi)
             if model == 'gaussian':
@@ -307,22 +308,28 @@ class Solver(object):
         rho, tau = 1, 1
         # Lagrangian for each iter
         lagr = cp.zeros([niter, 7], dtype="float32")
+        total0 = 0
+        total1 = 0
+        total2 = 0
         for m in range(niter):
+            start0 = time.time()
             # keep previous iteration for penalty updates
             h0, e0 = h, e
 
-            #start = time.time()
+            start1 = time.time()
             psi = self.cg_ptycho_batch(
-                data, psi, h, lamd, rho, piter+(m < 2)*16, model)
-            #end = time.time()
-            #print('cg_ptycho', end-start)
+                data, psi, h, lamd, rho, piter+(m < 2)*32, model)#
+            end1 = time.time()
+            total1 += end1-start1
+            print('cg_ptycho', end1-start1)
             # tomography problem
-            #start = time.time()
+            start2 = time.time()
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
             # tau=0######if seq approach
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
-            #end = time.time()
-            #print('cg_tomo', end-start)
+            end2 = time.time()
+            total2+=end2-start2
+            print('cg_tomo', end2-start2)
             # regularizer problem
             phi = self.solve_reg(u, mu, tau, alpha)
             # h,e updates
@@ -334,8 +341,11 @@ class Solver(object):
             # update rho, tau for a faster convergence
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
+            end0 = time.time()
+            total0+=end0-start0
+            print('total', end0-start0)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 10) == 0):
+            if (np.mod(m, 4) == -1):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
@@ -344,4 +354,5 @@ class Solver(object):
         lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
                                mu, tau, rho, alpha, model)
         print(lagrr)
+        print(total0/niter*300/60,total1/niter*300/60,total2/niter*300/60)
         return u, psi, lagrr
