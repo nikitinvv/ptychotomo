@@ -17,14 +17,14 @@ if __name__ == "__main__":
     cp.cuda.set_allocator(pool.malloc)
 
     # Model parameters
-    n = 128  # object size n x,y
-    nz = 128  # object size in z
-    ntheta = 128*3//2  # number of angles (rotations)
+    n = 512  # object size n x,y
+    nz = n  # object size in z
+    ntheta = 3*n//4  # number of angles (rotations)
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
     maxint = 0.3  # maximal probe intensity
     prbsize = 16  # probe size
-    prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
+    prbshift = 12  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [64, 64]  # detector size
     noise = False  # apply discrete Poisson noise
 
@@ -38,8 +38,9 @@ if __name__ == "__main__":
     pnz = 32  # number of slice partitions for simultaneous processing in tomography
 
     # Load a 3D object
-    beta = dxchange.read_tiff('data/beta-chip-128.tiff')
-    delta = -dxchange.read_tiff('data/delta-chip-128.tiff')
+    beta = np.ones([nz,n,n],dtype="float32")#dxchange.read_tiff('../data/beta-pad.tiff')
+    delta = np.ones([nz,n,n],dtype="float32")
+    # delta = -dxchange.read_tiff('../data/delta-pad.tiff')
     obj = cp.array(delta+1j*beta)
 
     # init probe, angles, scanner
@@ -47,10 +48,13 @@ if __name__ == "__main__":
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(pt.scanner3(theta, obj.shape, prbshift,
                                 prbshift, prbsize, spiral=0, randscan=True, save=True))
+    print(scan.shape,scan.shape[2]*ntheta)
+    print(4*det[0]*det[1]*ntheta*scan.shape[2]/1024.0/1024.0/1024.0)
+    exit()
     # Class gpu solver
     slv = pt.Solver(prb, scan, theta, det, voxelsize,
                     energy, ntheta, nz, n, ptheta, pnz)
-
+    
     def signal_handler(sig, frame):  # Free gpu memory after SIGINT, SIGSTSTP
         slv = []
         sys.exit(0)
@@ -62,7 +66,8 @@ if __name__ == "__main__":
     if (noise == True):  # Apply Poisson noise
         data = np.random.poisson(data).astype('float32')
     print("max intensity on the detector: ", np.amax(data))
-
+    print(sys.getsizeof(data)/1024.0/1024.0/1024.0)
+    exit()
     # Initial guess
     h = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
     psi = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
