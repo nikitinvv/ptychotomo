@@ -27,7 +27,7 @@ if __name__ == "__main__":
     prbsize = 16 # probe size
     prbshift = 12  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [128, 128] # detector size
-    ntheta = n*3//8  # number of angles (rotations)
+    ntheta = 128*3//2  # number of angles (rotations)
     noise = True  # apply discrete Poisson noise
     
     ptheta = 4

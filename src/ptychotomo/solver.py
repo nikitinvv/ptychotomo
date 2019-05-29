@@ -169,10 +169,10 @@ class Solver(object):
 
     # Line search for the step sizes gamma
     def line_search(self, minf, gamma, u, fu, d, fd):
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-32):
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-12):
             gamma *= 0.5
-        if(gamma <= 1e-32):  # direction not found
-            print('no direction')
+        if(gamma <= 1e-12):  # direction not found
+            #print('no direction')
             gamma = 0        
         return gamma
 
@@ -233,9 +233,10 @@ class Solver(object):
             # line search
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
-            psi = psi + gamma*d            
+            psi = psi + gamma*d
+            ##print(gamma,minf(psi, fpsi))            
         if(cp.amax(cp.abs(cp.angle(psi))) > 3.14):
-            print('possible phase wrap, max computed angle',
+            #print('possible phase wrap, max computed angle',
                   cp.amax(cp.abs(cp.angle(psi))))
             
         return psi
@@ -304,9 +305,8 @@ class Solver(object):
         return lagr
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, piter, titer, niter, model):
-        # init penalties
-        rho, tau = 1, 1
+    def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, rho, tau, piter, titer, niter, model):
+        
         # Lagrangian for each iter
         lagr = cp.zeros([niter, 7], dtype="float32")
         total0 = 0
@@ -319,10 +319,10 @@ class Solver(object):
 
             start1 = time.time()
             psi = self.cg_ptycho_batch(
-                data, psi, h, lamd, rho, piter+(m < 2)*32, model)#
+                data, psi, h, lamd, rho, piter, model)#+(m < 2)*32
             end1 = time.time()
             total1 += end1-start1
-            print('cg_ptycho', end1-start1)
+            #print('cg_ptycho', end1-start1)
             # tomography problem
             start2 = time.time()
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
@@ -330,7 +330,7 @@ class Solver(object):
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
             end2 = time.time()
             total2+=end2-start2
-            print('cg_tomo', end2-start2)
+            #print('cg_tomo', end2-start2)
             # regularizer problem
             phi = self.solve_reg(u, mu, tau, alpha)
             # h,e updates
@@ -344,9 +344,9 @@ class Solver(object):
                 psi, h, h0, phi, e, e0, rho, tau)
             end0 = time.time()
             total0+=end0-start0
-            print(m,'total', end0-start0)
+            #print(m,'total', end0-start0)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 50) == 0):
+            if (np.mod(m, 10) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
@@ -357,7 +357,7 @@ class Solver(object):
    
 
         #lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
-                            #mu, tau, rho, alpha, model)
-        #print(lagrr)
-        print(total0/niter*300/60,total1/niter*300/60,total2/niter*300/60)
+                             #  mu, tau, rho, alpha, model)
+        ##print(lagrr)
+        #print(total0/niter*300/60,total1/niter*300/60,total2/niter*300/60)
         return u, psi

@@ -37,6 +37,8 @@ if __name__ == "__main__":
 
     ptheta = 4
     pnz = 16
+    rho = 2**(-4)
+    tau = 1
 
 
     name = 'noise'+str(noise)+'maxint' + \
@@ -68,10 +70,10 @@ if __name__ == "__main__":
     lamd = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')
     mu = cp.zeros([3, nz, n, n], dtype='complex64', order='C')
     u = cp.zeros([nz, n, n], dtype='complex64', order='C')
-
+    
     # ADMM
     u, psi = slv.admm(data, h, e, psi, phi, lamd,
-                            mu, u, alpha, piter, titer, NITER, model)
+                            mu, u, alpha, rho, tau, piter, titer, NITER, model)
     # Save result
     name = 'reg'+str(alpha)+'noise'+str(noise)+'maxint' + \
         str(maxint)+'prbshift'+str(prbshift)+'ntheta'+str(ntheta)+str(model)+str(piter)+str(titer)+str(NITER)
