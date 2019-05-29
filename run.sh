@@ -15,5 +15,9 @@ source ~/.bashrc-2019-04-27
 source activate ptychotomo
 
 #which python
-python -u rec_volume.py $1 0 >ress$1 &
+python -u rec_volume.py $1 >ress$1$2 &
+#python -u rec_volume.py 1 0 >ress1$1 &
+#python -u rec_volume.py 2 0 >ress2$1 &
+#python -u rec_volume.py 3 0 >ress3$1 &
+
 wait

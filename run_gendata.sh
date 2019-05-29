@@ -15,8 +15,8 @@ source ~/.bashrc-2019-04-27
 source activate ptychotomo
 
 
-python -u gendata.py $1 >resb$1 &
-# python -u gendata.py 1 >resb1 &
-# python -u gendata.py 2 >resb2 &
-# python -u gendata.py 3 >resb3 &
+python -u gendata.py $1 >resb$1$2 &
+#python -u gendata.py 1 >resb1 &
+#python -u gendata.py 2 >resb2 &
+#python -u gendata.py 2 >resb2 &
 wait

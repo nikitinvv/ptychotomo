@@ -27,16 +27,16 @@ if __name__ == "__main__":
     det = [128, 128] # detector size
     n = 512 #object size
     nz = 512 #object size
-    ntheta = 128*3//2
+    ntheta = n*3//8
     noise = True
     # Reconstrucion parameters
     model = 'poisson'  # minimization funcitonal (poisson,gaussian)
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
-    NITER = 400  # ADMM iterations
+    NITER = 300  # ADMM iterations
 
-    ptheta = 2
-    pnz = 32
+    ptheta = 4
+    pnz = 16
 
 
     name = 'noise'+str(noise)+'maxint' + \
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     u = cp.zeros([nz, n, n], dtype='complex64', order='C')
 
     # ADMM
-    u, psi, lagr = slv.admm(data, h, e, psi, phi, lamd,
+    u, psi = slv.admm(data, h, e, psi, phi, lamd,
                             mu, u, alpha, piter, titer, NITER, model)
     # Save result
     name = 'reg'+str(alpha)+'noise'+str(noise)+'maxint' + \
@@ -78,9 +78,9 @@ if __name__ == "__main__":
 
     dxchange.write_tiff(u.imag.get(),  '/data/staff/tomograms/viknik/beta/beta_'+name)
     dxchange.write_tiff(u.real.get(),  '/data/staff/tomograms/viknik/delta/delta_'+name)
-    if not os.path.exists('/data/staff/tomograms/viknik/lagr'):
-        os.makedirs('/data/staff/tomograms/viknik/lagr')
-    np.save('/data/staff/tomograms/viknik/lagr/lagr'+name,lagr.get())
+    # if not os.path.exists('/data/staff/tomograms/viknik/lagr'):
+    #     os.makedirs('/data/staff/tomograms/viknik/lagr')
+    # np.save('/data/staff/tomograms/viknik/lagr/lagr'+name,lagr.get())
     
 
 

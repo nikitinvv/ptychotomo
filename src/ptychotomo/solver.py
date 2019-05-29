@@ -4,7 +4,7 @@ import warnings
 
 import cupy as cp
 import numpy as np
-
+import dxchange
 from ptychotomo.radonusfft import radonusfft
 from ptychotomo.ptychofft import ptychofft
 import time
@@ -169,11 +169,11 @@ class Solver(object):
 
     # Line search for the step sizes gamma
     def line_search(self, minf, gamma, u, fu, d, fd):
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-12):
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-32):
             gamma *= 0.5
-        if(gamma <= 1e-12):  # direction not found
+        if(gamma <= 1e-32):  # direction not found
             print('no direction')
-            gamma = 0
+            gamma = 0        
         return gamma
 
     # Conjugate gradients tomography
@@ -233,10 +233,11 @@ class Solver(object):
             # line search
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
-            psi = psi + gamma*d
+            psi = psi + gamma*d            
         if(cp.amax(cp.abs(cp.angle(psi))) > 3.14):
             print('possible phase wrap, max computed angle',
                   cp.amax(cp.abs(cp.angle(psi))))
+            
         return psi
 
     # Solve ptycho by angles partitions
@@ -343,16 +344,20 @@ class Solver(object):
                 psi, h, h0, phi, e, e0, rho, tau)
             end0 = time.time()
             total0+=end0-start0
-            print('total', end0-start0)
+            print(m,'total', end0-start0)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 4) == -1):
+            if (np.mod(m, 50) == 0):
                 lagr[m] = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
                       (m, niter, rho, tau, *(lagr[m])))
+                      # Save result
+                name = 'reg'+str(alpha)+'_'+str(m)
+                dxchange.write_tiff(u.real.get(),  '/data/staff/tomograms/viknik/delta/delta_'+name)
+   
 
-        lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
-                               mu, tau, rho, alpha, model)
-        print(lagrr)
+        #lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
+                            #mu, tau, rho, alpha, model)
+        #print(lagrr)
         print(total0/niter*300/60,total1/niter*300/60,total2/niter*300/60)
-        return u, psi, lagrr
+        return u, psi

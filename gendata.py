@@ -27,7 +27,7 @@ if __name__ == "__main__":
     prbsize = 16 # probe size
     prbshift = 12  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [128, 128] # detector size
-    ntheta = 128*3//2  # number of angles (rotations)
+    ntheta = n*3//8  # number of angles (rotations)
     noise = True  # apply discrete Poisson noise
     
     ptheta = 4
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     prb = cp.array(pt.objects.probe(prbsize, maxint))
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(pt.objects.scanner3(theta, obj.shape, prbshift,
-                                    prbshift, prbsize, spiral=0, randscan=True, save=True)) 
+                                    prbshift, prbsize, spiral=0, randscan=True, save=False)) 
     #tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
     # Class gpu solver 
     slv = pt.solver.Solver(prb, scan, theta, det, voxelsize, energy, ntheta, nz, n, ptheta, pnz)
