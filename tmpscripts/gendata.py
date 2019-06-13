@@ -10,28 +10,32 @@ import time
 
 if __name__ == "__main__":
     
-    igpu = np.int(sys.argv[1])
+    igpu = np.int(sys.argv[1])    
     cp.cuda.Device(igpu).use()  # gpu id to use
+    idd = np.int(sys.argv[2])
     print("gpu id:",igpu)
     
+    pool = cp.cuda.MemoryPool(cp.cuda.malloc_managed)
+    cp.cuda.set_allocator(pool.malloc)
     # Model parameters
+    n = 512
+    nz = 192
     voxelsize = 1e-6/2  # object voxel size
     energy = 8.8  # xray energy
-    maxint = [3,0.3,0.03,0.003]  # maximal probe intensity
-    alpha = [8e-9,1e-8,2e-8,4e-8]
-    maxint = maxint[igpu]
-    alpha = alpha[igpu]
+    maxint = [3,0.3,0.03,0.003][igpu]
+    alpha = [8e-9,1e-8,2e-8,4e-8][igpu]
+    
     
     prbsize = 16 # probe size
-    prbshift = 12  # probe shift (probe overlap = (1-prbshift)/prbsize)
+    prbshift = 8  # probe shift (probe overlap = (1-prbshift)/prbsize)
     det = [128, 128] # detector size
-    ntheta = 256*3//2  # number of angles (rotations)
+    ntheta = n*3//4  # number of angles (rotations)
     noise = True  # apply discrete Poisson noise
     
-    ptheta = ntheta
-    pnz = 64
-    beta = dxchange.read_tiff('../data/beta-pad.tiff')
-    delta = -dxchange.read_tiff('../data/delta-pad.tiff')
+    ptheta = 2
+    pnz = 8
+    beta = dxchange.read_tiff('../data/beta192.tiff')
+    delta = -dxchange.read_tiff('../data/delta192.tiff')
     obj = cp.array(delta+1j*beta)
     
 
@@ -39,9 +43,9 @@ if __name__ == "__main__":
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(pt.objects.scanner3(theta, obj.shape, prbshift,
                                     prbshift, prbsize, spiral=0, randscan=True, save=False)) 
-    tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
+    #tomoshape = [len(theta), obj.shape[0], obj.shape[2]]
     # Class gpu solver 
-    slv = pt.solver.Solver(prb, scan, theta, det, voxelsize, energy, tomoshape, ptheta, pnz)
+    slv = pt.solver.Solver(prb, scan, theta, det, voxelsize, energy, ntheta, nz, n, ptheta, pnz)
     # Free gpu memory after SIGINT, SIGSTSTP
     def signal_handler(sig, frame):
         slv = []
@@ -52,19 +56,16 @@ if __name__ == "__main__":
     # Compute data
     psi = slv.exptomo(slv.fwd_tomo_batch(obj))
     
-    data = np.zeros(slv.ptychoshape, dtype='float32')
-    for k in range(0, ptheta):  # angle partitions in ptyocgraphy
-        ids = np.arange(k*ntheta//ptheta, (k+1)*ntheta//ptheta)
-        slv.cl_ptycho.setobj(scan[:, ids].data.ptr, prb.data.ptr)
-        data0 = cp.abs(slv.fwd_ptycho(psi[ids]))**2/slv.coefdata
-        if (noise == True):# Apply Poisson noise
-            data[ids] = (cp.random.poisson(data0).astype('float32')).get()
-        else:                
-            data[ids] = data0.get()                 
-    print("max data = ", np.amax(data))      
+    # Compute data
+    data = slv.fwd_ptycho_batch(slv.exptomo(slv.fwd_tomo_batch(obj)))
+    if (noise == True):  # Apply Poisson noise
+        for k in range(0,data.shape[0]):    
+            data[k] = np.random.poisson(data[k]).astype('float32')
+    print("max intensity on the detector: ", np.amax(data))
 
-    name = 'noise'+str(noise)+'maxint' + \
-        str(maxint)+'prbshift'+str(prbshift)+'ntheta'+str(ntheta)+'part'+str(0)
+
+    name = str(idd)+'noise'+str(noise)+'maxint' + \
+        str(maxint)+'prbshift'+str(prbshift)+'ntheta'+str(ntheta)
 
 
     np.save('/data/staff/tomograms/viknik/gendata/data'+name,data)    

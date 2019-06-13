@@ -27,10 +27,10 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
         scanay[m] = np.ndarray.flatten(scy)
         a += spiral
         if randscan:
-            scanax[m] += sx*(np.random.random(1)-0.5)*0.9
-            scanay[m] += sy*(np.random.random(1)-0.5)*0.9            
-            scanax[m] += sx*(np.random.random(shapescan)-0.5)*0.6
-            scanay[m] += sy*(np.random.random(shapescan)-0.5)*0.6           
+            scanax[m] += sx*(np.random.random(1)-0.5)*1
+            scanay[m] += sy*(np.random.random(1)-0.5)*1
+            scanax[m] += sx*(np.random.random(shapescan)-0.5)*0.1
+            scanay[m] += sy*(np.random.random(shapescan)-0.5)*0.1
             # print(scanax[m])        
     scanax[np.where(np.round(scanax) < 0)] = 0
     scanay[np.where(np.round(scanay) < 0)] = 0
@@ -41,21 +41,24 @@ def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
         def random_color():
-            rgbl=[1,0,0]
-            np.random.shuffle(rgbl)
+            rgbl=[0.75,0.75,0]
+            #np.random.shuffle(rgbl)
             return tuple(rgbl)
         for j in range(0,1):
             fig, ax = plt.subplots(1)
-            plt.xlim(0, shape[1])
-            plt.ylim(0, shape[0])
+            plt.xlim(-1, shape[1]+2)
+            plt.ylim(-1, shape[0]+2)
             plt.gca().set_aspect('equal', adjustable='box')
+            plt.axis('off')
             for k in range(0, len(scanax[j])):
                 if(scanax[j, k] < 0 or scanay[j, k] < 0):
                     continue
                 c = patches.Circle(
-                    (scanax[j, k]+psize//2, scanay[j, k]+psize//2), psize//2, fill=False, edgecolor=[*random_color(),1])
+                    (scanax[j, k]+psize//2, scanay[j, k]+psize//2), psize//2, fill=False, edgecolor=[*random_color(),1], linewidth=8)
                 ax.add_patch(c)
+            
             plt.savefig('scan'+str(j)+'.png')
+            
     scan = np.zeros([2,len(theta), shapescan], dtype='float32',order='C')             
     scan[0]=scanax
     scan[1]=scanay

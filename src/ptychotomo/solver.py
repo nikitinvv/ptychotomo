@@ -152,7 +152,7 @@ class Solver(object):
         m1 = cp.mean(
             cp.angle(psi[:, :, r:2*r]))
         m2 = cp.mean(cp.angle(
-            psi[:,:, psi.shape[2]-2*r:psi.shape[2]-r]))        
+            psi[:, :, psi.shape[2]-2*r:psi.shape[2]-r]))
         pshift = (m1+m2)/2
 
         t = psi-lamd/rho
@@ -173,7 +173,7 @@ class Solver(object):
             gamma *= 0.5
         if(gamma <= 1e-12):  # direction not found
             #print('no direction')
-            gamma = 0        
+            gamma = 0
         return gamma
 
     # Conjugate gradients tomography
@@ -234,11 +234,11 @@ class Solver(object):
             fd = self.fwd_ptycho(d)
             gamma = self.line_search(minf, gamma, psi, fpsi, d, fd)
             psi = psi + gamma*d
-            ##print(gamma,minf(psi, fpsi))            
+            ##print(gamma,minf(psi, fpsi))
         if(cp.amax(cp.abs(cp.angle(psi))) > 3.14):
-            #print('possible phase wrap, max computed angle',
+            print('possible phase wrap, max computed angle',
                   cp.amax(cp.abs(cp.angle(psi))))
-            
+
         return psi
 
     # Solve ptycho by angles partitions
@@ -305,32 +305,17 @@ class Solver(object):
         return lagr
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, rho, tau, piter, titer, niter, model):
-        
-        # Lagrangian for each iter
-        lagr = cp.zeros([niter, 7], dtype="float32")
-        total0 = 0
-        total1 = 0
-        total2 = 0
+    def admm(self, data, h, e, psi, phi, lamd, mu, u, alpha, piter, titer, niter, model):
+        rho = 0.5
+        tau = 0.5
         for m in range(niter):
-            start0 = time.time()
             # keep previous iteration for penalty updates
             h0, e0 = h, e
-
-            start1 = time.time()
             psi = self.cg_ptycho_batch(
-                data, psi, h, lamd, rho, piter, model)#+(m < 2)*32
-            end1 = time.time()
-            total1 += end1-start1
-            #print('cg_ptycho', end1-start1)
+                data, psi, h, lamd, rho, piter+(m < 2)*32, model)
             # tomography problem
-            start2 = time.time()
-            xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
-            # tau=0######if seq approach
+            xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)            
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
-            end2 = time.time()
-            total2+=end2-start2
-            #print('cg_tomo', end2-start2)
             # regularizer problem
             phi = self.solve_reg(u, mu, tau, alpha)
             # h,e updates
@@ -342,22 +327,10 @@ class Solver(object):
             # update rho, tau for a faster convergence
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
-            end0 = time.time()
-            total0+=end0-start0
-            #print(m,'total', end0-start0)
             # Lagrangians difference between two iterations
             if (np.mod(m, 10) == 0):
-                lagr[m] = self.take_lagr(
+                lagr = self.take_lagr(
                     psi, phi, data, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
-                      (m, niter, rho, tau, *(lagr[m])))
-                      # Save result
-                name = 'reg'+str(alpha)+'_'+str(m)
-                dxchange.write_tiff(u.real.get(),  '/data/staff/tomograms/viknik/delta/delta_'+name)
-   
-
-        #lagrr = self.take_lagr(psi, phi, data, h, e, lamd,
-                             #  mu, tau, rho, alpha, model)
-        ##print(lagrr)
-        #print(total0/niter*300/60,total1/niter*300/60,total2/niter*300/60)
+                      (m, niter, rho, tau, *lagr))
         return u, psi
