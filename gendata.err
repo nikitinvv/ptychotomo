@@ -1,0 +1,25 @@
+
+Inactive Modules:
+  1) CUDA/10.1.105
+
+Activating Modules:
+  1) FFTW/3.3.7                       7) X11/20180131      13) libGLU/9.0.0
+  2) LLVM/5.0.1                       8) expat/2.2.5       14) libdrm/2.4.91
+  3) Mesa/17.3.6                      9) fontconfig/2.12.6 15) libpng/1.6.34
+  4) OpenBLAS/0.2.20                 10) freeglut/3.0.0    16) nettle/3.4
+  5) OpenMPI/2.1.2                   11) freetype/2.9      17) numactl/2.0.11
+  6) ScaLAPACK/2.0.2-OpenBLAS-0.2.20 12) hwloc/1.11.8
+
+Due to MODULEPATH changes the following have been reloaded:
+  1) GMP/6.1.2  2) bzip2/1.0.6  3) ncurses/6.0  4) zlib/1.2.11
+
+The following have been reloaded with a version change:
+  1) GCC/8.2.0-2.31.1 => GCC/6.4.0-2.28  3) binutils/2.31.1 => binutils/2.28
+  2) GCCcore/8.2.0 => GCCcore/6.4.0
+
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/bin/xzmore’ is not a directory
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/lib/xml2Conf.sh’ is not a directory
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/bin/xzmore’ is not a directory
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/lib/xml2Conf.sh’ is not a directory
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/lib/xml2Conf.sh’ is not a directory
+ln: target ‘/mxn/home/viknik/anaconda/envs/ptychotomo/include/zlib.h’ is not a directory
