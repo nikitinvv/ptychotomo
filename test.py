@@ -10,11 +10,11 @@ import ptychotomo as pt
 
 if __name__ == "__main__":
 
-    if (len(sys.argv)<2):
+    if (len(sys.argv) < 2):
         igpu = 0
     else:
         igpu = np.int(sys.argv[1])
-    
+
     cp.cuda.Device(igpu).use()  # gpu id to use
     # use cuda managed memory in cupy
     pool = cp.cuda.MemoryPool(cp.cuda.malloc_managed)
@@ -47,14 +47,15 @@ if __name__ == "__main__":
     obj = cp.array(delta+1j*beta)
 
     # init probe, angles, scanner
-    prb = cp.array(pt.probe(prbsize, maxint))
+    prb = cp.tile(cp.array(pt.probe(prbsize, maxint)), [ntheta, 1, 1])
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(pt.scanner3(theta, obj.shape, prbshift,
                                 prbshift, prbsize, spiral=0, randscan=True, save=False))
+    nscan = scan.shape[2]
     # Class gpu solver
-    slv = pt.Solver(prb, scan, theta, det, voxelsize,
+    slv = pt.Solver(maxint, nscan, prbsize, theta, det, voxelsize,
                     energy, ntheta, nz, n, ptheta, pnz)
-    
+
     def signal_handler(sig, frame):  # Free gpu memory after SIGINT, SIGSTSTP
         slv = []
         sys.exit(0)
@@ -62,7 +63,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTSTP, signal_handler)
 
     # Compute data
-    data = slv.fwd_ptycho_batch(slv.exptomo(slv.fwd_tomo_batch(obj)))
+    data = slv.fwd_ptycho_batch(slv.exptomo(
+        slv.fwd_tomo_batch(obj)), scan, prb)
     if (noise == True):  # Apply Poisson noise
         data = np.random.poisson(data).astype('float32')
     print("max intensity on the detector: ", np.amax(data))
@@ -76,9 +78,9 @@ if __name__ == "__main__":
     u = cp.zeros([nz, n, n], dtype='complex64', order='C')
 
     # ADMM
-    u, psi = slv.admm(data, h, e, psi, phi, lamd,
-                            mu, u, alpha, piter, titer, niter, model)
-                                
+    u, psi = slv.admm(data, h, e, psi, scan, prb, phi, lamd,
+                      mu, u, alpha, piter, titer, niter, model)
+
     # subtract background in delta
     u.real -= np.mean(u[4:8].real)
 
@@ -90,4 +92,4 @@ if __name__ == "__main__":
     dxchange.write_tiff(u.imag.get(),  'beta/beta'+name)
     dxchange.write_tiff(-u.real.get(),  'delta/delta'+name)  # note sign change
     dxchange.write_tiff(cp.angle(psi).get(),  'psi/psiangle'+name)
-    dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name)    
+    dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name)
