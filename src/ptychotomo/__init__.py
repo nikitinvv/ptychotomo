@@ -4,6 +4,8 @@ from ptychotomo.objects import *
 from ptychotomo.ptychofft import *
 from ptychotomo.radonusfft import *
 from ptychotomo.solver import *
+from ptychotomo.solver_ptycho import *
+from ptychotomo.solver_tomo import *
 
 try:
     __version__ = get_distribution(__name__).version
