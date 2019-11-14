@@ -32,13 +32,13 @@ class Solver(object):
         self.nprb = prb.shape[0]
         self.ptheta = ptheta
         self.pnz = pnz
+        self.cl_ptycho = ptychofft(
+            self.ptheta, self.nz, self.n, self.ptheta, self.nscan, self.ndety, self.ndetx, self.nprb)
 
         # create class for the tomo transform
         self.cl_tomo = radonusfft(self.ntheta, self.pnz, self.n)
         self.cl_tomo.setobj(theta.data.ptr)
         # create class for the ptycho transform
-        self.cl_ptycho = ptychofft(
-            self.ptheta, self.nz, self.n, self.ptheta, self.nscan, self.ndety, self.ndetx, self.nprb)
         # normalization coefficients
         self.coeftomo = 1 / np.sqrt(self.ntheta * self.n/2).astype('float32')
         self.coefptycho = 1 / cp.abs(prb).max().get()
