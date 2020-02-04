@@ -4,7 +4,7 @@ A CuPy and CUDA FFT based library for ptychography and tomography ADMM solvers.
 ## Installation from source
 ```bash
 export CUDACXX=path-to-cuda-nvcc
-python setup.py install
+pip install .
 ```
 
 ## Dependency
