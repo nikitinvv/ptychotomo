@@ -1,36 +1,19 @@
-#specify path to CUDA, e.g.
+# ptychotomo
+A CuPy and CUDA FFT based library for ptychography and tomography ADMM solvers.
 
-export CUDAHOME=/sw/pkg/cuda_x86/cuda-9.1
+## Installation from source
+```bash
+export CUDACXX=path-to-cuda-nvcc
+python setup.py install
+```
 
-#Install cupy, e.g.
+## Dependency
+CuPy - for GPU acceleration of linear algebra operations in iterative schemes.
+See (https://cupy.chainer.org/). For installation use
 
-pip install cupy-cuda91
+```bash
+conda install cupy
+```
 
-#Install ptychography and tomography solvers:
-
-git clone https://github.com/math-vrn/ptychotomo
-
-git clone https://github.com/math-vrn/ptychofft
-
-git clone https://github.com/math-vrn/radonusfft
-
-cd ptychofft; python setup.py install; cd -
-
-cd radonusfft; python setup.py install; cd -
-
-cd ptychotomo
-
-#Run test on gpu with id=0
-
-python test.py 0
-
-
-#Notes:
-
-#Error: ....undefined symbol: __intel_sse2_strcpy
-#If using intel compilers during the compilation then python binary requires
-#intel's libraries when running ptychotomo, otherwise above error happens. 
-#To eliminate this requirement above setup.py file can be executed with gcc:
-
-#$ CC=gcc python setup.py install; cd -
-
+## Tests
+Run python test.py 

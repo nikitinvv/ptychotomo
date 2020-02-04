@@ -9,6 +9,9 @@ __pycache__/
 # C extensions
 *.so
 
+ptychofft.py
+radonusfft.py
+
 # Distribution / packaging
 .Python
 build/
