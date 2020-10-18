@@ -11,8 +11,8 @@ include(${SWIG_USE_FILE})
 find_package(PythonLibs REQUIRED)
 include_directories(${PYTHON_INCLUDE_PATH})
 # TODO: Is NumPy required?
-# find_package(NumPy REQUIRED)
-# include_directories(${NumPy_INCLUDE_DIRS})
+find_package(NumPy REQUIRED)
+include_directories(${NumPy_INCLUDE_DIRS})
 
 # Must tell CMake that SWIG interface files are CXX files
 set_source_files_properties(radonusfft.i PROPERTIES CPLUSPLUS ON)
