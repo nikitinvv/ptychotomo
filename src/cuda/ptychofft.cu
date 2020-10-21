@@ -50,8 +50,7 @@ void ptychofft::fwd(size_t g_, size_t f_, size_t prb_, size_t scan_)
 	dim3 BS3d(32,32,1);
 	dim3 GS3d0(ceil(Nprb*Nprb/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
 	dim3 GS3d1(ceil(detx*dety/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
-	dim3 BS2d(32,32);
-	dim3 GS2d0(ceil(Nscan/(float)BS2d.x),ceil(Ntheta/(float)BS2d.y));
+	dim3 GS2d0(ceil(Nscan/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y));
 	
 	cudaMemcpy(f,(float2*)f_,Ntheta*Nz*N*sizeof(float2),cudaMemcpyDefault);
 	cudaMemset(g,0,Ntheta*Nscan*detx*dety*sizeof(float2));
@@ -61,7 +60,7 @@ void ptychofft::fwd(size_t g_, size_t f_, size_t prb_, size_t scan_)
 	mul<<<GS3d0,BS3d>>>(g,f,prb,scanx,scany,Ntheta,Nz,N,Nscan,Nprb,detx,dety);
 	
 	cufftExecC2C(plan2dfwd, (cufftComplex*)g,(cufftComplex*)g,CUFFT_FORWARD);
-	takeshifts<<<GS2d0,BS2d>>>(shiftx,shifty,scanx,scany,Ntheta,Nscan);		
+	takeshifts<<<GS2d0,BS3d>>>(shiftx,shifty,scanx,scany,Ntheta,Nscan);		
 	shifts<<<GS3d1,BS3d>>>(g, shiftx, shifty, Ntheta, Nscan, detx*dety);
 	cudaMemcpy((float2*)g_,g,Ntheta*Nscan*detx*dety*sizeof(float2),cudaMemcpyDefault);  	
 }
@@ -71,8 +70,7 @@ void ptychofft::adj(size_t f_, size_t g_, size_t prb_, size_t scan_)
 	dim3 BS3d(32,32,1);
 	dim3 GS3d0(ceil(Nprb*Nprb/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
 	dim3 GS3d1(ceil(detx*dety/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
-	dim3 BS2d(32,32);
-	dim3 GS2d0(ceil(Nscan/(float)BS2d.x),ceil(Ntheta/(float)BS2d.y));
+	dim3 GS2d0(ceil(Nscan/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y));
 	
 	cudaMemcpy(g,(float2*)g_,Ntheta*Nscan*detx*dety*sizeof(float2),cudaMemcpyDefault);  	
 	cudaMemset(f,0,Ntheta*Nz*N*sizeof(float2));	
@@ -80,12 +78,35 @@ void ptychofft::adj(size_t f_, size_t g_, size_t prb_, size_t scan_)
 	cudaMemcpy(scany,&((float*)scan_)[Ntheta*Nscan],Ntheta*Nscan*sizeof(float),cudaMemcpyDefault);  	
 	cudaMemcpy(prb,(float2*)prb_,Ntheta*Nprb*Nprb*sizeof(float2),cudaMemcpyDefault);		
 
-	takeshifts<<<GS2d0,BS2d>>>(shiftx,shifty,scanx,scany,Ntheta,Nscan);		
+	takeshifts<<<GS2d0,BS3d>>>(shiftx,shifty,scanx,scany,Ntheta,Nscan);		
 	shiftsa<<<GS3d1,BS3d>>>(g, shiftx, shifty, Ntheta, Nscan, detx*dety);
 	cufftExecC2C(plan2dfwd, (cufftComplex*)g,(cufftComplex*)g,CUFFT_INVERSE);
 	mula<<<GS3d0,BS3d>>>(f,g,prb,scanx,scany,Ntheta,Nz,N,Nscan,Nprb,detx,dety);
 	cudaMemcpy((float2*)f_,f,Ntheta*Nz*N*sizeof(float2),cudaMemcpyDefault);  	
 }
+
+void ptychofft::adjprb(size_t prb_, size_t g_, size_t f_, size_t scan_)
+{
+	dim3 BS3d(32,32,1);
+	dim3 GS3d0(ceil(Nprb*Nprb/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
+	dim3 GS3d1(ceil(detx*dety/(float)BS3d.x),ceil(Nscan/(float)BS3d.y),ceil(Ntheta/(float)BS3d.z));
+	dim3 GS2d0(ceil(Nscan/(float)BS3d.x),ceil(Ntheta/(float)BS3d.y));
+	
+	cudaMemcpy(g,(float2*)g_,Ntheta*Nscan*detx*dety*sizeof(float2),cudaMemcpyDefault);  	
+	cudaMemcpy(f,(float2*)f_,Ntheta*Nz*N*sizeof(float2),cudaMemcpyDefault);  				
+	cudaMemcpy(scanx,&((float*)scan_)[0],Ntheta*Nscan*sizeof(float),cudaMemcpyDefault);  	
+	cudaMemcpy(scany,&((float*)scan_)[Ntheta*Nscan],Ntheta*Nscan*sizeof(float),cudaMemcpyDefault);  	
+	cudaMemset(prb,0,Ntheta*Nprb*Nprb*sizeof(float2));  				
+	
+	takeshifts<<<GS2d0,BS3d>>>(shiftx,shifty,scanx,scany,Ntheta,Nscan);		
+	shiftsa<<<GS3d1,BS3d>>>(g, shiftx, shifty, Ntheta, Nscan, detx*dety);
+	cufftExecC2C(plan2dfwd, (cufftComplex*)g,(cufftComplex*)g,CUFFT_INVERSE);
+	mulaprb<<<GS3d0,BS3d>>>(f,g,prb,scanx,scany,Ntheta,Nz,N,Nscan,Nprb,detx,dety);
+	cudaMemcpy((float2*)prb_,prb,Ntheta*Nprb*Nprb*sizeof(float2),cudaMemcpyDefault);		
+	
+	
+}
+
 
 
 

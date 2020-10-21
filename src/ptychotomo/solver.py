@@ -106,7 +106,7 @@ class Solver(object):
         data = np.zeros([self.ntheta, self.nscan, self.ndety,
                          self.ndetx], dtype='float32')
         for k in range(0, self.ntheta//self.ptheta):  # angle partitions in ptychography
-            ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)            
+            ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
             data0 = cp.abs(self.fwd_ptycho(
                 psi[ids], prb[ids], scan[:, ids]))**2
             data[ids] = data0.get()
@@ -119,6 +119,13 @@ class Solver(object):
                        dtype='complex64')
         self.cl_ptycho.adj(res.data.ptr, data.data.ptr,
                            prb.data.ptr, scan.data.ptr)
+        return res
+
+    def adj_ptycho_prb(self, data, psi, scan):
+        res = cp.zeros([self.ptheta, self.nprb, self.nprb],
+                       dtype='complex64')
+        self.cl_ptycho.adjprb(res.data.ptr, data.data.ptr,
+                              psi.data.ptr, scan.data.ptr)
         return res
 
     # Forward operator for regularization (J)
@@ -164,10 +171,10 @@ class Solver(object):
         return xi0, xi1, K, pshift
 
     # Line search for the step sizes gamma
-    def line_search(self, minf, gamma, u, fu, d, fd):
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-12):
+    def line_search(self, minf, gamma, u, fu, d, fd, coef):
+        while(minf(u, fu, coef)-minf(u+gamma*d, fu+gamma*fd, coef) < 0 and gamma > 1e-3):
             gamma *= 0.5
-        if(gamma <= 1e-12):  # direction not found
+        if(gamma <= 1e-3):  # direction not found
             #print('no direction')
             gamma = 0
         return gamma
@@ -175,14 +182,14 @@ class Solver(object):
     # Conjugate gradients tomography
     def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):
         # minimization functional
-        def minf(KRu, gu):
-            return rho*cp.linalg.norm(KRu-xi0)**2/(self.ntheta * self.n/2)+tau*cp.linalg.norm(gu-xi1)**2
+        def minf(KRu, gu, coef):
+            return rho*cp.linalg.norm(KRu-xi0)**2*coef+tau*cp.linalg.norm(gu-xi1)**2
         u = init.copy()
-        gamma = 2  # init gamma as a large value
+        coef = 1/(self.ntheta * self.n/2)
         for i in range(titer):
             KRu = K*self.fwd_tomo_batch(u)
             gu = self.fwd_reg(u)
-            grad = rho*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))/(self.ntheta * self.n/2) + \
+            grad = rho*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))*coef + \
                 tau*self.adj_reg(gu-xi1)
             # Dai-Yuan direction
             if i == 0:
@@ -193,34 +200,42 @@ class Solver(object):
             grad0 = grad
             # line search
             gamma = 0.5*self.line_search(
-                minf, 1, KRu, gu, K*self.fwd_tomo_batch(d), self.fwd_reg(d))
+                minf, 1, KRu, gu, K*self.fwd_tomo_batch(d), self.fwd_reg(d), coef)
             # print(gamma,minf(KRu, gu))
             # update step
             u = u + gamma*d
         return u
 
     # Conjugate gradients for ptychography
-    def cg_ptycho(self, data, psi, prb, scan, h, lamd, rho, piter, model):
-        imaxprb = 1/(cp.abs(prb).max())**2
+    def cg_ptycho(self, data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb):
         # minimization functional
 
-        def minf(psi, fpsi):
+        def minf(psi, fpsi, coef):
             if model == 'gaussian':
                 f = cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(data))**2
             elif model == 'poisson':
                 f = cp.sum(cp.abs(fpsi)**2-2*data * self.mlog(cp.abs(fpsi)))
-            f *= imaxprb
+            f *= coef
             f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
             return f
 
+        def minfprb(prb, fprb, coef):
+            if model == 'gaussian':
+                f = cp.linalg.norm(cp.abs(fprb)-cp.sqrt(data))**2
+            elif model == 'poisson':
+                f = cp.sum(cp.abs(fprb)**2-2*data * self.mlog(cp.abs(fprb)))
+            # f *= coef
+            return f
+
         for i in range(piter):
+            coef = 1/(cp.abs(prb).max())**2
             fpsi = self.fwd_ptycho(psi, prb, scan)
             if model == 'gaussian':
                 grad = self.adj_ptycho(
-                    fpsi-cp.sqrt(data)*cp.exp(1j*cp.angle(fpsi)), prb, scan)*imaxprb
+                    fpsi-cp.sqrt(data)*cp.exp(1j*cp.angle(fpsi)), prb, scan)*coef
             elif model == 'poisson':
                 grad = self.adj_ptycho(
-                    fpsi-data*fpsi/(cp.abs(fpsi)**2+1e-32), prb, scan)*imaxprb
+                    fpsi-data*fpsi/(cp.abs(fpsi)**2+1e-32), prb, scan)*coef
             grad -= rho*(h - psi + lamd/rho)
             # Dai-Yuan direction
             if i == 0:
@@ -231,19 +246,48 @@ class Solver(object):
             grad0 = grad
             # line search
             fd = self.fwd_ptycho(d, prb, scan)
-            gamma = 0.5*self.line_search(minf, 1, psi, fpsi, d, fd)
-            psi = psi + gamma*d
-            # print(gamma,minf(psi, fpsi))
 
+            gamma = 0.5*self.line_search(minf, 1, psi, fpsi, d, fd, coef)
+            psi = psi + gamma*d
+            # print('psi', gamma,minf(psi, fpsi, coef))
+
+            if(recover_prb):
+                # 2) probe retrieval subproblem with fixed object
+                coef = 1/(cp.abs(psi).max())**2/self.nscan#/self.nprb
+                # forward operator
+                fprb = self.fwd_ptycho(psi, prb, scan)
+               
+                # take gradient
+                if model == 'gaussian':
+                    gradprb = self.adj_ptycho_prb(
+                        fprb-cp.sqrt(data)*cp.exp(1j*cp.angle(fprb)), psi, scan)*coef
+                elif model == 'poisson':
+                    gradprb = self.adj_ptycho_prb(
+                        fprb-data*fprb/(cp.abs(fprb)**2+1e-32), psi, scan)*coef
+                # Dai-Yuan direction
+                if (i == 0):
+                    dprb = -gradprb
+                else:
+                    dprb = -gradprb+cp.linalg.norm(gradprb)**2 / \
+                        ((cp.sum(cp.conj(dprb)*(gradprb-gradprb0))))*dprb
+                gradprb0 = gradprb
+                # line search
+                fdprb = self.fwd_ptycho(psi, dprb, scan)
+                gammaprb = 0.5 *self.line_search(
+                    minfprb, 1, prb, fprb, dprb, fdprb, coef)  # start with gammaprb = 1 on each iteration
+                # update prb
+                prb = prb + gammaprb*dprb
+                # print('prb', gammaprb, minfprb(prb, fprb, coef))
         return psi, prb
 
     # Solve ptycho by angles partitions
-    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h, lamd, rho, piter, model):
+    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h, lamd, rho, piter, model, recover_prb):
         psi = psiinit.copy()
         prb = prbinit.copy()
         for k in range(0, self.ntheta//self.ptheta):
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            psi[ids], prb[ids] = self.cg_ptycho(cp.array(data[ids]), psi[ids], prb[ids], scan[:, ids], h[ids], lamd[ids], rho, piter, model)
+            psi[ids], prb[ids] = self.cg_ptycho(cp.array(
+                data[ids]), psi[ids], prb[ids], scan[:, ids], h[ids], lamd[ids], rho, piter, model, recover_prb)
         return psi, prb
 
     # Regularizer problem
@@ -297,7 +341,7 @@ class Solver(object):
         return lagr
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, psi, phi, prb, scan, h, e, lamd, mu, u, alpha, piter, titer, niter, model):
+    def admm(self, data, psi, phi, prb, scan, h, e, lamd, mu, u, alpha, piter, titer, niter, model, recover_prb):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
@@ -307,7 +351,7 @@ class Solver(object):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
             psi, prb = self.cg_ptycho_batch(
-                data, psi, prb, scan, h, lamd, rho, piter, model)
+                data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb)
             # tomography problem
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)

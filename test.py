@@ -16,32 +16,39 @@ if __name__ == "__main__":
     ntheta = 128  # number of angles (rotations)
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
-    maxint = 0.1  # maximal probe intensity
-    nprb = 16  # probe size
-    prbshift = 8  # probe shift (probe overlap = (1-prbshift)/nprb)
-    det = [64, 64]  # detector size
+    nprb = 32  # probe size
+    prbshift = 16 # probe shift (probe overlap = (1-prbshift)/nprb)
+    det = [128, 128]  # detector size
     noise = False  # apply discrete Poisson noise
-
+    recover_prb = True
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
-    alpha = 3*1e-8  # tv regularization penalty coefficient
+    alpha = 7*1e-14  # tv regularization penalty coefficient
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
-    niter = 32  # ADMM iterations
-    ptheta = 128  # number of angular partitions for simultaneous processing in ptychography
+    niter = 128  # ADMM iterations
+    ptheta = ntheta  # number of angular partitions for simultaneous processing in ptychography
     pnz = 128  # number of slice partitions for simultaneous processing in tomography
 
     # Load a 3D object
     beta = dxchange.read_tiff('data/beta-chip-128.tiff')
     delta = -dxchange.read_tiff('data/delta-chip-128.tiff')
     obj = cp.array(delta+1j*beta)
-
     # init probe, angles, scanner
+    # maxint = 0.1  # maximal probe intensity
+    # prb = cp.zeros([ntheta, nprb, nprb],dtype='complex64')
+    # prb[:] = cp.array(pt.probe(nprb, maxint))
+    
     prb = cp.zeros([ntheta, nprb, nprb],dtype='complex64')
-    prb[:] = cp.array(pt.probe(nprb, maxint))
+    prb_amp = dxchange.read_tiff('data/probes_amp.tiff').astype('float32')
+    prb_ang = dxchange.read_tiff('data/probes_ang.tiff').astype('float32')    
+    prb[:] = cp.array(prb_amp[0,::128//nprb,::128//nprb]*np.exp(1j*prb_ang[0,::128//nprb,::128//nprb]))
+    
+
     theta = cp.linspace(0, np.pi, ntheta).astype('float32')
     scan = cp.array(pt.scanner3(theta, obj.shape, prbshift,
-                                prbshift, nprb, spiral=0, randscan=False, save=False))
+                                prbshift, nprb, spiral=0, randscan=True, save=True))
+    scan = cp.floor(scan)                                
     # Class gpu solver
     slv = pt.Solver(scan, theta, det, voxelsize,
                     energy, ntheta, nz, n, nprb, ptheta, pnz)
@@ -60,18 +67,28 @@ if __name__ == "__main__":
     mu = cp.zeros([3, nz, n, n], dtype='complex64', order='C')
     u = cp.zeros([nz, n, n], dtype='complex64', order='C')
 
+    
+    # modify probe
+    prb = prb.swapaxes(1,2)
+
+
+    dxchange.write_tiff(cp.angle(prb).get(),  'prb/initprbangle', overwrite=True)
+    dxchange.write_tiff(cp.abs(prb).get(),  'prb/initprbamp', overwrite=True)    
+    
     # ADMM
     u, psi, prb = slv.admm(data, psi, phi, prb, scan, h, e,  lamd,
-                            mu, u, alpha, piter, titer, niter, model)                        
+                            mu, u, alpha, piter, titer, niter, model, recover_prb)                        
     # subtract background in delta
     u.real -= np.mean(u[4:8].real)
 
     # Save result
     name = 'reg'+str(alpha)+'noise'+str(noise)+'maxint' + \
-        str(maxint)+'prbshift'+str(prbshift)+'ntheta' + \
+        'prbshift'+str(prbshift)+'ntheta' + \
         str(ntheta)+str(model)+str(piter)+str(titer)+str(niter)
 
     dxchange.write_tiff(u.imag.get(),  'beta/beta'+name, overwrite=True)
     dxchange.write_tiff(-u.real.get(),  'delta/delta'+name, overwrite=True)  # note sign change
     dxchange.write_tiff(cp.angle(psi).get(),  'psi/psiangle'+name, overwrite=True)
     dxchange.write_tiff(cp.abs(psi).get(),  'psi/psiamp'+name, overwrite=True)    
+    dxchange.write_tiff(cp.angle(prb).get(),  'prb/prbangle'+name, overwrite=True)
+    dxchange.write_tiff(cp.abs(prb).get(),  'prb/prbamp'+name, overwrite=True)    

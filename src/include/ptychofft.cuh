@@ -32,4 +32,5 @@ public:
 	~ptychofft();
 	void fwd(size_t g_, size_t f_, size_t prb_, size_t scan_);
 	void adj(size_t f_, size_t g_, size_t prb_, size_t scan_);	
+	void adjprb(size_t prb_, size_t g_, size_t scan_, size_t f_);
 };
