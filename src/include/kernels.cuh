@@ -257,7 +257,7 @@ void __global__ mul(float2 *g, float2 *f, float2 *prb, float *scanx, float *scan
 
 	int shift = (detx-Nprb)/2*dety+(dety-Nprb)/2;
 	float2 f0 = f[(stx+ix)+(sty+iy)*N+tz*Nz*N];
-	float2 prb0 = prb[iy+ix*Nprb];
+	float2 prb0 = prb[iy+ix*Nprb+tz*Nprb*Nprb];
 	float c = 1/sqrtf(detx*dety);//fft constant
 	g[shift+iy+ix*dety+ty*detx*dety+tz*detx*dety*Nscan].x = c*prb0.x*f0.x-c*prb0.y*f0.y;
 	g[shift+iy+ix*dety+ty*detx*dety+tz*detx*dety*Nscan].y = c*prb0.x*f0.y+c*prb0.y*f0.x;
@@ -281,7 +281,7 @@ void __global__ mula(float2 *f, float2 *g, float2 *prb, float *scanx, float *sca
 
 	int shift = (detx-Nprb)/2*dety+(dety-Nprb)/2;
 	float2 g0 = g[shift+iy+ix*dety+ty*detx*dety+tz*detx*dety*Nscan];
-	float2 prb0 = prb[iy+ix*Nprb];
+	float2 prb0 = prb[iy+ix*Nprb+tz*Nprb*Nprb];
 	float c = 1/sqrtf(detx*dety);//fft constant
 	atomicAdd(&f[(stx+ix)+(sty+iy)*N+tz*Nz*N].x, c*prb0.x*g0.x+c*prb0.y*g0.y);
 	atomicAdd(&f[(stx+ix)+(sty+iy)*N+tz*Nz*N].y, c*prb0.x*g0.y-c*prb0.y*g0.x);

@@ -211,3 +211,8 @@ dkms.conf
 *radonusfft.py
 *ptychofft.py
 *_wrap.cpp
+
+_skbuild
+beta
+delta
+psi
