@@ -14,6 +14,26 @@ def probe(size,maxint=1,rin=0.8, rout=1):
     prb = np.sqrt(maxint)*img*np.exp(1j*0.2*img)
     return prb
 
+def probesquare(size,maxint=1,rin=0.8, rout=1):
+    prb = np.zeros([size,size],dtype='float32')
+    rinp = int(rin/2*size)
+    routp = int(rout/2*size)
+    print(rinp)
+    print(routp)
+    t = np.zeros(size//2-rinp,dtype='float32')
+    t0 = np.sin((np.arange(rinp,routp)-rinp)/(routp-rinp)*np.pi/2)
+    print(t0)
+    t[size//2-routp:size//2-rinp]=t0 
+    print(t)
+    prb1d = np.zeros(size,dtype='float32')
+    prb1d[:len(t)] = t
+    prb1d[len(t):-len(t)] = 1
+    prb1d[-len(t):] = t[::-1]
+    prb = np.transpose(prb1d[np.newaxis,...])*prb1d[np.newaxis,...]     
+    #prb = np.sqrt(maxint)*prb*np.exp(1j*prb)
+    
+    return prb    
+
 # 3d scanner positions
 def scanner3(theta, shape, sx, sy, psize, spiral=0, randscan=False, save=False):
     scx, scy = np.meshgrid(
