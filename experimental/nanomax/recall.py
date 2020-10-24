@@ -58,8 +58,8 @@ if __name__ == "__main__":
             exit()
     psirec,prbrec,scanrec = read_rec(210)    
     
-    n = 512+128+64
-    nz = 512+128+64
+    n = 512+128
+    nz = 512+128
     det = [128, 128]
     ntheta = 1  # number of angles (rotations)
     voxelsize = 18.03*1e-7  # cm
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
-    piter = 128  # ptychography iterations
+    piter = 256  # ptychography iterations
     titer = 4  # tomography iterations
     niter = 128  # ADMM iterations
     ptheta = ntheta  # number of angular partitions for simultaneous processing in ptychography
