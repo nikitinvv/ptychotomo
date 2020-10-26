@@ -107,8 +107,10 @@ class Solver(object):
                          self.ndetx], dtype='float32')
         for k in range(0, self.ntheta//self.ptheta):  # angle partitions in ptychography
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            data0 = cp.abs(self.fwd_ptycho(
-                psi[ids], prb[ids], scan[:, ids]))**2
+            data0 = cp.zeros([len(ids),self.nscan, self.ndety,self.ndetx], dtype='float32')
+            for k in range(self.nmodes):
+                tmp = self.fwd_ptycho(psi[ids], prb[ids, k], scan[:,ids])
+                data0 += cp.abs(tmp)**2
             data[ids] = data0.get()
         data *= (self.ndetx*self.ndety)  # FFT compensation
         return data
@@ -171,44 +173,38 @@ class Solver(object):
         return xi0, xi1, K, pshift
 
     # Line search for the step sizes gamma
-    def line_search(self, minf, gamma, u, fu, d, fd, coef):
+    def line_search(self, minf, gamma, u, fu, d, fd):
         
-        while(minf(u, fu, coef)-minf(u+gamma*d, fu+gamma*fd, coef) < 0 and gamma > 1e-7):
-            # print('c:',minf(u, fu, coef), minf(u+gamma*d, fu+gamma*fd, coef))
+        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-7):
             gamma *= 0.5
         if(gamma <= 1e-7):  # direction not found
-            #print('no direction')
             gamma = 0
         return gamma
 
     # Conjugate gradients tomography
     def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):
         # minimization functional
-        def minf(KRu, gu, coef):
-            return rho*cp.linalg.norm(KRu-xi0)**2*coef+tau*cp.linalg.norm(gu-xi1)**2
+        def minf(KRu, gu):
+            return rho*cp.linalg.norm(KRu-xi0)**2+tau*cp.linalg.norm(gu-xi1)**2
         u = init.copy()
-        coef = 1/(self.ntheta * self.n/2)
+        minf1 = 1e9
         for i in range(titer):
             KRu = K*self.fwd_tomo_batch(u)
             gu = self.fwd_reg(u)
-            grad = rho*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))*coef + \
+            grad = rho*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))/(self.ntheta * self.n/2) + \
                 tau*self.adj_reg(gu-xi1)
-            # Dai-Yuan direction
-            if i == 0:
-                d = -grad
-            else:
-                d = -grad+cp.linalg.norm(grad)**2 / \
-                    ((cp.sum(cp.conj(d)*(grad-grad0))))*d
-            grad0 = grad
-            # line search
-            gamma = self.line_search(
-                minf, 1, KRu, gu, K*self.fwd_tomo_batch(d), self.fwd_reg(d), coef)
-            # print(gamma,minf(KRu, gu))
+            r = min(1/rho,1/tau)/2
+            grad *= r
             # update step
-            u = u + gamma*d
+            u = u + 0.5*(-grad)
+            
+            minf0 = minf(KRu,gu)
+            if(minf1<minf0):
+                print('Error',minf0,minf1)
+            minf1=minf0
         return u
 
-    def line_search_sqr(self, f, p1, p2, p3, step_length=1, step_shrink=0.5):
+    def line_search_sqr(self, f, p1, p2, p3, psi=None, prb=None, scan=None, dprb=None, m=None, step_length=1, step_shrink=0.5):
         """Optimized line search for square functions
             Example of otimized computation for the Gaussian model:
             sum_j|G_j(psi+gamma dpsi)|^2 = sum_j|G_j(psi)|^2+
@@ -227,11 +223,12 @@ class Solver(object):
                 Temporarily vectors to avoid computing forward operators        
         """
         assert step_shrink > 0 and step_shrink < 1
-        fp1 = f(p1) # optimize computation
+        fp1 = f(p1,psi) # optimize computation
         # Decrease the step length while the step increases the cost function        
-        while f(p1+step_length**2 * p2+step_length*p3) > fp1:          
-            if step_length < 1e-7:
-                #warnings.warn("Line search failed for conjugate gradient.")
+        
+        while f(p1+step_length**2 * p2+step_length*p3,psi) > fp1:                   
+            if step_length < 1e-14:
+                #warnings.warn("Line search failed for conjugate gradient.")                
                 return 0
             step_length *= step_shrink            
         return step_length
@@ -240,20 +237,13 @@ class Solver(object):
     def cg_ptycho(self, data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb):
         # minimization functional
 
-        def minf(fpsi):
-            if model == 'gaussian':
-                f = cp.linalg.norm(cp.sqrt(cp.abs(fpsi)) - cp.sqrt(data))**2
-            elif model == 'poisson':
-                f = cp.sum(
-                    cp.abs(fpsi) - data * cp.log(cp.abs(fpsi) + 1e-32))
-            # f *= coef
-            # f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
+        def minf(fpsi, psi):
+            f = cp.linalg.norm(cp.sqrt(cp.abs(fpsi)) - cp.sqrt(data))**2
+            if(psi is not None):
+                f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
             return f
-        print("# congujate gradient parameters\n"
-              "iteration, step size object, step size prb, function min"
-              )  # csv column headers
-        gammaprb = 0
 
+        minf1 = 1e12
         for i in range(piter):
 
             # 1) object retrieval subproblem with fixed prbs
@@ -271,38 +261,19 @@ class Solver(object):
             
             gradpsi = cp.zeros(
                 [self.ptheta, self.nz, self.n], dtype='complex64')
-            if model == 'gaussian':
-                for k in range(self.nmodes):
-                    fpsi = self.fwd_ptycho(psi, prb[:, k], scan) 
-                    gradpsi += self.adj_ptycho(
-                        fpsi - cp.sqrt(data) * fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, k], scan)# / (cp.max(cp.abs(prb[:,k]))**2)
-            elif model == 'poisson':
-                for k in range(self.nmodes):
-                    gradpsi += self.adj_ptycho(
-                        fpsi - data * fpsi / (absfpsi + 1e-32), prb[:, k], scan)# / (cp.max(cp.abs(prb[:,k]))**2)
-                        
-            # Use optimized line search for square functions, note:
-            # sum_j|G_j(psi+gamma dpsi)|^2 = sum_j|G_j(psi)|^2+
-            #                               gamma^2*sum_j|G_j(dpsi)|^2+
-            #                               gamma*sum_j (G_j(psi).real*G_j(psi).real+2*G_j(dpsi).imag*G_j(dpsi).imag)
-            # temp variables to avoid computing the fwd operator during the line serch
-            # p1 = sum_j|G_j(psi)|^2
-            # p2 = sum_j|G_j(dpsi)|^2
-            # p3 = sum_j (G_j(psi).real*G_j(psi).real+2*G_j(dpsi).imag*G_j(dpsi).imag)
-            p1 = data*0
-            p2 = data*0
-            p3 = data*0
             for k in range(self.nmodes):
-                tmp1 = self.fwd_ptycho(psi, prb[:, k], scan)
-                tmp2 = self.fwd_ptycho(-gradpsi, prb[:, k], scan)
-                p1 += cp.abs(tmp1)**2
-                p2 += cp.abs(tmp2)**2
-                p3 += 2*(tmp1.real*tmp2.real+tmp1.imag*tmp2.imag)
-            # line search
-            gammapsi = self.line_search_sqr(minf, p1, p2, p3)
+                fpsi = self.fwd_ptycho(psi, prb[:, k], scan) 
+                afpsi = self.adj_ptycho(fpsi, prb[:, k], scan) 
+                if(k==0):
+                    r = cp.real(cp.sum(psi*cp.conj(afpsi))/cp.sum(afpsi*cp.conj(afpsi)))
+                gradpsi += self.adj_ptycho(
+                    fpsi - cp.sqrt(data) * fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, k], scan)
+            gradpsi -= rho*(h - psi + lamd/rho)
             
+            gradpsi *= min(1/rho,r)/2
             # update psi
-            psi = psi + gammapsi * (-gradpsi)
+            psi = psi + 0.5 * (-gradpsi)
+
             if (recover_prb):
                 if(i == 0):
                     gradprb = prb*0                    
@@ -311,40 +282,34 @@ class Solver(object):
                     # sum of forward operators associated with each prb
                     fprb = self.fwd_ptycho(psi, prb[:, m], scan)
                     # sum of abs value of forward operators
+                    
                     absfprb = data*0
                     for k in range(self.nmodes):
                         tmp = self.fwd_ptycho(psi, prb[:, k], scan)
                         absfprb += np.abs(tmp)**2
+                    
+                    fprb = self.fwd_ptycho(psi, prb[:, m], scan) 
+                    afprb = self.adj_ptycho_prb(fprb, psi, scan) 
+                    r = cp.real(cp.sum(prb[:,m]*cp.conj(afprb))/cp.sum(afprb*cp.conj(afprb)))
+                    r = r/2
                     # take gradient
-                    if model == 'gaussian':
-                        gradprb[:, m] = self.adj_ptycho_prb(
-                            fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi, scan)/ self.nscan* self.nmodes #/ cp.max(cp.abs(psi))**2   # ?
-                    elif model == 'poisson':
-                        gradprb[:, m] = self.adj_ptycho_prb(
-                            fprb - data * fprb / (absfprb + 1e-32), scan, psi) / self.nscan# / cp.max(cp.abs(psi))**2 
-                    # temp variables to avoid computing the fwd operator during the line serch
-                    p1 = data*0
-                    p2 = data*0
-                    p3 = data*0
-                    for k in range(self.nmodes):
-                        tmp1 = self.fwd_ptycho(psi, prb[:, k], scan)
-                        p1 += cp.abs(tmp1)**2
-                    tmp1 = self.fwd_ptycho(psi, prb[:, m], scan)
-                    tmp2 = self.fwd_ptycho(psi, -gradprb[:,m], scan)
-                    p2 = cp.abs(tmp2)**2
-                    p3 = 2*(tmp1.real*tmp2.real+tmp1.imag*tmp2.imag)
-                    # line search
-                    gammaprb = self.line_search_sqr(minf, p1, p2, p3)
-                    # update prb
-                    prb[:, m] = prb[:, m] + gammaprb * (-gradprb[:,m])                    
+                    gradprb[:, m] = self.adj_ptycho_prb(
+                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi, scan)
+                    gradprb[:, m]*=r                    
+                    prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m]) 
+                   
             # check convergence
-            if (np.mod(i, 4) == 0):                
-                print("%4d, %.3e, %.3e, %.7e, " %
-                      (i, gammapsi, gammaprb, minf(absfpsi)))                                    
-                dxchange.write_tiff(cp.angle(psi).get(),
-                                    'psiiter/'+str(i), overwrite=True)
-                dxchange.write_tiff(cp.abs(psi).get(),
-                                    'psiiterabs/'+str(i), overwrite=True)
+            
+            if (np.mod(i, 1) == 0):                
+                minf0 = minf(absfpsi,psi)
+                # print("%4d,  %.7e, " % (i, minf0))                                    
+                if(minf0>minf1):
+                    print('ERRRORRRRRRRRRRRRRRR',minf0,minf1)                      
+                minf1 = minf0
+                # dxchange.write_tiff(cp.angle(psi).get(),
+                #                     'psiiter/'+str(i), overwrite=True)
+                # dxchange.write_tiff(cp.abs(psi).get(),
+                #                     'psiiterabs/'+str(i), overwrite=True)
         return psi, prb
 
     # Solve ptycho by angles partitions
@@ -391,14 +356,14 @@ class Solver(object):
         # Lagrangian ptycho part by angles partitions
         for k in range(0, self.ntheta//self.ptheta):
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            fpsi = self.fwd_ptycho(psi[ids], prb[ids], scan[:, ids])
+            # fpsi = self.fwd_ptycho(psi[ids], prb[ids], scan[:, ids])
             datap = cp.array(data[ids])
             # normalized data
-            if (model == 'poisson'):
-                lagr[0] += cp.sum(cp.abs(fpsi)**2-2*datap *
-                                  self.mlog(cp.abs(fpsi))-(datap-2*datap*self.mlog(cp.sqrt(datap))))
-            if (model == 'gaussian'):
-                lagr[0] += cp.linalg.norm(cp.abs(fpsi)-cp.sqrt(datap))**2
+            absfprb = datap*0
+            for k in range(self.nmodes):
+                tmp = self.fwd_ptycho(psi[ids], prb[ids, k], scan[:,ids])
+                absfprb += np.abs(tmp)**2                        
+            lagr[0] += cp.linalg.norm(cp.sqrt(absfprb)-cp.sqrt(datap))**2
         lagr[1] = alpha*cp.sum(np.sqrt(cp.real(cp.sum(phi*cp.conj(phi), 0))))
         lagr[2] = 2*cp.sum(cp.real(cp.conj(lamd)*(h-psi)))
         lagr[3] = rho*cp.linalg.norm(h-psi)**2
@@ -418,7 +383,7 @@ class Solver(object):
             # keep previous iteration for penalty updates
             h0, e0 = h, e
             psi, prb = self.cg_ptycho_batch(
-                data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb)
+                data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb)                            
             # tomography problem
             xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
             u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
@@ -434,9 +399,17 @@ class Solver(object):
             rho, tau = self.update_penalty(
                 psi, h, h0, phi, e, e0, rho, tau)
             # Lagrangians difference between two iterations
-            if (np.mod(m, 4) == 0):
+            if (np.mod(m, 1) == 0):
                 lagr = self.take_lagr(
                     psi, phi, data, prb, scan, h, e, lamd, mu, alpha, rho, tau, model)
                 print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
-                      (m, niter, rho, tau, *lagr))                
+                      (m, niter, rho, tau, *lagr))        
+                dxchange.write_tiff_stack(cp.angle(psi).get(),
+                                    'psiiter'+str(self.n)+'/'+str(m), overwrite=True)
+                dxchange.write_tiff_stack(cp.abs(psi).get(),
+                                    'psiiterabs'+str(self.n)+'/'+str(m), overwrite=True)                              
+                dxchange.write_tiff_stack(cp.real(u).get(),
+                                    'ure'+str(self.n)+'/'+str(m), overwrite=True)
+                dxchange.write_tiff_stack(cp.imag(u).get(),
+                                    'uim'+str(self.n)+'/'+str(m), overwrite=True)                                                    
         return u, psi, prb
