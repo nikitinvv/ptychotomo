@@ -3,6 +3,7 @@ from pkg_resources import get_distribution, DistributionNotFound
 from ptychotomo.objects import *
 from ptychotomo.ptychofft import *
 from ptychotomo.radonusfft import *
+from ptychotomo.deform import *
 from ptychotomo.solver import *
 
 try:

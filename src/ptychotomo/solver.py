@@ -4,9 +4,15 @@ import sys
 import cupy as cp
 import numpy as np
 import dxchange
+import time
+import concurrent.futures as cf
+import threading
+from itertools import repeat
+from functools import partial
+import cv2
 from ptychotomo.radonusfft import radonusfft
 from ptychotomo.ptychofft import ptychofft
-import time
+from ptychotomo.deform import deform
 
 
 PLANCK_CONSTANT = 6.58211928e-19  # [keV*s]
@@ -35,7 +41,10 @@ class Solver(object):
 
         # create class for the tomo transform
         self.cl_tomo = radonusfft(self.ntheta, self.pnz, self.n)
-        self.cl_tomo.setobj(theta.data.ptr)
+        self.cl_tomo.setobj(cp.ascontiguousarray(theta).data.ptr)
+
+        self.cl_deform = deform(self.nz, self.n, self.ptheta)
+
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTSTP, self.signal_handler)
 
@@ -44,9 +53,9 @@ class Solver(object):
         self.cl_ptycho = []
         sys.exit(0)
 
-    def mlog(self, psi):
-        res = psi.copy()
-        res[cp.abs(psi) < 1e-32] = 1e-32
+    def mlog(self, psi3):
+        res = psi3.copy()
+        res[cp.abs(psi3) < 1e-32] = 1e-32
         res = cp.log(res)
         return res
 
@@ -54,26 +63,28 @@ class Solver(object):
     def wavenumber(self):
         return 2 * np.pi / (2 * np.pi * PLANCK_CONSTANT * SPEED_OF_LIGHT / self.energy)
 
-    # Exp representation of projections, exp(i\nu\psi)
-    def exptomo(self, psi):
-        return cp.exp(1j*psi * self.voxelsize * self.wavenumber())
+    # Exp representation of projections, exp(i\nu\psi3)
+    def exptomo(self, psi3):
+        return cp.exp(1j*psi3 * self.voxelsize * self.wavenumber())
 
-    # Log representation of projections, -i/\nu log(psi)
-    def logtomo(self, psi):
-        return -1j / self.wavenumber() * self.mlog(psi) / self.voxelsize
+    # Log representation of projections, -i/\nu log(psi3)
+    def logtomo(self, psi3):
+        return -1j / self.wavenumber() * self.mlog(psi3) / self.voxelsize
 
     # Radon transform (R)
     def fwd_tomo(self, u):
         res = cp.zeros([self.ntheta, self.pnz, self.n],
                        dtype='complex64')
-        self.cl_tomo.fwd(res.data.ptr, u.data.ptr)
+        self.cl_tomo.fwd(cp.ascontiguousarray(res).data.ptr,
+                         cp.ascontiguousarray(u).data.ptr)
         return res
 
     # Adjoint Radon transform (R^*)
     def adj_tomo(self, data):
         res = cp.zeros([self.pnz, self.n, self.n],
                        dtype='complex64')
-        self.cl_tomo.adj(res.data.ptr, data.data.ptr)
+        self.cl_tomo.adj(cp.ascontiguousarray(res).data.ptr,
+                         cp.ascontiguousarray(data).data.ptr)
         return res
 
     # Batch of Radon transform (R)
@@ -94,22 +105,23 @@ class Solver(object):
         return res
 
     # Ptychography transform (FQ)
-    def fwd_ptycho(self, psi, prb, scan):
+    def fwd_ptycho(self, psi3, prb, scan):
         res = cp.zeros([self.ptheta, self.nscan, self.ndety,
                         self.ndetx], dtype='complex64')
-        self.cl_ptycho.fwd(res.data.ptr, psi.data.ptr,
-                           prb.data.ptr, scan.data.ptr)
+        self.cl_ptycho.fwd(cp.ascontiguousarray(res).data.ptr, cp.ascontiguousarray(psi3).data.ptr,
+                           cp.ascontiguousarray(prb).data.ptr, cp.ascontiguousarray(scan).data.ptr)
         return res
 
     # Batch of Ptychography transform (FQ)
-    def fwd_ptycho_batch(self, psi, prb, scan):
+    def fwd_ptycho_batch(self, psi3, prb, scan):
         data = np.zeros([self.ntheta, self.nscan, self.ndety,
                          self.ndetx], dtype='float32')
         for k in range(0, self.ntheta//self.ptheta):  # angle partitions in ptychography
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            data0 = cp.zeros([len(ids),self.nscan, self.ndety,self.ndetx], dtype='float32')
+            data0 = cp.zeros(
+                [len(ids), self.nscan, self.ndety, self.ndetx], dtype='float32')
             for k in range(self.nmodes):
-                tmp = self.fwd_ptycho(psi[ids], prb[ids, k], scan[:,ids])
+                tmp = self.fwd_ptycho(psi3[ids], prb[ids, k], scan[:, ids])
                 data0 += cp.abs(tmp)**2
             data[ids] = data0.get()
         data *= (self.ndetx*self.ndety)  # FFT compensation
@@ -119,15 +131,15 @@ class Solver(object):
     def adj_ptycho(self, data, prb, scan):
         res = cp.zeros([self.ptheta, self.nz, self.n],
                        dtype='complex64')
-        self.cl_ptycho.adj(res.data.ptr, data.data.ptr,
-                           prb.data.ptr, scan.data.ptr)
+        self.cl_ptycho.adj(cp.ascontiguousarray(res).data.ptr, cp.ascontiguousarray(data).data.ptr,
+                           cp.ascontiguousarray(prb).data.ptr, cp.ascontiguousarray(scan).data.ptr)
         return res
 
-    def adj_ptycho_prb(self, data, psi, scan):
+    def adj_ptycho_prb(self, data, psi3, scan):
         res = cp.zeros([self.ptheta, self.nprb, self.nprb],
                        dtype='complex64')
-        self.cl_ptycho.adjprb(res.data.ptr, data.data.ptr,
-                              psi.data.ptr, scan.data.ptr)
+        self.cl_ptycho.adjprb(cp.ascontiguousarray(res).data.ptr, cp.ascontiguousarray(data).data.ptr,
+                              cp.ascontiguousarray(psi3).data.ptr, cp.ascontiguousarray(scan).data.ptr)
         return res
 
     # Forward operator for regularization (J)
@@ -151,16 +163,16 @@ class Solver(object):
         return res
 
     # xi0,K, and K for linearization of the tomography problem
-    def takexi(self, psi, phi, lamd, mu, rho, tau):
+    def takexi(self, psi3, psi2, lamd3, lamd2, rho3, rho2):
         # bg subtraction parameters
         r = self.nprb/2
         m1 = cp.mean(
-            cp.angle(psi[:, :, r:2*r]))
+            cp.angle(psi3[:, :, r:2*r]))
         m2 = cp.mean(cp.angle(
-            psi[:, :, psi.shape[2]-2*r:psi.shape[2]-r]))
+            psi3[:, :, psi3.shape[2]-2*r:psi3.shape[2]-r]))
         pshift = (m1+m2)/2
 
-        t = psi-lamd/rho
+        t = psi3-lamd3/rho3
         t *= cp.exp(-1j*pshift)
         logt = self.mlog(t)
 
@@ -169,81 +181,44 @@ class Solver(object):
         K = K/cp.amax(cp.abs(K))  # normalization
         xi0 = K*(-1j*(logt) /
                  (self.voxelsize * self.wavenumber()))
-        xi1 = phi-mu/tau
+        xi1 = psi2-lamd2/rho2
         return xi0, xi1, K, pshift
 
-    # Line search for the step sizes gamma
-    def line_search(self, minf, gamma, u, fu, d, fd):
-        
-        while(minf(u, fu)-minf(u+gamma*d, fu+gamma*fd) < 0 and gamma > 1e-7):
-            gamma *= 0.5
-        if(gamma <= 1e-7):  # direction not found
-            gamma = 0
-        return gamma
-
     # Conjugate gradients tomography
-    def cg_tomo(self, xi0, xi1, K, init, rho, tau, titer):
+    def cg_tomo(self, xi0, xi1, K, init, rho3, rho2, titer):
         # minimization functional
         def minf(KRu, gu):
-            return rho*cp.linalg.norm(KRu-xi0)**2+tau*cp.linalg.norm(gu-xi1)**2
+            return rho3*cp.linalg.norm(KRu-xi0)**2+rho2*cp.linalg.norm(gu-xi1)**2
         u = init.copy()
-        minf1 = 1e9
+        # minf1 = 1e9
         for i in range(titer):
             KRu = K*self.fwd_tomo_batch(u)
             gu = self.fwd_reg(u)
-            grad = rho*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))/(self.ntheta * self.n/2) + \
-                tau*self.adj_reg(gu-xi1)
-            r = min(1/rho,1/tau)/2
+            grad = rho3*self.adj_tomo_batch(cp.conj(K)*(KRu-xi0))/(self.ntheta * self.n/2) + \
+                rho2*self.adj_reg(gu-xi1)
+            r = min(1/rho3, 1/rho2)/2
             grad *= r
             # update step
             u = u + 0.5*(-grad)
-            
-            minf0 = minf(KRu,gu)
-            if(minf1<minf0):
-                print('Error',minf0,minf1)
-            minf1=minf0
+
+            # minf0 = minf(KRu, gu)
+            # if(minf1 < minf0):
+            #     print('error in tomo', minf0, minf1)
+            # minf1 = minf0
         return u
 
-    def line_search_sqr(self, f, p1, p2, p3, psi=None, prb=None, scan=None, dprb=None, m=None, step_length=1, step_shrink=0.5):
-        """Optimized line search for square functions
-            Example of otimized computation for the Gaussian model:
-            sum_j|G_j(psi+gamma dpsi)|^2 = sum_j|G_j(psi)|^2+
-                                           gamma^2*sum_j|G_j(dpsi)|^2+
-                                           gamma*sum_j (G_j(psi).real*G_j(psi).real+2*G_j(dpsi).imag*G_j(dpsi).imag)
-            p1,p2,p3 are temp variables to avoid computing the fwd operator during the line serch
-            p1 = sum_j|G_j(psi)|^2
-            p2 = sum_j|G_j(dpsi)|^2
-            p3 = sum_j (G_j(psi).real*G_j(psi).real+2*G_j(dpsi).imag*G_j(dpsi).imag)
-
-            Parameters	
-            ----------	
-            f : function(x)	
-                The function being optimized.	
-            p1,p2,p3 : vectors	
-                Temporarily vectors to avoid computing forward operators        
-        """
-        assert step_shrink > 0 and step_shrink < 1
-        fp1 = f(p1,psi) # optimize computation
-        # Decrease the step length while the step increases the cost function        
-        
-        while f(p1+step_length**2 * p2+step_length*p3,psi) > fp1:                   
-            if step_length < 1e-14:
-                #warnings.warn("Line search failed for conjugate gradient.")                
-                return 0
-            step_length *= step_shrink            
-        return step_length
-
-    
-    def cg_ptycho(self, data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb):
+    def cg_ptycho(self, data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb):
+        # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
+        # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
+        # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
+        # h1 == \Top_{t^k} \psi_3^k
         # minimization functional
-
-        def minf(fpsi, psi):
+        def minf(fpsi, psi1):
             f = cp.linalg.norm(cp.sqrt(cp.abs(fpsi)) - cp.sqrt(data))**2
-            if(psi is not None):
-                f += rho*cp.linalg.norm(h-psi+lamd/rho)**2
+            f += rho1*cp.linalg.norm(h1-psi1+lamd1/rho1)**2
             return f
 
-        minf1 = 1e12
+        # minf1 = 1e12
         for i in range(piter):
 
             # 1) object retrieval subproblem with fixed prbs
@@ -251,165 +226,313 @@ class Solver(object):
             # sum of abs value of forward operators
             absfpsi = data*0
             for k in range(self.nmodes):
-                tmp = self.fwd_ptycho(psi, prb[:, k], scan)
+                tmp = self.fwd_ptycho(psi1, prb[:, k], scan)
                 absfpsi += np.abs(tmp)**2
 
             a = cp.sum(cp.sqrt(absfpsi*data))
-            b = cp.sum(absfpsi)                        
+            b = cp.sum(absfpsi)
             prb *= (a/b)
             absfpsi *= (a/b)**2
-            
+
             gradpsi = cp.zeros(
                 [self.ptheta, self.nz, self.n], dtype='complex64')
             for k in range(self.nmodes):
-                fpsi = self.fwd_ptycho(psi, prb[:, k], scan) 
-                afpsi = self.adj_ptycho(fpsi, prb[:, k], scan) 
-                if(k==0):
-                    r = cp.real(cp.sum(psi*cp.conj(afpsi))/cp.sum(afpsi*cp.conj(afpsi)))
+                fpsi = self.fwd_ptycho(psi1, prb[:, k], scan)
+                afpsi = self.adj_ptycho(fpsi, prb[:, k], scan)
+                if(k == 0):
+                    r = cp.real(cp.sum(psi1*cp.conj(afpsi)) /
+                                cp.sum(afpsi*cp.conj(afpsi)))
                 gradpsi += self.adj_ptycho(
                     fpsi - cp.sqrt(data) * fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, k], scan)
-            gradpsi -= rho*(h - psi + lamd/rho)
-            
-            gradpsi *= min(1/rho,r)/2
-            # update psi
-            psi = psi + 0.5 * (-gradpsi)
+            gradpsi -= rho1*(h1 - psi1 + lamd1/rho1)
+
+            gradpsi *= min(1/rho1, r)/2
+            # update psi1
+            psi1 = psi1 + 0.5 * (-gradpsi)
 
             if (recover_prb):
                 if(i == 0):
-                    gradprb = prb*0                    
+                    gradprb = prb*0
                 for m in range(0, self.nmodes):
                     # 2) prb retrieval subproblem with fixed object
                     # sum of forward operators associated with each prb
-                    fprb = self.fwd_ptycho(psi, prb[:, m], scan)
+                    fprb = self.fwd_ptycho(psi1, prb[:, m], scan)
                     # sum of abs value of forward operators
-                    
+
                     absfprb = data*0
                     for k in range(self.nmodes):
-                        tmp = self.fwd_ptycho(psi, prb[:, k], scan)
+                        tmp = self.fwd_ptycho(psi1, prb[:, k], scan)
                         absfprb += np.abs(tmp)**2
-                    
-                    fprb = self.fwd_ptycho(psi, prb[:, m], scan) 
-                    afprb = self.adj_ptycho_prb(fprb, psi, scan) 
-                    r = cp.real(cp.sum(prb[:,m]*cp.conj(afprb))/cp.sum(afprb*cp.conj(afprb)))
+
+                    fprb = self.fwd_ptycho(psi1, prb[:, m], scan)
+                    afprb = self.adj_ptycho_prb(fprb, psi1, scan)
+                    r = cp.real(
+                        cp.sum(prb[:, m]*cp.conj(afprb))/cp.sum(afprb*cp.conj(afprb)))
                     r = r/2
                     # take gradient
                     gradprb[:, m] = self.adj_ptycho_prb(
-                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi, scan)
-                    gradprb[:, m]*=r                    
-                    prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m]) 
-                   
-            # check convergence
-            
-            if (np.mod(i, 1) == 0):                
-                minf0 = minf(absfpsi,psi)
-                # print("%4d,  %.7e, " % (i, minf0))                                    
-                if(minf0>minf1):
-                    print('ERRRORRRRRRRRRRRRRRR',minf0,minf1)                      
-                minf1 = minf0
-                # dxchange.write_tiff(cp.angle(psi).get(),
-                #                     'psiiter/'+str(i), overwrite=True)
-                # dxchange.write_tiff(cp.abs(psi).get(),
-                #                     'psiiterabs/'+str(i), overwrite=True)
-        return psi, prb
+                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi1, scan)
+                    gradprb[:, m] *= r
+                    prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
+
+            # # check convergence
+            # minf0 = minf(absfpsi, psi1)
+            # if(minf0 > minf1):
+            #     print('error inptycho', minf0, minf1)
+            # minf1 = minf0
+
+        return psi1, prb
 
     # Solve ptycho by angles partitions
-    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h, lamd, rho, piter, model, recover_prb):
-        psi = psiinit.copy()
+    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h1, lamd1, rho1, piter, model, recover_prb):
+        psi1 = psiinit.copy()
         prb = prbinit.copy()
         for k in range(0, self.ntheta//self.ptheta):
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            psi[ids], prb[ids] = self.cg_ptycho(cp.array(
-                data[ids]), psi[ids], prb[ids], scan[:, ids], h[ids], lamd[ids], rho, piter, model, recover_prb)
-        return psi, prb
+            psi1[ids], prb[ids] = self.cg_ptycho(cp.array(
+                data[ids]), psi1[ids], prb[ids], scan[:, ids], h1[ids], lamd1[ids], rho1, piter, model, recover_prb)
+        return psi1, prb
+
+    def registration_flow(self, psi, g, mmin, mmax, flow, pars, id):
+        """Find optical flow for one projection"""
+        tmp1 = ((psi[id]-mmin[id]) /
+                (mmax[id]-mmin[id])*255)
+        tmp1[tmp1 > 255] = 255
+        tmp1[tmp1 < 0] = 0
+        tmp2 = ((g[id]-mmin[id]) /
+                (mmax[id]-mmin[id])*255)
+        tmp2[tmp2 > 255] = 255
+        tmp2[tmp2 < 0] = 0
+        #print(np.max(tmp2))
+        #print(np.min(tmp2))
+        cv2.calcOpticalFlowFarneback(
+            tmp1, tmp2, flow[id], *pars)  # updates flow
+
+    def registration_flow_batch(self, psi3, psilamd1, mmin, mmax, flow=None, pars=[0.5, 3, 20, 16, 5, 1.1, 4]):
+        """Find optical flow for all projections in parallel"""
+        if (flow is None):
+            flow = np.zeros([self.ntheta, self.nz, self.n, 2], dtype='float32')
+
+        flow0 = flow.copy()
+        with cf.ThreadPoolExecutor() as e:
+            # update flow in place
+            e.map(partial(self.registration_flow, np.angle(psi3), np.angle(psilamd1), mmin,
+                          mmax, flow, pars), range(0, psi3.shape[0]))
+        # dxchange.write_tiff_stack(np.angle(psi3), 't1', overwrite=True)
+        # dxchange.write_tiff_stack(np.angle(psilamd1), 't2', overwrite=True)
+        # dxchange.write_tiff_stack(cp.angle(self.apply_flow_gpu_batch(cp.array(psi3), flow)).get(), 't11', overwrite=True)
+        
+        # # control Farneback's (may diverge for small window sizes)
+        # err = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow0))
+        # err1 = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow))
+        # if(err1 > err):  # use new flow or not
+        #     flow = flow0
+
+        return flow
+
+    def apply_flow_gpu(self, f, flow):
+        h, w = flow.shape[1:3]
+        flow = -flow.copy()
+        flow[:, :, :, 0] += cp.arange(w)
+        flow[:, :, :, 1] += cp.arange(h)[:, cp.newaxis]
+
+        flowx = cp.array(flow[:, :, :, 0])
+        flowy = cp.array(flow[:, :, :, 1])
+        g = f.copy()  # keep values that were not affected
+        # g = cp.zeros([self.ptheta,self.nz,self.n],dtype='float32')
+
+        self.cl_deform.remap(cp.ascontiguousarray(g).data.ptr, cp.ascontiguousarray(f).data.ptr, 
+            cp.ascontiguousarray(flowx).data.ptr, cp.ascontiguousarray(flowy).data.ptr)
+        return g
+
+    def apply_flow_gpu_batch(self, f, flow):
+        res = cp.zeros([self.ntheta, self.nz, self.n], dtype='complex64')
+        for k in range(0, self.ntheta//self.ptheta):
+            ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
+            # copy data part to gpu
+            f_gpu = cp.array(f[ids])
+            flow_gpu = cp.array(flow[ids])
+            res_gpu = self.apply_flow_gpu(
+                f_gpu.real, flow_gpu)+1j*self.apply_flow_gpu(f_gpu.imag, flow_gpu)
+            # copy result to cpu
+            res[ids] = res_gpu
+        return res
+
+    def cg_deform_gpu(self, psilamd1, psi3, flow, diter, h3lamd3, rho1=0, rho3=0):
+        """CG solver for deformation"""
+        # minimization functional
+        def minf(psi3, Tpsi3):
+            f = rho1*cp.linalg.norm(Tpsi3-psilamd1)**2 + \
+                rho3*cp.linalg.norm(psi3-h3lamd3)**2
+            return f
+
+        # minf1 = 1e9
+        for i in range(diter):
+            Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+            grad = rho1*(self.apply_flow_gpu((Tpsi3-psilamd1).real, -flow)+1j*self.apply_flow_gpu((Tpsi3-psilamd1).imag, -flow) +
+                         rho3*(psi3-h3lamd3))
+            r = min(1/rho1, 1/rho3)/2
+            grad *= r
+            # update step
+            psi3 = psi3 + 0.5*(-grad)
+            # check convergence
+            # Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+            # minf0 = minf(psi3, Tpsi3)
+            # if(minf0 > minf1):
+            #     print('error in deform', minf0, minf1)
+            #     minf1 = minf0
+            # print(i,minf0)                
+        return psi3
+
+    def cg_deform_gpu_batch(self, psilamd1, psi3, flow, diter, h3lamd3, rho1=0, rho3=0):
+        res = cp.zeros([self.ntheta, self.nz, self.n], dtype='complex64')
+        for k in range(0, self.ntheta//self.ptheta):
+            ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
+            # copy data part to gpu
+            psilamd1_gpu = cp.array(psilamd1[ids])
+            psi3_gpu = cp.array(psi3[ids])
+            h3lamd3_gpu = cp.array(h3lamd3[ids])
+            flow_gpu = cp.array(flow[ids])
+            # Radon transform
+            res_gpu = self.cg_deform_gpu(
+                psilamd1_gpu, psi3_gpu, flow_gpu, diter, h3lamd3_gpu, rho1, rho3)
+            # copy result to cpu
+            res[ids] = res_gpu
+        return res
 
     # Regularizer problem
-    def solve_reg(self, u, mu, tau, alpha):
-        z = self.fwd_reg(u)+mu/tau
+    def solve_reg(self, u, lamd2, rho2, alpha):
+        z = self.fwd_reg(u)+lamd2/rho2
         # Soft-thresholding
         za = cp.sqrt(cp.real(cp.sum(z*cp.conj(z), 0)))
-        z[:, za <= alpha/tau] = 0
-        z[:, za > alpha/tau] -= alpha/tau * \
-            z[:, za > alpha/tau]/(za[za > alpha/tau])
+        z[:, za <= alpha/rho2] = 0
+        z[:, za > alpha/rho2] -= alpha/rho2 * \
+            z[:, za > alpha/rho2]/(za[za > alpha/rho2])
         return z
 
-    # Update rho, tau for a faster convergence
-    def update_penalty(self, psi, h, h0, phi, e, e0, rho, tau):
-        # rho
-        r = cp.linalg.norm(psi - h)**2
-        s = cp.linalg.norm(rho*(h-h0))**2
+    # Update rho3, rho2 for a faster convergence
+    def update_penalty(self, psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1):
+        # rho3
+        r = cp.linalg.norm(psi3 - h3)**2
+        s = cp.linalg.norm(rho3*(h3-h30))**2
         if (r > 10*s):
-            rho *= 2
+            rho3 *= 2
         elif (s > 10*r):
-            rho *= 0.5
-        # tau
-        r = cp.linalg.norm(phi - e)**2
-        s = cp.linalg.norm(tau*(e-e0))**2
+            rho3 *= 0.5
+        # rho2
+        r = cp.linalg.norm(psi2 - h2)**2
+        s = cp.linalg.norm(rho2*(h2-h20))**2
         if (r > 10*s):
-            tau *= 2
+            rho2 *= 2
         elif (s > 10*r):
-            tau *= 0.5
-        return rho, tau
+            rho2 *= 0.5
+        # rho1
+        r = cp.linalg.norm(psi1 - h1)**2
+        s = cp.linalg.norm(rho1*(h1-h10))**2
+        if (r > 10*s):
+            rho1 *= 2
+        elif (s > 10*r):
+            rho1 *= 0.5
+        return rho3, rho2, rho1
 
     # Lagrangian terms for monitoring convergence
-    def take_lagr(self, psi, phi, data, prb, scan, h, e, lamd, mu, alpha, rho, tau, model):
-        lagr = cp.zeros(7, dtype="float32")
+    def take_lagr(self, psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model):
+        # \mathcal{L}_{\bar{\rho}} (u,\bar{\psi}, \bar{\lambda})=&\sum_{j=1}^{n} \left\{|\Fop\Qop_p\psi_1|_j^2-2d_j\log|\Fop\Qop_p\psi_1|_j \right\} +  \alpha q(\psi_2)\\&
+        # + 2\text{Re}\{\lambda_1^H(\Top_t \psi_3-\psi_1)\}+\rho_1\|\Top_t \psi_3-\psi_1\|_2^2\\&
+        # + 2\text{Re}\{\lambda_2^H(\Jop u-\psi_2)\}+ \rho_2\|\Jop u-\psi_2\|_2^2\\&
+        # + 2\text{Re}\{\lambda_3^H(\Hop u-\psi_3)\}+\rho_3\|\Hop u-\psi_3\|_2^2
+        lagr = cp.zeros(9, dtype="float32")
         # Lagrangian ptycho part by angles partitions
         for k in range(0, self.ntheta//self.ptheta):
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
-            # fpsi = self.fwd_ptycho(psi[ids], prb[ids], scan[:, ids])
             datap = cp.array(data[ids])
             # normalized data
             absfprb = datap*0
             for k in range(self.nmodes):
-                tmp = self.fwd_ptycho(psi[ids], prb[ids, k], scan[:,ids])
-                absfprb += np.abs(tmp)**2                        
+                tmp = self.fwd_ptycho(psi1[ids], prb[ids, k], scan[:, ids])
+                absfprb += np.abs(tmp)**2
             lagr[0] += cp.linalg.norm(cp.sqrt(absfprb)-cp.sqrt(datap))**2
-        lagr[1] = alpha*cp.sum(np.sqrt(cp.real(cp.sum(phi*cp.conj(phi), 0))))
-        lagr[2] = 2*cp.sum(cp.real(cp.conj(lamd)*(h-psi)))
-        lagr[3] = rho*cp.linalg.norm(h-psi)**2
-        lagr[4] = 2*cp.sum(np.real(cp.conj(mu)*(e-phi)))
-        lagr[5] = tau*cp.linalg.norm(e-phi)**2
-        lagr[6] = cp.sum(lagr[0:5])
+        lagr[1] = alpha*cp.sum(np.sqrt(cp.real(cp.sum(psi2*cp.conj(psi2), 0))))
+        lagr[2] = 2*cp.sum(cp.real(cp.conj(lamd1)*(h1-psi1)))
+        lagr[3] = rho1*cp.linalg.norm(h1-psi1)**2
+        lagr[4] = 2*cp.sum(np.real(cp.conj(lamd2)*(h2-psi2)))
+        lagr[5] = rho2*cp.linalg.norm(h2-psi2)**2
+        lagr[6] = 2*cp.sum(np.real(cp.conj(lamd3)*(h3-psi3)))
+        lagr[7] = rho2*cp.linalg.norm(h3-psi3)**2
+        lagr[8] = cp.sum(lagr[0:8])
         return lagr
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, psi, phi, prb, scan, h, e, lamd, mu, u, alpha, piter, titer, niter, model, recover_prb):
+    def admm(self, data, psi3, psi2, psi1, flow, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, u, alpha, piter, titer, diter, niter, model, recover_prb):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
-        rho = 0.5
-        tau = 0.5
+        pars = [0.5, 2, self.n, 4, 5, 1.1, 4]
+        mmin = np.ones([self.ntheta], dtype='float32')*(-0.005)
+        mmax = np.ones([self.ntheta], dtype='float32')*(0.2)
+
+        rho3 = 0.5
+        rho2 = 0.5
+        rho1 = 0.5
         for m in range(niter):
             # keep previous iteration for penalty updates
-            h0, e0 = h, e
-            psi, prb = self.cg_ptycho_batch(
-                data, psi, prb, scan, h, lamd, rho, piter, model, recover_prb)                            
+            h30, h20, h10 = h3, h2, h1
+            # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
+            # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
+            # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
+            # h1 == \Top_{t^k} \psi_3^k
+            psi1, prb = self.cg_ptycho_batch(
+                data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb)
+
+            # &\psi_3^{k+1}, (t^{k+1}) = \argmin_{\psi_3,t} \rho_1\|\Top_t \psi_3-\psi_1^{k+1}+
+            # \lambda_1^k/\rho_1\|_2^2+\rho_3\|\Hop u^k-\psi_3+\lambda_3^k/\rho_3\|_2^2
+            flow = self.registration_flow_batch(psi3.get(), (psi1-lamd1/rho1).get(), mmin, mmax, flow, pars)
+            psi3 = self.cg_deform_gpu_batch(psi1-lamd1/rho1, psi3, flow, diter, h3+lamd3/rho3, rho1, rho3)
+            # dxchange.write_tiff_stack(cp.angle(psi3).get(), 't3', overwrite=True)
+            # dxchange.write_tiff_stack(cp.angle(psi1-lamd1/rho1).get(), 't4', overwrite=True)
+            # dxchange.write_tiff_stack(cp.angle(h3+lamd3/rho3).get(), 't5', overwrite=True)
+            
+            # exit()
+            # psi3 = psi1.copy()
             # tomography problem
-            xi0, xi1, K, pshift = self.takexi(psi, phi, lamd, mu, rho, tau)
-            u = self.cg_tomo(xi0, xi1, K, u, rho, tau, titer)
+            # u^{k+1} = \argmin_{u,t} \rho_2\|\Jop u-\psi_2^{k+1}+\lambda_2^k/\rho_2\|_2^2
+            # +\rho_3\|\Hop u-\psi_3^{k+1}+\lambda_3^k/\rho_3\|_2^2,\quad \text{//tomography}\\
+            xi0, xi1, K, pshift = self.takexi(
+                psi3, psi2, lamd3, lamd2, rho3, rho2)
+            u = self.cg_tomo(xi0, xi1, K, u, rho3, rho2, titer)
             # regularizer problem
-            phi = self.solve_reg(u, mu, tau, alpha)
-            # h,e updates
-            h = self.exptomo(self.fwd_tomo_batch(u))*cp.exp(1j*pshift)
-            e = self.fwd_reg(u)
-            # lambda, mu updates
-            lamd = lamd + rho * (h-psi)
-            mu = mu + tau * (e-phi)
-            # update rho, tau for a faster convergence
-            rho, tau = self.update_penalty(
-                psi, h, h0, phi, e, e0, rho, tau)
+            psi2 = self.solve_reg(u, lamd2, rho2, alpha)
+            # h3,h2 updates
+            h3 = self.exptomo(self.fwd_tomo_batch(u))*cp.exp(1j*pshift)
+            h2 = self.fwd_reg(u)
+            h1 = self.apply_flow_gpu_batch(psi3, flow)
+            # lamd updates
+            lamd3 = lamd3 + rho3 * (h3-psi3)
+            lamd2 = lamd2 + rho2 * (h2-psi2)
+            lamd1 = lamd1 + rho1 * (h1-psi1)
+            # update rho for a faster convergence
+            rho3, rho2, rho1 = self.update_penalty(
+                psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
+
             # Lagrangians difference between two iterations
             if (np.mod(m, 1) == 0):
                 lagr = self.take_lagr(
-                    psi, phi, data, prb, scan, h, e, lamd, mu, alpha, rho, tau, model)
-                print("%d/%d) rho=%.2e, tau=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e, Sum: %.2e" %
-                      (m, niter, rho, tau, *lagr))        
-                dxchange.write_tiff_stack(cp.angle(psi).get(),
-                                    'psiiter'+str(self.n)+'/'+str(m), overwrite=True)
-                dxchange.write_tiff_stack(cp.abs(psi).get(),
-                                    'psiiterabs'+str(self.n)+'/'+str(m), overwrite=True)                              
+                    psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
+                print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
+                      (m, niter, cp.linalg.norm(flow), rho3, rho2, rho1, *lagr))
+                dxchange.write_tiff_stack(cp.angle(psi3).get(),
+                                          'psiiter'+str(self.n)+'/'+str(m), overwrite=True)
+                dxchange.write_tiff_stack(cp.abs(psi3).get(),
+                                          'psiiterabs'+str(self.n)+'/'+str(m), overwrite=True)
+                dxchange.write_tiff_stack(cp.angle(prb[0]).get(),
+                                          'prbiter'+str(self.n)+'/'+str(m), overwrite=True)
+                dxchange.write_tiff_stack(cp.abs(prb[0]).get(),
+                                          'prbiterabs'+str(self.n)+'/'+str(m), overwrite=True)                                          
+                dxchange.write_tiff_stack(cp.abs(psi3).get(),
+                                          'psiiterabs'+str(self.n)+'/'+str(m), overwrite=True)                                          
                 dxchange.write_tiff_stack(cp.real(u).get(),
-                                    'ure'+str(self.n)+'/'+str(m), overwrite=True)
+                                          'ure'+str(self.n)+'/'+str(m), overwrite=True)
                 dxchange.write_tiff_stack(cp.imag(u).get(),
-                                    'uim'+str(self.n)+'/'+str(m), overwrite=True)                                                    
-        return u, psi, prb
+                                          'uim'+str(self.n)+'/'+str(m), overwrite=True)
+
+        return u, psi3, psi2, psi1, flow, prb
