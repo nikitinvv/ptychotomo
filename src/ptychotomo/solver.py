@@ -339,8 +339,8 @@ class Solver(object):
 
         flowx = cp.array(flow[:, :, :, 0])
         flowy = cp.array(flow[:, :, :, 1])
-        g = f.copy()  # keep values that were not affected
-        # g = cp.zeros([self.ptheta,self.nz,self.n],dtype='float32')
+        #g = f.copy()  # keep values that were not affected
+        g = cp.zeros([self.ptheta,self.nz,self.n],dtype='float32')
 
         self.cl_deform.remap(cp.ascontiguousarray(g).data.ptr, cp.ascontiguousarray(f).data.ptr,
                              cp.ascontiguousarray(flowx).data.ptr, cp.ascontiguousarray(flowy).data.ptr)
