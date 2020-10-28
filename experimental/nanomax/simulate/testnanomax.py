@@ -16,8 +16,8 @@ def str2bool(v):
 if __name__ == "__main__":
 
     # Model parameters
-    n = 256+32  # object size n x,y
-    nz = 256+32  # object size in z
+    n = 256  # object size n x,y
+    nz = 256  # object size in z
     ntheta = 166  # number of angles (rotations)
     voxelsize = 18.03*1e-7  # object voxel size
     energy = 12.4  # xray energy
@@ -37,14 +37,14 @@ if __name__ == "__main__":
     diter = 4
     niter = 256  # ADMM iterations
     ptheta = 1
-    pnz = 32  # number of slice partitions for simultaneous processing in tomography
+    pnz = 128  # number of slice partitions for simultaneous processing in tomography
     # Load a 3D object
-    beta = dxchange.read_tiff('model/beta-chip-256.tiff')/4
-    delta = -dxchange.read_tiff('model/delta-chip-256.tiff')/4
+    beta = dxchange.read_tiff('model/beta-chip-256.tiff')/16+1e-12
+    delta = -dxchange.read_tiff('model/delta-chip-256.tiff')/16+1e-12
     obj = cp.zeros([nz, n, n], dtype='complex64')
     obj[nz//2-beta.shape[0]//2:nz//2+beta.shape[0]//2, n//2-beta.shape[1]//2:n//2 +
         beta.shape[1]//2, n//2-beta.shape[2]//2:n//2+beta.shape[2]//2] = cp.array(delta+1j*beta)
-    # obj[:52]=0
+    obj[:52]=0
     
     prb = cp.zeros([ntheta, nmodes, nprb, nprb], dtype='complex64')
     prb_amp = dxchange.read_tiff_stack(
@@ -55,9 +55,9 @@ if __name__ == "__main__":
                                                   2:64+nprb//2, 64-nprb//2:64+nprb//2]/det[0]/100
     theta = cp.load('model/theta.npy')[:ntheta]
     scan0 = cp.load('model/scan.npy')[:, :ntheta]
-    scan = cp.zeros([2,ntheta,1000],dtype='float32')
+    scan = cp.zeros([2,ntheta,1024],dtype='float32')
     for k in range(ntheta):       
-        scan[:,k,:] = scan0[:,k,sample(range(13689),1000)]    
+        scan[:,k,:] = scan0[:,k,sample(range(13689),1024)]    
 
     
     scan = scan*(n-nprb)/(scan.max())
@@ -66,10 +66,11 @@ if __name__ == "__main__":
                     energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes)
 
     # Compute data
-    exppsi = slv.exptomo(slv.fwd_tomo_batch(obj))
+    psi = slv.fwd_tomo_batch(obj)
+    exppsi = slv.exptomo(psi)
     mmin,mmax = util.find_min_max(exppsi.get())
-    
     name = str(recover_prb)+str(swap_prb)+str(align)+str(shake)+str(nmodes)
+    
     if(shake):
         for k in range(ntheta):
             s = np.int32((np.random.random(2)-0.5)*8)
@@ -77,7 +78,7 @@ if __name__ == "__main__":
 
     dxchange.write_tiff_stack(cp.angle(exppsi).get(),
                     'psiinit/psiangle'+name, overwrite=True)
-
+    
     print(cp.abs(exppsi).max(), (cp.angle(exppsi)).max(), (cp.angle(exppsi)).min())
     data = slv.fwd_ptycho_batch(exppsi, prb, scan)
     #dxchange.write_tiff_stack(data[-1],  'data/proj0', overwrite=True)
@@ -90,12 +91,16 @@ if __name__ == "__main__":
     slv = pt.Solver(scan, theta, det, voxelsize,
                     energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes)
     # Initial guess
-    h1 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
+    # h1 = exppsi.copy()#cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
+    h1 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
+    
     h2 = cp.zeros([3, nz, n, n], dtype='complex64', order='C')
-    h3 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
-    psi1 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
+    h3 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
+
+    # psi1 = exppsi.copy()#cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
+    psi1 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
     psi2 = cp.zeros([3, nz, n, n], dtype='complex64', order='C')
-    psi3 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1
+    psi3 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
     lamd1 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')
     lamd2 = cp.zeros([3, nz, n, n], dtype='complex64', order='C')
     lamd3 = cp.zeros([ntheta, nz, n], dtype='complex64', order='C')    

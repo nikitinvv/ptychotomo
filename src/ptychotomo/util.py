@@ -26,3 +26,14 @@ def find_min_max(data):
         mmax[k] = e[end+1]
      
     return mmin,mmax
+
+
+def find_mass_center_shifts(psi):
+    shifts = np.zeros([psi.shape[0],2],dtype='float32')
+    c = np.array([psi.shape[1]//2,psi.shape[2]//2])
+    for k in range(psi.shape[0]):
+        cm = ndimage.measurements.center_of_mass(np.abs(np.angle(psi[k])))
+        import dxchange
+        dxchange.write_tiff(np.abs(np.angle(psi[k])),'p/p')
+        shifts[k] = cm-c
+    return shifts        

@@ -13,7 +13,7 @@ import cv2
 from ptychotomo.radonusfft import radonusfft
 from ptychotomo.ptychofft import ptychofft
 from ptychotomo.deform import deform
-from ptychotomo.util import tic, toc, find_min_max
+from ptychotomo.util import tic, toc, find_min_max, find_mass_center_shifts
 from ptychotomo.flowvis import flow_to_color
 import matplotlib.pyplot as plt
 
@@ -175,6 +175,7 @@ class Solver(object):
             psi3[:, :, psi3.shape[2]-2*r:psi3.shape[2]-r]))
         pshift = (m1+m2)/2
 
+        
         t = psi3-lamd3/rho3
         t *= cp.exp(-1j*pshift)
         logt = self.mlog(t)
@@ -232,10 +233,10 @@ class Solver(object):
                 tmp = self.fwd_ptycho(psi1, prb[:, k], scan)
                 absfpsi += cp.abs(tmp)**2
 
-            # a = cp.sum(cp.sqrt(absfpsi*data))
-            # b = cp.sum(absfpsi)
-            # prb *= (a/b)
-            # absfpsi *= (a/b)**2
+            a = cp.sum(cp.sqrt(absfpsi*data))
+            b = cp.sum(absfpsi)
+            prb *= (a/b)
+            absfpsi *= (a/b)**2
 
             gradpsi = cp.zeros(
                 [self.ptheta, self.nz, self.n], dtype='complex64')
@@ -366,7 +367,7 @@ class Solver(object):
                 rho3*cp.linalg.norm(psi3-h3lamd3)**2
             return f
 
-        # minf1 = 1e9
+        minf1 = 1e9
         for i in range(diter):
             Tpsi3 = self.apply_flow_gpu(
                 psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
@@ -377,11 +378,11 @@ class Solver(object):
             # update step
             psi3 = psi3 + 0.5*(-grad)
             # check convergence
-            # Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
-            # minf0 = minf(psi3, Tpsi3)
-            # if(minf0 > minf1):
-            #     print('error in deform', minf0, minf1)
-            #     minf1 = minf0
+            Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+            minf0 = minf(psi3, Tpsi3)
+            if(minf0 > minf1):
+                print('error in deform', minf0, minf1)
+                minf1 = minf0
             # print(i,minf0)
         return psi3
 
@@ -468,57 +469,48 @@ class Solver(object):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
-        pars = [0.5, 5, self.n*2, 4, 5, 1.1, 4]
+        pars = [0.5, 1, self.n+32, 4, 5, 1.1, 4]
 
         rho3 = 0.5
         rho2 = 0.5
         rho1 = 0.5
         for m in range(niter):
-            t = np.zeros(4)
-
             # keep previous iteration for penalty updates
             h30, h20, h10 = h3, h2, h1
             # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
             # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
             # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
             # h1 == \Top_{t^k} \psi_3^k
-            tic()
             psi1, prb = self.cg_ptycho_batch(
                 data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb)
-            t[0] = toc()
             # &\psi_3^{k+1}, (t^{k+1}) = \argmin_{\psi_3,t} \rho_1\|\Top_t \psi_3-\psi_1^{k+1}+
             # \lambda_1^k/\rho_1\|_2^2+\rho_3\|\Hop u^k-\psi_3+\lambda_3^k/\rho_3\|_2^2
-            
             mmin,mmax = find_min_max((psi1-lamd1/rho1).get())
-            tic()
+            # if(m==0):
+            #     #  center of mass alignment
+            #     print(cp.linalg.norm(psi1))
+            #     mass_center_shifts = find_mass_center_shifts(psi1.get())
+            #     print(mass_center_shifts)
+            #     exit()
+                # psi3 = self.apply_shift_batch(psi1,-mass_centers_shifts)
+                # self.apply_shift_batch(psi3,mass_centers_shifts).get()
             flow = self.registration_flow_batch(
                 psi3.get(), (psi1-lamd1/rho1).get(), mmin, mmax, flow, pars)*(align == True)
-            plt.imshow(flow_to_color(flow[45]))
-            plt.savefig('flow/'+str(m)+'.png')   
-            t[1] = toc()
-            tic()
+            # print(flow.shape)
+            # ids = np.max(np.abs(flow),axis=(1,2,3))
+            # print(ids)
+            # dxchange.write_tiff(cp.angle(psi3[45]).get(),'t/t1_'+str(m),overwrite=True)
+            # dxchange.write_tiff(cp.angle(self.apply_flow_gpu_batch(psi3,flow))[45].get(),'t/t2_'+str(m),overwrite=True)
+            # dxchange.write_tiff(cp.angle(psi1-lamd1/rho1)[45].get(),'t/t3_'+str(m),overwrite=True)
+        
             psi3 = self.cg_deform_gpu_batch(
-                psi1-lamd1/rho1, psi3, flow, diter, h3+lamd3/rho3, rho1, rho3)
-            t[2] = toc()
-            # dxchange.write_tiff_stack(cp.angle(psi3).get(), 't/t1')
-            # dxchange.write_tiff_stack(
-            #     cp.angle((psi1-lamd1/rho1)).get(), 't/t2')
-            # dxchange.write_tiff_stack(
-            #     cp.angle(psi1).get(), 't/t4')                
-            # dxchange.write_tiff_stack(
-            #     cp.angle(self.apply_flow_gpu_batch(psi3, flow)).get(), 't/t3')
-            # dxchange.write_tiff_stack(cp.angle(h3+lamd3/rho3).get(), 't5', overwrite=True)
-
-            # exit()
-            # psi3 = psi1.copy()
+                psi1-lamd1/rho1, psi3, flow, diter, (h3+lamd3/rho3), rho1, rho3)
             # tomography problem
             # u^{k+1} = \argmin_{u,t} \rho_2\|\Jop u-\psi_2^{k+1}+\lambda_2^k/\rho_2\|_2^2
             # +\rho_3\|\Hop u-\psi_3^{k+1}+\lambda_3^k/\rho_3\|_2^2,\quad \text{//tomography}\\
             xi0, xi1, K, pshift = self.takexi(
                 psi3, psi2, lamd3, lamd2, rho3, rho2)
-            tic()
             u = self.cg_tomo(xi0, xi1, K, u, rho3, rho2, titer)
-            t[3] = toc()
             # regularizer problem
             psi2 = self.solve_reg(u, lamd2, rho2, alpha)
             # h3,h2 updates
@@ -529,17 +521,24 @@ class Solver(object):
             lamd3 = lamd3 + rho3 * (h3-psi3)
             lamd2 = lamd2 + rho2 * (h2-psi2)
             lamd1 = lamd1 + rho1 * (h1-psi1)
+            # lamd1*=0 
+            # lamd2*=0 
+            # lamd3*=0 
             # update rho for a faster convergence
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
-
+            
+            pars[2]-=1
+            
             # Lagrangians difference between two iterations
-            if (np.mod(m, 1) == 0):
+            if (np.mod(m, 8) == 0):
                 lagr = self.take_lagr(
                     psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
                 print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
                       (m, niter, cp.linalg.norm(flow), rho3, rho2, rho1, *lagr))
-                print(*t)
+                plt.imshow(flow_to_color(flow[45]))
+                plt.savefig('flow/'+str(m)+'.png')   
+            
 
                 dxchange.write_tiff_stack(cp.angle(psi3).get(),
                                           'psi3iter'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
@@ -550,10 +549,10 @@ class Solver(object):
                 dxchange.write_tiff_stack(cp.abs(psi1).get(),
                                           'psi1iterabs'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
                 
-                dxchange.write_tiff_stack(cp.angle(prb[0]).get(),
-                                          'prbiter'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
-                dxchange.write_tiff_stack(cp.abs(prb[0]).get(),
-                                          'prbiterabs'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
+                # dxchange.write_tiff_stack(cp.angle(prb[0]).get(),
+                #                           'prbiter'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
+                # dxchange.write_tiff_stack(cp.abs(prb[0]).get(),
+                #                           'prbiterabs'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
                 dxchange.write_tiff_stack(cp.real(u).get(),
                                           'ure'+str(self.n)+'/'+name+'/'+str(m), overwrite=True)
                 dxchange.write_tiff_stack(cp.imag(u).get(),
