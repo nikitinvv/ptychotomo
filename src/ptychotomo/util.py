@@ -18,13 +18,15 @@ def find_min_max(data):
     mmax = np.zeros(data.shape[0],dtype='float32')
     
     for k in range(data.shape[0]):
-        h, e = np.histogram(np.angle(data[k][:]),1000)
+        h, e = np.histogram(data[k][:],1000)
         stend = np.where(h>np.max(h)*0.005)
         st = stend[0][0]
         end = stend[0][-1]        
         mmin[k] = e[st]
         mmax[k] = e[end+1]
-     
+        
+        mmin[k] = np.min(data[k])
+        mmax[k] = np.max(data[k])
     return mmin,mmax
 
 
