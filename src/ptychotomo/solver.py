@@ -519,7 +519,7 @@ class Solver(object):
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
             
-            pars[2]-=1
+            pars[2]-=1*(m%2)
             
             # Lagrangians difference between two iterations
             if (np.mod(m, 8) == 0):
