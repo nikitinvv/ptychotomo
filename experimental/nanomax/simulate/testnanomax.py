@@ -35,7 +35,7 @@ if __name__ == "__main__":
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
     diter = 4
-    niter = 128  # ADMM iterations
+    niter = 512  # ADMM iterations
     ptheta = 1
     pnz = 128  # number of slice partitions for simultaneous processing in tomography
     # Load a 3D object
