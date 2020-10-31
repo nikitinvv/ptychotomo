@@ -16,31 +16,32 @@ def str2bool(v):
 if __name__ == "__main__":
 
     # Model parameters
-    n = 128+64  # object size n x,y
-    nz = 128+64  # object size in z
+    n = 128  # object size n x,y
+    nz = 128  # object size in z
     ntheta = 166  # number of angles (rotations)
     voxelsize = 18.03*1e-7  # object voxel size
     energy = 12.4  # xray energy
-    nprb = 64  # probe size
+    nprb = 32  # probe size
     det = [128, 128]  # detector size
-    noise = False  # apply discrete Poisson noise
+    
     recover_prb = str2bool(sys.argv[1])
     swap_prb =  str2bool(sys.argv[2])
     align =  str2bool(sys.argv[3])    
     shake =  str2bool(sys.argv[4])
-    nmodes = int(sys.argv[5])
+    noise = str2bool(sys.argv[5])  # apply discrete Poisson noise
+    nmodes = int(sys.argv[6])
 
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
     piter = 4  # ptychography iterations
     titer = 4  # tomography iterations
     diter = 4
-    niter = 192  # ADMM iterations
+    niter = 257  # ADMM iterations
     ptheta = 1
     pnz = 64  # number of slice partitions for simultaneous processing in tomography
     # Load a 3D object
-    beta = dxchange.read_tiff('model/beta-chip-128.tiff')/4+1e-12
-    delta = -dxchange.read_tiff('model/delta-chip-128.tiff')/4+1e-12
+    beta = dxchange.read_tiff('model/lego-imag.tiff')+1e-12
+    delta = dxchange.read_tiff('model/lego-real.tiff')/2+1e-12
     obj = cp.zeros([nz, n, n], dtype='complex64')
     obj[nz//2-beta.shape[0]//2:nz//2+beta.shape[0]//2, n//2-beta.shape[1]//2:n//2 +
         beta.shape[1]//2, n//2-beta.shape[2]//2:n//2+beta.shape[2]//2] = cp.array(delta+1j*beta)
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     prb_ang = dxchange.read_tiff_stack(
         'model/prbangle_00000.tiff', ind=np.arange(nmodes)).astype('float32')
     prb[:] = cp.array(prb_amp*np.exp(1j*prb_ang))[:, 64-nprb //
-                                                  2:64+nprb//2, 64-nprb//2:64+nprb//2]/det[0]/100
+                                                  2:64+nprb//2, 64-nprb//2:64+nprb//2]/det[0]/100/4
     theta = cp.load('model/theta.npy')[:ntheta]
     scan0 = cp.load('model/scan.npy')[:, :ntheta]
     scan = cp.zeros([2,ntheta,1024],dtype='float32')
@@ -60,7 +61,7 @@ if __name__ == "__main__":
         scan[:,k,:] = scan0[:,k,sample(range(13689),1024)]    
 
     
-    scan = (scan)*(n-nprb)/(scan.max())
+    scan = (scan)*(n-nprb-24)/(scan.max())+12
     # Class gpu solver
     slv = pt.Solver(scan, theta, det, voxelsize,
                     energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes)
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     # Compute data
     psi = slv.fwd_tomo_batch(obj)
     exppsi = slv.exptomo(psi)
-    name = str(recover_prb)+str(swap_prb)+str(align)+str(shake)+str(nmodes)
+    name = 'lego'+str(recover_prb)+str(swap_prb)+str(align)+str(shake)+str(noise)+str(nmodes)+str(scan.shape[2])
     
 
     if(shake):
@@ -117,27 +118,31 @@ if __name__ == "__main__":
     # print(data.shape)
     lpsi1 = slv.logtomo(psi1)
     for k in range(ntheta):        
-        a = cp.abs(cp.angle(psi1[k])                    )        
+        # a = cp.abs(cp.angle(psi1[k])                    )        
         #a[a<0]=0
-        cm = ndimage.center_of_mass(a.get())   
-        print('1',cm)                          
+        # cm = ndimage.center_of_mass(a.get())   
+        # print('1',cm)                          
         a = lpsi1[k].real
-        a[a<0]=0        
+        a[a<4e-5]=0        
         cm = ndimage.center_of_mass(a.get())   
-        print('2',cm)                          
-        scan[0,k]-=(cm[1]-n//2+0.5)
-        scan[1,k]-=(cm[0]-nz//2+0.5)
-        ids = cp.where((scan[0,k]>n-1-nprb)+(scan[1,k]>nz-1-nprb))[0]
-        scan[0,k,ids]=-1
-        scan[1,k,ids]=-1
-        data[k,ids.get()] = 0
+        # print('2',cm)                          
+        scan[0,k]-=np.round(cm[1]-n//2+0.5)
+        scan[1,k]-=np.round(cm[0]-nz//2+0.5)
+        # ids = cp.where((scan[0,k]>n-1-nprb)+(scan[1,k]>nz-1-nprb))[0]
+        # scan[0,k,ids]=-1
+        # scan[1,k,ids]=-1
+        # data[k,ids.get()] = 0
         # print(cm)
         # print((cm[0]-nz//2+0.5),(cm[1]-n//2+0.5))
         # print(psi1[k].shape)
-        # psi1[k] = cp.roll(psi1[k],(-int(cm[0]-nz//2+0.5),-int(cm[1]-n//2+0.5)),axis=(0,1))      
-    
-    # dxchange.write_tiff_stack(cp.angle(psi1).get(),
-                                        #   'comppsi1/psi', overwrite=True)                
+        lpsi1[k] = cp.roll(lpsi1[k],(-int(cm[0]-nz//2+0.5),-int(cm[1]-n//2+0.5)),axis=(0,1))      
+    print(cp.min(scan))
+    print(cp.max(scan))
+    dxchange.write_tiff_stack(lpsi1.real.get(),
+                                          'lspci/psi', overwrite=True)                
+    dxchange.write_tiff_stack(lpsi1.real.get(),
+                                          'clspci/psi', overwrite=True)         
+    # exit()                                                                                           
     # import dxchange
     # dxchange.write_tiff_stack(cp.real(slv.logtomo(psi1)).get(),
     #                                       'logpsi1check/psi', overwrite=True)                
