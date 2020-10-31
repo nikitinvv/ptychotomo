@@ -324,8 +324,8 @@ class Solver(object):
                           mmax, flow, pars), range(0, psi3.shape[0]))
 
         # # control Farneback's (may diverge for small window sizes)
-        err = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow0).get())
-        err1 = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow).get())
+        err = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow0).get(),axis=(1,2))
+        err1 = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow).get(),axis=(1,2))
         idsbad = np.where(err1>err)[0]
         
         print('bad alignment for:',len(idsbad))
@@ -370,7 +370,7 @@ class Solver(object):
                 rho3*cp.linalg.norm(psi3-h3lamd3)**2
             return f
 
-        minf1 = 1e9
+        # minf1 = 1e9
         for i in range(diter):
             Tpsi3 = self.apply_flow_gpu(
                 psi3.real, flow, 1)+1j*self.apply_flow_gpu(psi3.imag, flow,0)
@@ -382,10 +382,10 @@ class Solver(object):
             psi3 = psi3 + 0.5*(-grad)
             # check convergence
             Tpsi3 = self.apply_flow_gpu(psi3.real, flow,1)+1j*self.apply_flow_gpu(psi3.imag, flow,0)
-            minf0 = minf(psi3, Tpsi3)
-            if(minf0 > minf1):
-                print('error in deform', minf0, minf1)
-                minf1 = minf0
+            # minf0 = minf(psi3, Tpsi3)
+            # if(minf0 > minf1):
+            #     print('error in deform', minf0, minf1)
+            #     minf1 = minf0
             # print(i,minf0)
         return psi3
 
@@ -472,7 +472,7 @@ class Solver(object):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
-        pars = [0.5, 1, self.n, 4, 5, 1.1, 4]
+        pars = [0.5, 4, self.n+16, 4, 5, 1.1, 4]
         rho3 = 0.5
         rho2 = 0.5
         rho1 = 0.5
@@ -515,20 +515,21 @@ class Solver(object):
             lamd3 = lamd3 + rho3 * (h3-psi3)
             lamd2 = lamd2 + rho2 * (h2-psi2)
             lamd1 = lamd1 + rho1 * (h1-psi1)
+            # lamd1*=0
             # update rho for a faster convergence
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
             
-            pars[2]-=1*(m%2)
+            pars[2]-=1
             
             # Lagrangians difference between two iterations
-            if (np.mod(m, 8) == 0):
+            if (np.mod(m, 16) == 0):
                 lagr = self.take_lagr(
                     psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
                 print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
                       (m, niter, cp.linalg.norm(flow), rho3, rho2, rho1, *lagr))
-                # plt.imshow(flow_to_color(flow[45]))
-                plt.savefig('flow/'+str(m)+'.png')   
+                #plt.imshow(flow_to_color(flow[45]))
+               # plt.savefig('flow/'+str(m)+'.png')   
             
 
                 dxchange.write_tiff_stack(cp.angle(psi3).get(),
