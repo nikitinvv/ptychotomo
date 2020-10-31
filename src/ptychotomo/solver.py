@@ -58,7 +58,7 @@ class Solver(object):
 
     def mlog(self, psi3):
         res = psi3.copy()
-        res[cp.abs(psi3) < 1e-32] = 1e-32
+        res[cp.abs(psi3) < 1e-16] = 1e-16
         res = cp.log(res)
         return res
 
@@ -246,9 +246,9 @@ class Solver(object):
                 afpsi = self.adj_ptycho(fpsi, prb[:, k], scan)
                 if(k == 0):
                     r = cp.real(cp.sum(psi1*cp.conj(afpsi)) /
-                                cp.sum(afpsi*cp.conj(afpsi)))
+                                (cp.sum(afpsi*cp.conj(afpsi))+1e-16))
                 gradpsi += self.adj_ptycho(
-                    fpsi - cp.sqrt(data) * fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, k], scan)
+                    fpsi - cp.sqrt(data) * fpsi/(cp.sqrt(absfpsi)+1e-16), prb[:, k], scan)
             if(rho1 is not None):                                
                 gradpsi -= rho1*(h1 - psi1 + lamd1/rho1)
                 gradpsi *= min(1/rho1, r)/2
@@ -272,10 +272,10 @@ class Solver(object):
                     fprb = self.fwd_ptycho(psi1, prb[:, m], scan)
                     afprb = self.adj_ptycho_prb(fprb, psi1, scan)
                     r = cp.real(
-                        cp.sum(prb[:, m]*cp.conj(afprb))/cp.sum(afprb*cp.conj(afprb)))
+                        cp.sum(prb[:, m]*cp.conj(afprb))/(cp.sum(afprb*cp.conj(afprb))+1e-16))
                     # take gradient
                     gradprb[:, m] = self.adj_ptycho_prb(
-                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi1, scan)
+                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-16), psi1, scan)
                     gradprb[:, m] *= r/2
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
 
