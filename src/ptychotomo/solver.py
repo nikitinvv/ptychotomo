@@ -254,9 +254,6 @@ class Solver(object):
             # sum of abs value of forward operators            
             absfpsi = data*0
             for m in range(self.nmodes):
-                print(psi1.shape)
-                print(prb[:,m].shape)
-                print(scan.shape)
                 tmp = self.fwd_ptycho(psi1, prb[:, m], scan)                
                 absfpsi += cp.abs(tmp)**2
                         
@@ -306,9 +303,9 @@ class Solver(object):
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
             
            
-            if(i%4==0):
-                print(i,minf(absfpsi, psi1))
-                dxchange.write_tiff(cp.angle(psi1[::8]).get(),  'tmp/psiiter/psiangle'+str(i), overwrite=True)
+            # if(i%4==0):
+            #     print(i,minf(absfpsi, psi1))
+            #     dxchange.write_tiff(cp.angle(psi1[::8]).get(),  'tmp/psiiter/psiangle'+str(i), overwrite=True)
             # # check convergence
             # minf0 = minf(absfpsi, psi1)
             # if(minf0 > minf1):
@@ -558,10 +555,10 @@ class Solver(object):
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
             
-            pars[2]-=1*(i%2)
+            pars[2]-=1
             
             # Lagrangians difference between two iterations
-            if (np.mod(i, 8) == 0):
+            if (np.mod(i, 4) == 0):
                 lagr = self.take_lagr(
                     psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
                 print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %

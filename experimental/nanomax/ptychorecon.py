@@ -43,57 +43,57 @@ def read_rec(id_data):
 
 if __name__ == "__main__":
     
-    ntheta = 174
-    nscan = 4096
-    data = np.zeros([ntheta, nscan, 128, 128], dtype='float32')-1
-    scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
-    theta = np.zeros(ntheta, dtype='float32')
-    kk = 0
-    for k in range(134, 424, 1):
-        print(k)
-        data0, scan0, theta0 = read_data(k)
-        if(scan0 is not None):
-            ids = np.array(sample(range(13689),nscan))+(13689-13689)  
-            scan[0, kk, :] = scan0[1,0,ids]
-            scan[1, kk, :] = scan0[0,0,ids]
-            theta[kk] = theta0
-            data[kk] = data0[ids, 64-data.shape[2]//2:64+data.shape[2] //
-                             2, 64-data.shape[3]//2:64+data.shape[3]//2]            
-            print(kk,scan[:,kk].max(), scan[:,kk].min())   
-            kk += 1
+    ntheta = 166
+    nscan = 2048
+    # data = np.zeros([ntheta, nscan, 128, 128], dtype='float32')-1
+    # scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
+    # theta = np.zeros(ntheta, dtype='float32')
+    # kk = 0
+    # for k in range(134, 424, 1):
+    #     print(k)
+    #     data0, scan0, theta0 = read_data(k)
+    #     if(scan0 is not None):
+    #         ids = np.array(sample(range(13689),nscan))+(13689-13689)  
+    #         scan[0, kk, :] = scan0[1,0,ids]
+    #         scan[1, kk, :] = scan0[0,0,ids]
+    #         theta[kk] = theta0
+    #         data[kk] = data0[ids, 64-data.shape[2]//2:64+data.shape[2] //
+    #                          2, 64-data.shape[3]//2:64+data.shape[3]//2]            
+    #         print(kk,scan[:,kk].max(), scan[:,kk].min())   
+    #         kk += 1
             
-    ids = np.argsort(theta)
-    theta = theta[ids]
-    scan = scan[:,ids]
-    data = data[ids]
-    np.save('theta',theta)
-    np.save('scan',scan)
-    np.save('data',data)
-    exit()
+    # # ids = np.argsort(theta)
+    # # theta = theta[ids]
+    # # scan = scan[:,ids]
+    # # data = data[ids]
+    # np.save('theta',theta)
+    # np.save('scan',scan)
+    # np.save('data',data)
+    # exit()
     theta = np.load('theta.npy')
     scan = np.load('scan.npy')[:,:ntheta,::2]
-    print(scan.max())   
-    print(scan.min())   
-    exit()
-    data = np.load('data.npy')[:ntheta,::2]
+    # print(scan.max())   
+    # print(scan.min())   
+    # exit()
+    data = np.load('data.npy')[:ntheta,::2]#,32:96,32:96]
 
     psirec,prbrec,scanrec = read_rec(210)    
-    prbrec = prbrec[:,32:96,32:96]
+    # prbrec = prbrec[:,32:96,32:96]
     n = 512+64
     nz = 512+64
-    det = [64, 64]
+    det = [128, 128]
     voxelsize = 18.03*1e-7  # cm
     energy = 12.4
-    nprb = 64  # probe size
-    recover_prb = False
+    nprb = 128  # probe size
+    recover_prb = True
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
-    piter = 32  # ptychography iterations
+    piter = 128  # ptychography iterations
     titer = 4  # tomography iterations
     niter = 128  # ADMM iterations
     ptheta = 1  # number of angular partitions for simultaneous processing in ptychography
-    pnz = 64  # number of slice partitions for simultaneous processing in tomography
+    pnz = 32  # number of slice partitions for simultaneous processing in tomography
     nmodes = int(sys.argv[1])    
     
     # Load a 3D object
@@ -114,8 +114,7 @@ if __name__ == "__main__":
     lamd = np.zeros([ntheta, nz, n], dtype='complex64', order='C')
     mu = np.zeros([3, nz, n, n], dtype='complex64', order='C')
     u = np.zeros([nz, n, n], dtype='complex64', order='C')
-    data = np.fft.fftshift(data[:, :], axes=(2, 3))
-    theta = np.array(theta)
+    data = np.fft.fftshift(data, axes=(2, 3))
     # Class gpu solver
     slv = pt.Solver(scan, theta, det, voxelsize,
                     energy, ntheta, nz, n, nprb, ptheta, pnz, nmodes)
