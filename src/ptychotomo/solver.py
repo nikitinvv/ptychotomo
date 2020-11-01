@@ -303,10 +303,10 @@ class Solver(object):
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
             
            
-            # if(i%4==0):
-            #     print(i,minf(absfpsi, psi1))
-            #     dxchange.write_tiff(cp.angle(psi1[::8]).get(),  'tmp/psiiter/psiangle'+str(i), overwrite=True)
-            # # check convergence
+            if(i%4==0):
+                print(i,minf(absfpsi, psi1))
+                dxchange.write_tiff(cp.angle(psi1[::8]).get(),  'tmp/psiiter/psiangle'+str(i), overwrite=True)
+            # check convergence
             # minf0 = minf(absfpsi, psi1)
             # if(minf0 > minf1):
             #     print('error inptycho', minf0, minf1)

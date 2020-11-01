@@ -43,44 +43,8 @@ def read_rec(id_data):
 
 if __name__ == "__main__":
     
-    ntheta = 166
-    nscan = 2048
-    # data = np.zeros([ntheta, nscan, 128, 128], dtype='float32')-1
-    # scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
-    # theta = np.zeros(ntheta, dtype='float32')
-    # kk = 0
-    # for k in range(134, 424, 1):
-    #     print(k)
-    #     data0, scan0, theta0 = read_data(k)
-    #     if(scan0 is not None):
-    #         ids = np.array(sample(range(13689),nscan))+(13689-13689)  
-    #         scan[0, kk, :] = scan0[1,0,ids]
-    #         scan[1, kk, :] = scan0[0,0,ids]
-    #         theta[kk] = theta0
-    #         data[kk] = data0[ids, 64-data.shape[2]//2:64+data.shape[2] //
-    #                          2, 64-data.shape[3]//2:64+data.shape[3]//2]            
-    #         print(kk,scan[:,kk].max(), scan[:,kk].min())   
-    #         kk += 1
-            
-    # # ids = np.argsort(theta)
-    # # theta = theta[ids]
-    # # scan = scan[:,ids]
-    # # data = data[ids]
-    # np.save('theta',theta)
-    # np.save('scan',scan)
-    # np.save('data',data)
-    # exit()
-    theta = np.load('theta.npy')
-    scan = np.load('scan.npy')[:,:ntheta,::2]
-    # print(scan.max())   
-    # print(scan.min())   
-    # exit()
-    data = np.load('data.npy')[:ntheta,::2]#,32:96,32:96]
-
-    psirec,prbrec,scanrec = read_rec(210)    
-    # prbrec = prbrec[:,32:96,32:96]
-    n = 512+64
-    nz = 512+64
+    n = 512
+    nz = 512
     det = [128, 128]
     voxelsize = 18.03*1e-7  # cm
     energy = 12.4
@@ -89,16 +53,61 @@ if __name__ == "__main__":
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
-    piter = 128  # ptychography iterations
+    piter = 64  # ptychography iterations
     titer = 4  # tomography iterations
     niter = 128  # ADMM iterations
     ptheta = 1  # number of angular partitions for simultaneous processing in ptychography
     pnz = 32  # number of slice partitions for simultaneous processing in tomography
     nmodes = int(sys.argv[1])    
+    ntheta = 166
+    nscan = 13689
+    #data = np.zeros([ntheta, nscan, det[0], det[1]], dtype='float32')-1
+    scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
+    theta = np.zeros(ntheta, dtype='float32')
+    kk = 0
+    for k in range(134, 424, 1):
+        print(k)
+        data0, scan0, theta0 = read_data(k)
+        if(scan0 is not None):
+            #ids = np.array(sample(range(13689),nscan))+(13689-13689)  
+            scan[0, kk, :] = scan0[1,0,:]
+            scan[1, kk, :] = scan0[0,0,:]
+            theta[kk] = theta0
+            data = data0[:, 64-det[0]//2:64+det[0]//
+                             2, 64-det[1]//2:64+det[1]//2]            
+            print(data.shape)
+            print(kk,scan[:,kk].max(), scan[:,kk].min())   
+            np.save('data/theta64'+str(kk),theta[kk])
+            np.save('data/scan64'+str(kk),scan[:,kk])
+            np.save('data/data64'+str(kk),data)
+            kk += 1
+    exit()            
+            
+    # # ids = np.argsort(theta)
+    # # theta = theta[ids]
+    # # scan = scan[:,ids]
+    # # data = data[ids]
     
+    for k in range(ntheta):
+        print(k)
+        data[k]= np.load('data/data64'+str(k)+'.npy')
+        scan[:,k,:] = np.load('data/scan64'+str(k)+'.npy')
+        theta[k] = np.load('data/theta64'+str(k)+'.npy')                        
+        
+    for k in range(ntheta):
+        ids = np.where((scan[0,k]>n-1-nprb)+(scan[1,k]>nz-1-nprb)+(scan[0,k]<0)+(scan[1,k]<0))[0]
+        scan[0,k,ids]=-1
+        scan[1,k,ids]=-1
+        data[k,ids] = 0 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    # print(scan.max())   
+    # print(scan.min())   
+    # exit()
+    
+
+    psirec,prbrec,scanrec = read_rec(210)    
     # Load a 3D object
     prb = np.zeros([ntheta, nmodes, nprb, nprb], dtype='complex64',order='C')
-    prb[:] = np.array(prbrec[:nmodes])/det[0]    
+    prb[:] = np.array(prbrec[:nmodes,64-det[0]//2:64+det[0]//2, 64-det[1]//2:64+det[1]//2])/det[0]    
     
     # dxchange.write_tiff(data,  'data', overwrite=True)
     # dxchange.write_tiff_stack(np.angle(prb),  'tmp/prb/prbangleinit', overwrite=True)
@@ -123,7 +132,7 @@ if __name__ == "__main__":
         data/det[0]/det[1], psi, prb, scan, h, lamd, rho, piter, model, recover_prb)
 
     # Save result
-    dxchange.write_tiff_stack(np.angle(psi),  'tmp/psiangle'+str(nmodes)+'_', overwrite=True)
-    dxchange.write_tiff_stack(np.abs(psi),  'tmp/psiamp'+str(nmodes)+'_', overwrite=True)
-    dxchange.write_tiff_stack(np.angle(prb[0]),  'tmp/prbangle'+str(nmodes)+'_', overwrite=True)
-    dxchange.write_tiff_stack(np.abs(prb[0]),  'tmp/prbamp'+str(nmodes)+'_', overwrite=True)
+    dxchange.write_tiff_stack(np.angle(psi),  'tmp/psiangle'+str(nmodes)+str(nscan)+'_', overwrite=True)
+    dxchange.write_tiff_stack(np.abs(psi),  'tmp/psiamp'+str(nmodes)+str(nscan)+'_', overwrite=True)
+    dxchange.write_tiff_stack(np.angle(prb[0]),  'tmp/prbangle'+str(nmodes)+str(nscan)+'_', overwrite=True)
+    dxchange.write_tiff_stack(np.abs(prb[0]),  'tmp/prbamp'+str(nmodes)+str(nscan)+'_', overwrite=True)
