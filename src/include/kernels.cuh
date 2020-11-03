@@ -253,7 +253,7 @@ void __global__ mul(float2 *g, float2 *f, float2 *prb, float *scanx, float *scan
 
 	int stx = roundf(scanx[ty+tz*Nscan]);
 	int sty = roundf(scany[ty+tz*Nscan]);
-	if(stx<0||sty<0) return;
+	if(stx<0||sty<0||stx>N-1||sty>Nz-1) return;
 
 	int shift = (dety-Nprb)/2*detx+(detx-Nprb)/2;
 	float2 f0 = f[(stx+ix)+(sty+iy)*N+tz*Nz*N];
@@ -277,7 +277,7 @@ void __global__ mula(float2 *f, float2 *g, float2 *prb, float *scanx, float *sca
 
 	int stx = roundf(scanx[ty+tz*Nscan]);
 	int sty = roundf(scany[ty+tz*Nscan]);
-	if(stx<0||sty<0) return;
+	if(stx<0||sty<0||stx>N-1||sty>Nz-1) return;
 
 	int shift = (dety-Nprb)/2*detx+(detx-Nprb)/2;
 	float2 g0 = g[shift+ix+iy*detx+ty*detx*dety+tz*detx*dety*Nscan];

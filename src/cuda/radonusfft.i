@@ -6,41 +6,20 @@
 #include "radonusfft.cuh"
 %}
 
-%include "numpy.i"
-
-%init %{
-import_array();
-%}
-
 class radonusfft
 {
-  size_t N;
-  size_t Ntheta;
-  size_t Nz;
-  size_t M;
-  float mu;
-
-  float2 *f;
-  float2 *g;
-  float2 *ff;
-  float2 *gg;
-  float2 *f0;
-  float2 *g0;
-  float *theta;
-  float *x;
-  float *y;
-
-  float2 *fd;
-
-  cufftHandle plan2dfwd;
-  cufftHandle plan2dadj;
-
-  cufftHandle plan1d;
-
 public:
-  radonusfft(size_t Ntheta, size_t Nz, size_t N);
+  %immutable;
+  size_t n;
+  size_t ntheta;
+  size_t pnz;
+  float center;
+  size_t ngpus;
+
+  %mutable;
+  radonusfft(size_t ntheta, size_t pnz, size_t n, float center, size_t theta_, size_t ngpus);
   ~radonusfft();
-  void fwd(size_t g, size_t f);
-  void adj(size_t f, size_t g);
-  void setobj(size_t theta);
+  void fwd(size_t g, size_t f, size_t igpu);
+  void adj(size_t f, size_t g, size_t igpu, bool filter);
+  void free();
 };

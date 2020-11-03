@@ -12,38 +12,25 @@
 import_array();
 %}
 class ptychofft
-{
-	size_t N;
-	size_t Ntheta;
-	size_t Nz;
-	size_t Nscan;
+{	
+public:
+	%immutable;
+	size_t n;
+	size_t ntheta;
+	size_t nz;
+	size_t nscan;
 	size_t detx;
 	size_t dety;
-	size_t Nprb;
+	size_t nprb;
+	size_t ngpus;
 
-	float2* f;
-	float2* g;
-	float2* prb; 
-	float* scanx; 
-	float* scany; 
-	float2* shiftx; 
-	float2* shifty; 
-	float2* ff;
-	float2* fff;
-	float* data;
-	float2* ftmp0;
-	float2* ftmp1;
-	
-	cufftHandle plan2dfwd;
-	cufftHandle plan2dadj;
-
-public:
-	ptychofft(size_t Ntheta, size_t Nz, size_t N, size_t Ntheta0,
-		size_t Nscan, size_t detx, size_t dety, size_t Nprb);
+	%mutable;
+	ptychofft(size_t ntheta, size_t nz, size_t n, 
+		size_t nscan, size_t detx, size_t dety, size_t nprb, size_t ngpus);
 	~ptychofft();	
-	void fwd(size_t g_, size_t f_, size_t prb_, size_t scan_);
-	void adj(size_t f_, size_t g_, size_t prb_, size_t scan_);	
-	void adjprb(size_t prb_, size_t g_, size_t scan_, size_t f_);
+	void fwd(size_t g, size_t f, size_t prb, size_t scan, size_t igpu);
+	void adj(size_t f, size_t g, size_t prb, size_t scan, size_t igpu);	
+	void adjprb(size_t prb, size_t g, size_t scan, size_t f, size_t igpu);
 };
 
 

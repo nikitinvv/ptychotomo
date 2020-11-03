@@ -23,7 +23,7 @@ if __name__ == "__main__":
     energy = 12.4  # xray energy
     nprb = 64  # probe size
     det = [128, 128]  # detector size
-    
+    center = 64.0
     recover_prb = str2bool(sys.argv[1])
     swap_prb =  str2bool(sys.argv[2])
     align =  str2bool(sys.argv[3])    
@@ -38,10 +38,11 @@ if __name__ == "__main__":
     diter = 4
     niter = 257  # ADMM iterations
     ptheta = 1
-    pnz = 128  # number of slice partitions for simultaneous processing in tomography
+    ngpus = 2
+    pnz = 2  # number of slice partitions for simultaneous processing in tomography
     # Load a 3D object
-    beta = dxchange.read_tiff('model/lego-imag.tiff')+1e-12
-    delta = dxchange.read_tiff('model/lego-real.tiff')/2+1e-12
+    beta = dxchange.read_tiff('model/beta-chip-128.tiff')/4+1e-12
+    delta = -dxchange.read_tiff('model/delta-chip-128.tiff')/4+1e-12
     obj = np.zeros([nz, n, n], dtype='complex64')
     obj[nz//2-beta.shape[0]//2:nz//2+beta.shape[0]//2, n//2-beta.shape[1]//2:n//2 +
         beta.shape[1]//2, n//2-beta.shape[2]//2:n//2+beta.shape[2]//2] = delta+1j*beta
@@ -63,11 +64,12 @@ if __name__ == "__main__":
     
     scan = (scan)*(n-nprb)/(scan.max())
     # Class gpu solver
-    slv = pt.Solver(scan, theta, det, voxelsize,
-                    energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes)
+    slv = pt.Solver(1024, theta, center, det, voxelsize,
+                    energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes, ngpus)
 
     # Compute data
     psi = slv.fwd_tomo_batch(obj)
+    psi1 = slv.adj_tomo_batch(psi)
     exppsi = slv.exptomo(psi)
     name = 'lego'+str(recover_prb)+str(swap_prb)+str(align)+str(shake)+str(noise)+str(nmodes)+str(scan.shape[2])
     
@@ -80,9 +82,9 @@ if __name__ == "__main__":
         s = np.int32(np.load('s.npy'))
         for k in range(ntheta):
             exppsi[k] = np.roll(exppsi[k],(s[k,0],s[k,1]),axis=(0,1))                    
-    dxchange.write_tiff_stack(np.angle(exppsi),
+    dxchange.write_tiff_stack(np.real(psi1),
                     'psiinit/psiangle'+name, overwrite=True)
-    
+    exit()
     print(np.abs(exppsi).max(), (np.angle(exppsi)).max(), (np.angle(exppsi)).min())
     data = slv.fwd_ptycho_batch(exppsi, prb, scan)
     #dxchange.write_tiff_stack(data[-1],  'data/proj0', overwrite=True)
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     if(swap_prb):
         prb = prb.swapaxes(2,3)
     slv = pt.Solver(scan, theta, det, voxelsize,
-                    energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes)
+                    energy, len(theta), nz, n, nprb, ptheta, pnz, nmodes, ngpus)
     # Initial guess
     h1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j    
     h2 = np.zeros([3, nz, n, n], dtype='complex64', order='C')
