@@ -11,6 +11,7 @@ def toc():
     if 'startTime_for_tictoc' in globals():
        return time.time() - startTime_for_tictoc
        
+
 def find_min_max(data):
     """Find min and max values according to histogram"""
     
@@ -24,7 +25,7 @@ def find_min_max(data):
         end = stend[0][-1]        
         mmin[k] = e[st]
         mmax[k] = e[end+1]
-        #####ignore
         mmin[k] = np.min(data[k])
         mmax[k] = np.max(data[k])
+    #print(mmin,mmax)
     return mmin,mmax

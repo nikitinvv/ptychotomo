@@ -55,7 +55,7 @@ class Solver(object):
 
     def mlog(self, psi3):
         res = psi3.copy()
-        res[np.abs(psi3) < 1e-16] = 1e-16
+        res[np.abs(psi3) < 1e-32] = 1e-32
         res = np.log(res)
         return res
 
@@ -184,7 +184,7 @@ class Solver(object):
         m2 = np.mean(np.angle(
             psi3[:, :, psi3.shape[2]-2*r:psi3.shape[2]-r]))
         pshift = (m1+m2)/2
-
+        
         
         t = psi3-lamd3/rho3
         t *= np.exp(-1j*pshift)
@@ -202,21 +202,27 @@ class Solver(object):
     def cg_tomo(self, xi0, xi1, K, init, rho3, rho2, titer, igpu):
         # minimization functional
         def minf(KRu, gu):
-            return rho3*cp.linalg.norm(KRu-xi0)**2+rho2*cp.linalg.norm(gu-xi1)**2
+            f = rho3*cp.linalg.norm(KRu-xi0)**2
+            if(rho2 > 0):
+                f+=rho2*cp.linalg.norm(gu-xi1)**2
+            return f
         u = init.copy()
         # minf1 = 1e9
         for i in range(titer):           
             KRu = K*self.fwd_tomo(u, igpu)
-            gu = self.fwd_reg(u)
-            grad = rho3*self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n*1.0) + \
-                rho2*self.adj_reg(gu-xi1)/2
-            r = min(1/rho3, 1/rho2)/2
+            grad = rho3*self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n * 1.0)
+            if(rho2>0):
+                gu = self.fwd_reg(u)            
+                grad+=rho2*self.adj_reg(gu-xi1)/2
+                r = min(1/rho3, 1/rho2)/2
+            else:
+                r = 1/rho3/2
             grad *= r
             # update step
             u = u + 0.5*(-grad)
 
-            # minf0 = minf(KRu, gu)
-            # #print(minf0)
+            # minf0 = minf(KRu, None)
+            # print(minf0)
             # if(minf1 < minf0):
             #     print('error in tomo', minf0, minf1)
             # minf1 = minf0
@@ -263,7 +269,7 @@ class Solver(object):
         cp.cuda.Device(0).use()        
         return u
 
-    def cg_ptycho(self, data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb, igpu):
+    def cg_ptycho(self, data, psi1, prb, scan, h1lamd, rho1, piter, model, recover_prb, igpu):
         # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
         # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
         # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
@@ -271,8 +277,8 @@ class Solver(object):
         # minimization functional
         def minf(fpsi, psi1):
             f = cp.linalg.norm(cp.sqrt(cp.abs(fpsi)) - cp.sqrt(data))**2
-            if(rho1 is not None):
-                f += rho1*cp.linalg.norm(h1-psi1+lamd1/rho1)**2
+            if(rho1>0):
+                f += rho1*cp.linalg.norm(psi1-h1lamd)**2
             return f
 
         # minf1 = 1e12
@@ -298,12 +304,12 @@ class Solver(object):
                 
                 if(m == 0):
                     r = cp.real(cp.sum(psi1*cp.conj(afpsi)) /
-                                (cp.sum(afpsi*cp.conj(afpsi))+1e-16))
+                                (cp.sum(afpsi*cp.conj(afpsi))+1e-32))
                 
                 gradpsi += self.adj_ptycho(
-                    fpsi - cp.sqrt(data)*fpsi/cp.sqrt(absfpsi+1e-16), prb[:, m], scan, igpu)                
-            if(rho1 is not None):                                
-                gradpsi -= rho1*(h1 - psi1 + lamd1/rho1)
+                    fpsi - cp.sqrt(data)*fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, m], scan, igpu)                
+            if(rho1>0):                                
+                gradpsi += rho1*(psi1-h1lamd)
                 gradpsi *= min(1/rho1, r)/2
             else:
                 gradpsi *= r/2
@@ -324,10 +330,10 @@ class Solver(object):
                     fprb = self.fwd_ptycho(psi1, prb[:, m], scan, igpu)
                     afprb = self.adj_ptycho_prb(fprb, psi1, scan, igpu)
                     r = cp.real(
-                        cp.sum(prb[:, m]*cp.conj(afprb))/(cp.sum(afprb*cp.conj(afprb))+1e-16))
+                        cp.sum(prb[:, m]*cp.conj(afprb))/(cp.sum(afprb*cp.conj(afprb))+1e-32))
                     # take gradient
                     gradprb[:, m] = self.adj_ptycho_prb(
-                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-16), psi1, scan, igpu)
+                        fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi1, scan, igpu)
                     gradprb[:, m] *= r/2
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
             
@@ -366,7 +372,7 @@ class Solver(object):
     #         prb[ids] = prb_gpu.get()
     #     return psi1, prb
 
-    def cg_ptycho_multi_gpu(self, data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb,lock,  ids):
+    def cg_ptycho_multi_gpu(self, data, psi1, prb, scan, h1lamd, rho1, piter, model, recover_prb,lock,  ids):
         """Pick GPU, copy data, run reconstruction"""    
         global BUSYGPUS
         lock.acquire()  # will block if lock is already held
@@ -382,13 +388,12 @@ class Solver(object):
         psi1_gpu = cp.array(psi1[ids])
         prb_gpu = cp.array(prb[ids])
         scan_gpu = cp.array(scan[:,ids])
-        if(h1 is None):
-            h1_gpu = None
-            lamd1_gpu = None
-        else:
-            h1_gpu = cp.array(h1[ids])
-            lamd1_gpu = cp.array(lamd1[ids])                   
-        psi1_gpu, prb_gpu = self.cg_ptycho(data_gpu, psi1_gpu, prb_gpu, scan_gpu, h1_gpu, lamd1_gpu, rho1, piter, model, recover_prb, gpu)
+        if(rho1>0):
+            h1lamd_gpu = cp.array(h1lamd[ids])
+        else:            
+            h1lamd_gpu = None
+            
+        psi1_gpu, prb_gpu = self.cg_ptycho(data_gpu, psi1_gpu, prb_gpu, scan_gpu, h1lamd_gpu, rho1, piter, model, recover_prb, gpu)
         psi1[ids] = psi1_gpu.get()
         prb[ids] = prb_gpu.get()
 
@@ -396,7 +401,7 @@ class Solver(object):
 
         return psi1[ids], prb[ids]
 
-    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h1, lamd1, rho1, piter, model, recover_prb):
+    def cg_ptycho_batch(self, data, psiinit, prbinit, scan, h1lamd, rho1, piter, model, recover_prb):
         
         psi1 = psiinit.copy()
         prb = prbinit.copy()
@@ -409,7 +414,7 @@ class Solver(object):
         BUSYGPUS = np.zeros(self.ngpus)
         with cf.ThreadPoolExecutor(self.ngpus) as e:
             shift = 0
-            for psi1i, prbi in e.map(partial(self.cg_ptycho_multi_gpu, data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb, lock), ids_list):
+            for psi1i, prbi in e.map(partial(self.cg_ptycho_multi_gpu, data, psi1, prb, scan, h1lamd, rho1, piter, model, recover_prb, lock), ids_list):
                 psi1[np.arange(0, psi1i.shape[0])+shift] = psi1i
                 prb[np.arange(0, psi1i.shape[0])+shift] = prbi
                 shift += psi1i.shape[0]
@@ -441,7 +446,7 @@ class Solver(object):
             e.map(partial(self.registration_flow, np.angle(psi3), np.angle(psilamd1), mmin,
                           mmax, flow, pars), range(0, psi3.shape[0]))
 
-        # # control Farneback's (may diverge for small window sizes)
+        # # # # control Farneback's (may diverge for small window sizes)
         err = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow0), axis=(1,2))
         err1 = np.linalg.norm(psilamd1-self.apply_flow_gpu_batch(psi3, flow), axis=(1,2))
         idsbad = np.where(err1>err)[0]
@@ -452,9 +457,9 @@ class Solver(object):
 
         return flow
 
-    def apply_flow_gpu(self, f, flow):
-        h, w = flow.shape[1:3]
-        flow = -flow.copy()
+    def apply_flow_gpu(self, f, flow0):
+        flow = -flow0.copy()
+        h, w = flow.shape[1:3]        
         flow[:, :, :, 0] += cp.arange(w)
         flow[:, :, :, 1] += cp.arange(h)[:, cp.newaxis]
 
@@ -484,22 +489,21 @@ class Solver(object):
         """CG solver for deformation"""
         # minimization functional
         def minf(psi3, Tpsi3):
-            f = rho1*cp.linalg.norm(Tpsi3-psilamd1)**2 + \
-                rho3*cp.linalg.norm(psi3-h3lamd3)**2
+            f = rho3*cp.linalg.norm(psi3-h3lamd3)**2
+            f += rho1*cp.linalg.norm(Tpsi3-psilamd1)**2                
             return f
 
-        # minf1 = 1e9
         for i in range(diter):
             Tpsi3 = self.apply_flow_gpu(
                 psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
             grad = rho1*(self.apply_flow_gpu((Tpsi3-psilamd1).real, -flow)+1j *
                          self.apply_flow_gpu((Tpsi3-psilamd1).imag, -flow)) + rho3*(psi3-h3lamd3)
-            r = min(1/rho1, 1/rho3)/2
+            r = min(1/rho1, 1/rho3)/2.0
             grad *= r
             # update step
             psi3 = psi3 + 0.5*(-grad)
             # check convergence
-            Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+            # Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
             # minf0 = minf(psi3, Tpsi3)
             # if(minf0 > minf1):
             #     print('error in deform', minf0, minf1)
@@ -598,73 +602,64 @@ class Solver(object):
         rho1 = 0.5
         
         for i in range(niter):
-            # keep previous iteration for penalty updates
-            h30, h20, h10 = h3, h2, h1
+
+            print(i)
             # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
             # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
             # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
             # h1 == \Top_{t^k} \psi_3^k
-            tic()
+            # if(i==0):
+            h30, h20, h10 = h3, h2, h1
             psi1, prb = self.cg_ptycho_batch(
-                data, psi1, prb, scan, h1, lamd1, rho1, piter, model, recover_prb)
-            print('ptycho time',toc())                
-
-            psi1lamds = psi1-lamd1/rho1                                                                                           
+                data, psi1, prb, scan, h1+lamd1/rho1, rho1, piter, model, recover_prb)
+            #     psi3=psi1.copy()
+            #     h3=psi1.copy()
+            # keep previous iteration for penalty updates            
             # &\psi_3^{k+1}, (t^{k+1}) = \argmin_{\psi_3,t} \rho_1\|\Top_t \psi_3-\psi_1^{k+1}+
             # \lambda_1^k/\rho_1\|_2^2+\rho_3\|\Hop u^k-\psi_3+\lambda_3^k/\rho_3\|_2^2
-            mmin,mmax = find_min_max(np.angle(psi1lamds))            
-            tic()
-            flow = self.registration_flow_batch(
-                psi3, psi1lamds, mmin, mmax, flow, pars)*(align == True)
-            print('registration time',toc())                
             
-            tic()
+            mmin,mmax = find_min_max(np.angle(psi1-lamd1/rho1))            
+            flow = self.registration_flow_batch(
+                psi3, psi1-lamd1/rho1, mmin, mmax, flow, pars)*(align == True)                      
+                        
             psi3 = self.cg_deform_gpu_batch(
-                psi1lamds, psi3, flow, diter, (h3+lamd3/rho3), rho1, rho3)
-            print('cg deform time',toc())                                
+                psi1-lamd1/rho1 , psi3, flow, diter, h3+lamd3/rho3, rho1, rho3)
             # tomography problem
             # u^{k+1} = \argmin_{u,t} \rho_2\|\Jop u-\psi_2^{k+1}+\lambda_2^k/\rho_2\|_2^2
             # +\rho_3\|\Hop u-\psi_3^{k+1}+\lambda_3^k/\rho_3\|_2^2,\quad \text{//tomography}\\
-            tic()
             xi0, xi1, K, pshift = self.takexi(
                 psi3, psi2, lamd3, lamd2, rho3, rho2)
-            u = self.cg_tomo_batch(xi0, xi1, K, u, rho3, rho2, titer)
-            print('cg tomo time',toc())                                
+            u = self.cg_tomo_batch(xi0, xi1, K, u, rho3, -1, titer)
             # regularizer problem
-            tic()
-            psi2 = self.solve_reg(u, lamd2, rho2, alpha)
-            print('other0',toc())
+            #psi2 = self.solve_reg(u, lamd2, rho2, alpha)
             # h3,h2 updates            
-            tic()
-            h3  = self.fwd_tomo_batch(u)
-            print('other1',toc())
-            tic()
-            h3 = self.exptomo(h3)*np.exp(1j*pshift)
-            print('other2',toc())
-            tic()
-            h2 = self.fwd_reg(u)            
-
+            h3 = self.exptomo(self.fwd_tomo_batch(u))*np.exp(1j*pshift)
+            #h2 = self.fwd_reg(u)            
             h1 = self.apply_flow_gpu_batch(psi3, flow)
             # lamd updates
             lamd3 = lamd3 + rho3 * (h3-psi3)
-            lamd2 = lamd2 + rho2 * (h2-psi2)
+            # lamd2 = lamd2 + rho2 * (h2-psi2)
             lamd1 = lamd1 + rho1 * (h1-psi1)
+
             # update rho for a faster convergence
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
-            print('other3', toc())
-
+            
             pars[2]-=1
             
             # Lagrangians difference between two iterations
-            if (np.mod(i, 4) == 0):
-                #lagr = self.take_lagr(
-                    #psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
-                #print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
-                      #(i, niter, np.linalg.norm(flow), rho3, rho2, rho1, *lagr))
-                # plt.imshow(flow_to_color(flow[45]))
-                # plt.savefig(name+'flow/'+str(i)+'.png')   
-            
+            if (np.mod(i, 1) == 0):
+                lagr = self.take_lagr(
+                    psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
+                print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
+                      (i, niter, np.linalg.norm(flow), rho3, rho2, rho1, *lagr))
+                plt.imshow(flow_to_color(flow[45]))
+                plt.savefig(name+'flow/45'+str(i)+'.png')   
+                plt.imshow(flow_to_color(flow[90]))
+                plt.savefig(name+'flow/90'+str(i)+'.png')   
+                plt.imshow(flow_to_color(flow[120]))
+                plt.savefig(name+'flow/120'+str(i)+'.png')   
+                
 
                 dxchange.write_tiff_stack(np.angle(psi3),
                                           name+'psi3iter'+str(self.n)+'/'+str(i), overwrite=True)

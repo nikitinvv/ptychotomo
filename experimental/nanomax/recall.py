@@ -16,8 +16,10 @@ data_prefix = '/local/data/vnikitin/nanomax/'
 
 if __name__ == "__main__":
     
-    ntheta = 1
-    nscan = 7000
+    align = True
+    ngpus = 8
+    ntheta = 160
+    nscan = 3500
    
     n = 512
     nz = 512
@@ -26,20 +28,20 @@ if __name__ == "__main__":
     energy = 12.4
     nprb = 128  # probe size
     recover_prb = False
-    align = False
+    
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
-    piter = 4  # ptychography iterations
-    titer = 4  # tomography iterations
-    diter = 4
+    piter = 32  # ptychography iterations
+    titer = 32  # tomography iterations
+    diter = 32
     niter = 257  # ADMM iterations
     ptheta = 1  # number of angular partitions for simultaneous processing in ptychography
     pnz = 8  # number of slice partitions for simultaneous processing in tomography
-    center = 270.0
+    center = 256.0
     
     nmodes = 4
-    ngpus = 1 
+    
     data = np.zeros([ntheta, nscan, det[0], det[1]], dtype='float32')
     scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
     theta = np.zeros(ntheta, dtype='float32')
@@ -61,33 +63,31 @@ if __name__ == "__main__":
     theta= theta[ids]
     scan = scan[:,ids]
     data = data[ids]
-    
-#ALIGN with sift
 
-    shift = np.load(data_prefix+'data/shifts.npy')
+    shift = np.load(data_prefix+'data/shifts.npy')#[::160//ntheta]
     for k in range(ntheta):  
         print(shift[k])      
         scan[0,k]-=np.round(shift[k,1])
         scan[1,k]-=np.round(shift[k,0])
+        scan[0,k]-=(268-256)
         ids = np.where((scan[0,k]>n-1-nprb)+(scan[1,k]>nz-1-nprb)+(scan[0,k]<0)+(scan[1,k]<0))[0]
         scan[0,k,ids]=-1
         scan[1,k,ids]=-1
         data[k,ids] = 0 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     
     # Initial guess
-    h1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j    
+    h1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1#+1e-10j    
     h2 = np.zeros([3, nz, n, n], dtype='complex64', order='C')
-    h3 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
+    h3 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1#+1e-10j
     
 
-    psi1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j    
+    psi1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1#+1e-10j    
 
     # psi1abs = dxchange.read_tiff_stack(data_prefix+'recTrueTrue47000psi1iterabs512/0_00000.tiff',ind=range(0,ntheta))
     # psi1angle = dxchange.read_tiff_stack(data_prefix+'recTrueTrue47000psi1iter512/0_00000.tiff',ind=range(0,ntheta))
     # psi1 = psi1abs*np.exp(1j*psi1angle)
-
     psi2 = np.zeros([3, nz, n, n], dtype='complex64', order='C')
-    psi3 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1+1e-10j
+    psi3 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')+1#+1e-10j
     lamd1 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')
     lamd2 = np.zeros([3, nz, n, n], dtype='complex64', order='C')
     lamd3 = np.zeros([ntheta, nz, n], dtype='complex64', order='C')    
