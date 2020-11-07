@@ -19,7 +19,7 @@ if __name__ == "__main__":
     align = True
     ngpus = 8
     ntheta = 160
-    nscan = 3500
+    nscan = 7000
    
     n = 512
     nz = 512
@@ -27,14 +27,14 @@ if __name__ == "__main__":
     voxelsize = 18.03*1e-7  # cm
     energy = 12.4
     nprb = 128  # probe size
-    recover_prb = False
+    recover_prb = True
     
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
     piter = 32  # ptychography iterations
     titer = 32  # tomography iterations
-    diter = 32
+    diter = 4
     niter = 257  # ADMM iterations
     ptheta = 1  # number of angular partitions for simultaneous processing in ptychography
     pnz = 8  # number of slice partitions for simultaneous processing in tomography
@@ -42,29 +42,36 @@ if __name__ == "__main__":
     
     nmodes = 4
     
-    data = np.zeros([ntheta, nscan, det[0], det[1]], dtype='float32')
+    # data = np.zeros([ntheta, nscan, det[0], det[1]], dtype='float32')
     scan = np.zeros([2, ntheta, nscan], dtype='float32')-1
-    theta = np.zeros(ntheta, dtype='float32')
+    theta = np.zeros(160, dtype='float32')
     
+    for k in range(160):
+        #print(k)
+        theta[k] = np.load(data_prefix+'data/theta128_'+str(k)+'.npy')                         
+    idstheta = np.argsort(theta)[::160//ntheta]
+    theta = theta[idstheta]
+    np.save(data_prefix+'thetasorted',theta)
+    print(theta)
+    exit()
+
     for k in range(ntheta):
-        print(k)
+        #print(idstheta[k])
         ids = sample(range(13689),nscan)
-        data0 = np.load(data_prefix+'data/data128_'+str(k)+'.npy')        
-        scan0 = np.load(data_prefix+'data/scan128_'+str(k)+'.npy')        
+        data0 = np.load(data_prefix+'data/data128_'+str(idstheta[k])+'.npy')        
+        scan0 = np.load(data_prefix+'data/scan128_'+str(idstheta[k])+'.npy')        
         data[k] = data0[ids]        
         scan[:,k:k+1,:] = scan0[:,:,ids]
-        theta[k] = np.load(data_prefix+'data/theta128_'+str(k)+'.npy')                         
         
     # Load a 3D object
     prb = np.zeros([ntheta, nmodes, nprb, nprb], dtype='complex64',order='C')
     prb[:] = np.load(data_prefix+'data/prb128.npy')
     
-    ids = np.argsort(theta)
-    theta= theta[ids]
-    scan = scan[:,ids]
-    data = data[ids]
+    
+    #scan = scan[:,idstheta]
+    #data = data[idstheta]
 
-    shift = np.load(data_prefix+'data/shifts.npy')#[::160//ntheta]
+    shift = np.load(data_prefix+'data/shifts.npy')[::160//ntheta]
     for k in range(ntheta):  
         print(shift[k])      
         scan[0,k]-=np.round(shift[k,1])

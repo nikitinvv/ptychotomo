@@ -10,6 +10,7 @@ import threading
 from itertools import repeat
 from functools import partial
 import cv2
+import os
 from ptychotomo.radonusfft import radonusfft
 from ptychotomo.ptychofft import ptychofft
 from ptychotomo.deform import deform
@@ -207,7 +208,7 @@ class Solver(object):
                 f+=rho2*cp.linalg.norm(gu-xi1)**2
             return f
         u = init.copy()
-        # minf1 = 1e9
+        minf1 = 1e12
         for i in range(titer):           
             KRu = K*self.fwd_tomo(u, igpu)
             grad = rho3*self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n * 1.0)
@@ -221,8 +222,9 @@ class Solver(object):
             # update step
             u = u + 0.5*(-grad)
 
-            # minf0 = minf(KRu, None)
-            # print(minf0)
+            #if(i%4==0):              
+            #    print('t',i,minf(KRu, -1))
+            # minf0 = minf(KRu, None)                
             # if(minf1 < minf0):
             #     print('error in tomo', minf0, minf1)
             # minf1 = minf0
@@ -281,7 +283,7 @@ class Solver(object):
                 f += rho1*cp.linalg.norm(psi1-h1lamd)**2
             return f
 
-        # minf1 = 1e12
+        minf1 = 1e12
         for i in range(piter):
 
             # 1) object retrieval subproblem with fixed prbs
@@ -338,10 +340,7 @@ class Solver(object):
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
             
            
-            #if(i%4==0):
-                #print(i,minf(absfpsi, psi1))                
                 # dxchange.write_tiff(cp.angle(psi1).get(),  data_prefix+'tmp/psiiter/psiangle'+str(i), overwrite=True)
-            # check convergence
             # minf0 = minf(absfpsi, psi1)
             # if(minf0 > minf1):
             #     print('error inptycho', minf0, minf1)
@@ -493,6 +492,7 @@ class Solver(object):
             f += rho1*cp.linalg.norm(Tpsi3-psilamd1)**2                
             return f
 
+        minf1=1e15
         for i in range(diter):
             Tpsi3 = self.apply_flow_gpu(
                 psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
@@ -503,12 +503,14 @@ class Solver(object):
             # update step
             psi3 = psi3 + 0.5*(-grad)
             # check convergence
-            # Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+
+            Tpsi3 = self.apply_flow_gpu(psi3.real, flow)+1j*self.apply_flow_gpu(psi3.imag, flow)
+            #if(i%4==0):
             # minf0 = minf(psi3, Tpsi3)
             # if(minf0 > minf1):
             #     print('error in deform', minf0, minf1)
-            #     minf1 = minf0
-            # print(i,minf0)
+            # minf1 = minf0
+            #    # print('d',i,minf0)                
         return psi3
 
     def cg_deform_gpu_batch(self, psilamd1, psi3, flow, diter, h3lamd3, rho1=0, rho3=0):
@@ -569,7 +571,7 @@ class Solver(object):
         # + 2\text{Re}\{\lambda_2^H(\Jop u-\psi_2)\}+ \rho_2\|\Jop u-\psi_2\|_2^2\\&
         # + 2\text{Re}\{\lambda_3^H(\Hop u-\psi_3)\}+\rho_3\|\Hop u-\psi_3\|_2^2
         lagr = np.zeros(9, dtype="float32")
-        # Lagrangian ptycho part by angles partitions
+      #  Lagrangian ptycho part by angles partitions
         for k in range(0, self.ntheta//self.ptheta):
             ids = np.arange(k*self.ptheta, (k+1)*self.ptheta)
             data_gpu = cp.array(data[ids])
@@ -596,7 +598,7 @@ class Solver(object):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
-        pars = [0.5, 1, self.n//2+16, 4, 5, 1.1, 4]
+        pars = [0.5, 1, self.n+16, 4, 5, 1.1, 4]
         rho3 = 0.5
         rho2 = 0.5
         rho1 = 0.5
@@ -611,9 +613,8 @@ class Solver(object):
             # if(i==0):
             h30, h20, h10 = h3, h2, h1
             psi1, prb = self.cg_ptycho_batch(
-                data, psi1, prb, scan, h1+lamd1/rho1, rho1, piter, model, recover_prb)
-            #     psi3=psi1.copy()
-            #     h3=psi1.copy()
+               data, psi1, prb, scan, h1+lamd1/rho1, rho1, piter, model, recover_prb)
+            
             # keep previous iteration for penalty updates            
             # &\psi_3^{k+1}, (t^{k+1}) = \argmin_{\psi_3,t} \rho_1\|\Top_t \psi_3-\psi_1^{k+1}+
             # \lambda_1^k/\rho_1\|_2^2+\rho_3\|\Hop u^k-\psi_3+\lambda_3^k/\rho_3\|_2^2
@@ -640,25 +641,29 @@ class Solver(object):
             lamd3 = lamd3 + rho3 * (h3-psi3)
             # lamd2 = lamd2 + rho2 * (h2-psi2)
             lamd1 = lamd1 + rho1 * (h1-psi1)
-
             # update rho for a faster convergence
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
             
-            pars[2]-=1
+            pars[2]-=2
             
             # Lagrangians difference between two iterations
-            if (np.mod(i, 1) == 0):
+            if (np.mod(i, 4) == 0):
                 lagr = self.take_lagr(
                     psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
                 print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
                       (i, niter, np.linalg.norm(flow), rho3, rho2, rho1, *lagr))
-                plt.imshow(flow_to_color(flow[45]))
-                plt.savefig(name+'flow/45'+str(i)+'.png')   
-                plt.imshow(flow_to_color(flow[90]))
-                plt.savefig(name+'flow/90'+str(i)+'.png')   
-                plt.imshow(flow_to_color(flow[120]))
-                plt.savefig(name+'flow/120'+str(i)+'.png')   
+                if not os.path.exists(name+'flow/'):
+                    os.makedirs(name+'flow/')
+                plt.subplot(2,2,1)
+                plt.imshow(flow_to_color(flow[0]))
+                plt.subplot(2,2,2)
+                plt.imshow(flow_to_color(flow[self.ntheta//4]))
+                plt.subplot(2,2,3)
+                plt.imshow(flow_to_color(flow[3*self.ntheta//4]))
+                plt.subplot(2,2,4)
+                plt.imshow(flow_to_color(flow[self.ntheta-1]))                
+                plt.savefig(name+'flow/'+str(i)+'.png')   
                 
 
                 dxchange.write_tiff_stack(np.angle(psi3),

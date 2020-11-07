@@ -7,7 +7,6 @@ import dxchange
 import numpy as np
 import matplotlib.pyplot as plt
 import ptychotomo as pt
-from random import sample 
 
 
 data_prefix = '/local/data/vnikitin/nanomax/'
@@ -52,21 +51,18 @@ if __name__ == "__main__":
         print(kk, k)
         data0, scan0, theta0 = read_data(k)
         if(scan0 is not None):
-            #ids = np.array(sample(range(13689),nscan))+(13689-13689)  
             scan = scan0*0
-            scan[0, :] = scan0[1,0,:]
-            scan[1, :] = scan0[0,0,:]
+            scan[0, :] = scan0[0,0,:]
+            scan[1, :] = scan0[1,0,:]
             theta = theta0
             data = data0
-            # print(k,scan.max(), scan.min())   
-            np.save(data_prefix+'data/theta128_'+str(kk),theta)
-            np.save(data_prefix+'data/scan128_'+str(kk),scan)
-            np.save(data_prefix+'data/data128_'+str(kk),data0)
+            np.save(data_prefix+'data/stheta128_'+str(kk),theta)
+            np.save(data_prefix+'data/sscan128_'+str(kk),scan)
+            np.save(data_prefix+'data/sdata128_'+str(kk),data0)
             kk += 1
-    # psirec,prbrec,scanrec = read_rec(210)    
-    # # Load a 3D object
-    # prb = prbrec/prbrec.shape[2]             
-    # np.save(data_prefix+'data/prb128',prb)
+                
+    psirec,prbrec,scanrec = read_rec(210)    
+    # Load a 3D object
+    prb = prbrec/prbrec.shape[2]             
+    np.save(data_prefix+'data/prb128',prb)
     exit()            
-            
-    
