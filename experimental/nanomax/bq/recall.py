@@ -18,8 +18,8 @@ if __name__ == "__main__":
     
     align = True
     ngpus = 4
-    ntheta = 174
-    nscan = 300
+    ntheta = 173
+    nscan = 100
    
     n = 384
     nz = 320
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     piter = 32  # ptychography iterations
     titer = 32  # tomography iterations
     diter = 8
-    niter = 100  # ADMM iterations
+    niter = 300  # ADMM iterations
     ptheta = 1  # number of angular partitions for simultaneous processing in ptychography
     pnz = 16  # number of slice partitions for simultaneous processing in tomography
     center = 192
@@ -55,7 +55,6 @@ if __name__ == "__main__":
         scan0[0]-=np.round(shifts[0]+shiftspart[0]+shiftssum[0])
         scan0[1]-=64+30
         scan0[0]-=160
-
         ids = np.where((scan0[1,0]<n-nprb)*(scan0[0,0]<nz-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
         ids = ids[sample(range(len(ids)),nscan)]
         print(len(ids))
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     # Class gpu solver
     slv = pt.Solver(nscan, theta, center, det, voxelsize,
                     energy, ntheta, nz, n, nprb, ptheta, pnz, nmodes, ngpus)
-    name = data_prefix+'rec_new'+str(recover_prb)+str(align)+str(nmodes)+str(nscan)
+    name = data_prefix+'rec'+str(recover_prb)+str(align)+str(nmodes)+str(nscan)
     
     # ADMM
     u, psi3, psi2, psi1, flow, prb = slv.admm(

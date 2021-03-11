@@ -1,19 +1,13 @@
-import os
-import signal
-import sys
 import h5py
-import cupy as cp
-import dxchange
 import numpy as np
 import matplotlib.pyplot as plt
-import ptychotomo as pt
 
+data_prefix = '/data/staff/tomograms/vviknik/nanomax/'
 
-data_prefix = '/local/data/vnikitin/nanomax/'
 def read_data(id_data):
     try:
         h5file = h5py.File(
-            data_prefix+'/scan_000'+str(id_data)+'.h5', 'r')
+            data_prefix+'/data/scan_000'+str(id_data)+'.h5', 'r')
         data = h5file['measured/diffraction_patterns'][:].astype('float32')
         positions = h5file['measured/positions_um'][:].astype('float32')
         mask = h5file['measured/mask'][:].astype('float32')
@@ -31,7 +25,7 @@ def read_data(id_data):
 
 def read_rec(id_data):
     h5file = h5py.File(
-            data_prefix+'/scan'+str(id_data)+'_DM_1000.ptyr', 'r')
+            data_prefix+'/data/scan'+str(id_data)+'_DM_1000.ptyr', 'r')
     psi = h5file['content/obj/Sscan00G00/data'][:]
     probe = h5file['content/probe/Sscan00G00/data'][:]
     positions = h5file['content/positions/Sscan00G00'][:]
@@ -42,27 +36,24 @@ def read_rec(id_data):
         
     return psi, probe, scan
 
-
-data_prefix = '/local/data/vnikitin/nanomax/'
-if __name__ == "__main__":
-   
+if __name__ == "__main__":   
     kk = 0
-    for k in range(134, 450, 1):
+    for k in range(134, 424, 1):
         print(kk, k)
-        data0, scan0, theta0 = read_data(k)
-        if(scan0 is not None):
-            scan = scan0*0
-            scan[0, :] = scan0[0,0,:]
-            scan[1, :] = scan0[1,0,:]
-            theta = theta0
-            data = data0
-            np.save(data_prefix+'data/stheta128_'+str(kk),theta)
-            np.save(data_prefix+'data/sscan128_'+str(kk),scan)
-            np.save(data_prefix+'data/sdata128_'+str(kk),data0)
-            kk += 1
-                
+        data, scan, theta = read_data(k)
+        if(scan is not None):            
+            plt.clf()
+            plt.plot(scan[1],scan[0],'r.',markersize=1)            
+            plt.axis('equal')
+            plt.savefig(data_prefix+'/scan_pos/'+str(kk)+'.png',dpi=450)
+            print('theta',theta)
+            print('scan',scan.shape,np.min(scan[0]),np.min(scan[1]),np.max(scan[0]),np.max(scan[1]))
+            print('data',data.shape,np.linalg.norm(data))
+            np.save(data_prefix+'datanpy/theta128_'+str(kk),theta)
+            np.save(data_prefix+'datanpy/scan128_'+str(kk),scan)
+            np.save(data_prefix+'datanpy/data128_'+str(kk),data)            
+            kk += 1                
     psirec,prbrec,scanrec = read_rec(210)    
     # Load a 3D object
-    prb = prbrec/prbrec.shape[2]             
-    np.save(data_prefix+'data/prb128',prb)
-    exit()            
+    np.save(data_prefix+'datanpy/prb128',prbrec)
+    

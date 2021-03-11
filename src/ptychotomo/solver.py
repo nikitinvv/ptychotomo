@@ -215,19 +215,19 @@ class Solver(object):
             if(rho2>0):
                 gu = self.fwd_reg(u)            
                 grad+=rho2*self.adj_reg(gu-xi1)/2
-                r = min(1/rho3, 1/rho2)/2
+                r = min(1/rho3, 1/rho2)
             else:
-                r = 1/rho3/2
+                r = 1/rho3
             grad *= r
             # update step
             u = u + 0.5*(-grad)
 
             #if(i%4==0):              
-            #    print('t',i,minf(KRu, -1))
-            # minf0 = minf(KRu, None)                
-            # if(minf1 < minf0):
-            #     print('error in tomo', minf0, minf1)
-            # minf1 = minf0
+               #print('t',i,minf(KRu, -1))
+            minf0 = minf(KRu, None)                
+            if(minf1 < minf0):
+                print('error in tomo', minf0, minf1)
+            minf1 = minf0
         return u
 
     def cg_tomo_multi_gpu(self, xi0, xi1, K, u, rho3, rho2, titer, lock, ids):
@@ -598,7 +598,7 @@ class Solver(object):
 
         data /= (self.ndetx*self.ndety)  # FFT compensation
 
-        pars = [0.5, 1, self.n+16, 4, 5, 1.1, 4]
+        pars = [0.5, 1, self.nz, 4, 5, 1.1, 4]
         rho3 = 0.5
         rho2 = 0.5
         rho1 = 0.5
@@ -645,14 +645,14 @@ class Solver(object):
             rho3, rho2, rho1 = self.update_penalty(
                 psi3, h3, h30, psi2, h2, h20, psi1, h1, h10, rho3, rho2, rho1)
             
-            pars[2]-=2
+            pars[2]-=1
             
             # Lagrangians difference between two iterations
             if (np.mod(i, 4) == 0):
                 lagr = self.take_lagr(
                     psi3, psi2, psi1, data, prb, scan, h3, h2, h1, lamd3, lamd2, lamd1, alpha, rho3, rho2, rho1, model)
-                print("%d/%d) flow=%.2e,  rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
-                      (i, niter, np.linalg.norm(flow), rho3, rho2, rho1, *lagr))
+                print("%d/%d) flow=%.2e, winsize=%d, rho3=%.2e, rho2=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
+                      (i, niter, np.linalg.norm(flow), pars[2], rho3, rho2, rho1, *lagr))
                 if not os.path.exists(name+'flow/'):
                     os.makedirs(name+'flow/')
                 plt.subplot(2,2,1)
