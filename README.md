@@ -1,19 +1,11 @@
 # ptychotomo
-A CuPy and CUDA FFT based library for ptychography and tomography ADMM solvers.
 
-## Installation from source
-```bash
-export CUDACXX=path-to-cuda-nvcc
-pip install .
-```
+# Dependencies
 
-## Dependency
-CuPy - for GPU acceleration of linear algebra operations in iterative schemes.
-See (https://cupy.chainer.org/). For installation use
+cupy, dxchange, swig, scikit-build
 
-```bash
-conda install cupy
-```
+# install
+python setup.py install
 
-## Tests
-Run python test.py 
+# reconstruction of experimental data
+see experimental/sample_name/run.sh

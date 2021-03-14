@@ -1,5 +1,0 @@
-python read_data.py 
-./run.sh (python rec_ptycho_full.py)
-python sort.py
-align with sift in image
-python find_shifts.py

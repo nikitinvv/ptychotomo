@@ -1,35 +1,50 @@
 #include "deform.cuh"
-#include "kernels.cuh"
-#include <stdio.h>
 #include <npp.h>
-#include "helper_cuda.h"
-deform::deform(size_t nz_, size_t n_, size_t ptheta_)
+
+deform::deform(size_t ntheta, size_t nz, size_t n, size_t ptheta, size_t ngpus) :
+ ntheta(ntheta), nz(nz), n(n), ptheta(ptheta), ngpus(ngpus)
 {
-    nz = nz_;
-    n = n_;
-    ptheta = ptheta_;
-	cstreams = new cudaStream_t[ptheta];
-	nstreams = new NppStreamContext[ptheta];
-	for (int i=0;i<ptheta; i++) 
+	cstreams = new cudaStream_t[ptheta*ngpus];
+	nstreams = new NppStreamContext[ptheta*ngpus];
+	for (int igpu=0;igpu<ngpus;igpu++)
 	{
-		cudaStreamCreate(&cstreams[i]);
-		nstreams[i].hStream=cstreams[i];
+		cudaSetDevice(igpu);
+		for (int i=0;i<ptheta; i++) 
+		{
+			cudaStreamCreate(&cstreams[igpu*ptheta+i]);
+			nstreams[igpu*ptheta+i].hStream=cstreams[igpu*ptheta+i];
+		}
 	}
+	cudaSetDevice(0);
 }
 
 // destructor, memory deallocation
 deform::~deform()
 {
-    for (int i=0;i<ptheta;i++)
-    {
-        cudaStreamDestroy(cstreams[i]);
-    }
-    delete[] cstreams;		
-    delete[] nstreams;		
-    
+	free();
 }
 
-void deform::remap(size_t g, size_t f, size_t flowx, size_t flowy)
+void deform::free()
+{
+	if (!is_free)
+	{
+		for (int igpu=0;igpu<ngpus;igpu++)
+		{
+			cudaSetDevice(igpu);
+			for (int i=0;i<ptheta;i++)
+			{
+				cudaStreamDestroy(cstreams[igpu*ptheta+i]);
+			}
+		}
+		delete[] cstreams;		
+		delete[] nstreams;		
+		
+		is_free = true;
+		cudaSetDevice(0);
+	}
+}
+
+void deform::remap(size_t g, size_t f, size_t flowx, size_t flowy, size_t gpu)
 {
 	Npp32f *pSrc = (Npp32f *)f;
 	NppiSize oSize = {(int)n,(int)nz};
@@ -40,11 +55,12 @@ void deform::remap(size_t g, size_t f, size_t flowx, size_t flowy)
 	Npp32f *pYMap = (Npp32f *)flowy;
 	int nXMapStep = 4*n;
 	int nYMapStep = 4*n;
+	cudaSetDevice(gpu);
 	for (int i=0;i<ptheta;i++)
 	{
 		nppiRemap_32f_C1R_Ctx(&pSrc[i*n*nz],oSize,nStep, oROI, &pXMap[i*n*nz], nXMapStep,
 			 &pYMap[i*n*nz], nYMapStep, &pDst[i*n*nz], nStep, oSize, NPPI_INTER_LANCZOS,
-			 nstreams[i]);
+			 nstreams[gpu*ptheta+i]);
 		//nppiRemap_32f_C1R (const Npp32f *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, const Npp32f *pXMap, int nXMapStep, const Npp32f *pYMap, int nYMapStep, Npp32f *pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation)
 	}
 	cudaDeviceSynchronize();

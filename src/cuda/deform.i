@@ -6,21 +6,20 @@
 #include "deform.cuh"
 %}
 
-%include "numpy.i"
-
-%init %{
-import_array();
-%}
-
 class deform
 {
 
+public:
+  %immutable;
   size_t n;
+  size_t ntheta;
   size_t nz; 
   size_t ptheta;
-  
-public:
-  deform(size_t nz, size_t n, size_t ptheta);
+  size_t ngpus;
+  %mutable;
+  deform(size_t ntheta,size_t nz, size_t n, size_t ptheta, size_t ngpus);
   ~deform();  
-  void remap(size_t g, size_t f, size_t flowx, size_t flowy);
+  void free();
+  void remap(size_t g, size_t f, size_t flowx, size_t flowy, size_t igpu);
+
 };

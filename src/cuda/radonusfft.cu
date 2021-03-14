@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "radonusfft.cuh"
-#include "kernels.cu"
+#include "kernels_tomo.cu"
 #include "shift.cu"
 #include "filter.cu"
 
@@ -134,6 +134,8 @@ void radonusfft::fwd(size_t g_, size_t f_, size_t igpu) {
     ifftshiftc <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
     cufftExecC2C(plan1d[igpu], (cufftComplex *)g[igpu], (cufftComplex *)g[igpu], CUFFT_INVERSE);
     ifftshiftc <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
+    if(n%4!=0)
+      ifftshiftcmul <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
 
     float2* g0 = (float2 *)g_;
     for (int i=0;i<ntheta;i++)    
@@ -152,6 +154,9 @@ void radonusfft::adj(size_t f_, size_t g_, size_t igpu, bool filter) {
     ifftshiftc <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
     cufftExecC2C(plan1d[igpu], (cufftComplex *)g[igpu], (cufftComplex *)g[igpu], CUFFT_FORWARD);
     ifftshiftc <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
+    if(n%4!=0)
+      ifftshiftcmul <<<GS3d3, BS3d>>> (g[igpu], n, ntheta, pnz);
+  
     if (filter)
       applyfilter<<<GS3d3, BS3d>>>(g[igpu],n,ntheta,pnz);
     // shift with respect to given center

@@ -10,6 +10,17 @@ void __global__ ifftshiftc(float2 *f, int N, int Ntheta, int Nz) {
   f[f_ind].y *= g;
 }
 
+void __global__ ifftshiftcmul(float2 *f, int N, int Ntheta, int Nz) {
+  int tx = blockDim.x * blockIdx.x + threadIdx.x;
+  int ty = blockDim.y * blockIdx.y + threadIdx.y;
+  int tz = blockDim.z * blockIdx.z + threadIdx.z;
+  if (tx >= N || ty >= Ntheta || tz >= Nz)
+    return;
+  int f_ind = tx + tz * N + ty * N * Nz;
+  f[f_ind].x *= -1;
+  f[f_ind].y *= -1;
+}
+
 void __global__ fftshiftc(float2 *f, int N, int Nz) {
   int tx = blockDim.x * blockIdx.x + threadIdx.x;
   int ty = blockDim.y * blockIdx.y + threadIdx.y;
