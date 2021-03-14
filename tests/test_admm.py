@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # Load scan positions
     scan = np.zeros([2, ntheta, nscan], dtype='float32') - 1
     for k in range(ntheta):
-        scan0 = np.load(f'data/scan128sorted_{k}.npy')
+        scan0 = np.load(f'data/scan/scan128sorted_{k}.npy')
         scan0[1] -= 30
         ids = np.where((scan0[1, 0] < n-nprb)*(scan0[0, 0] <
                                                nz-nprb)*(scan0[0, 0] >= 0)*(scan0[1, 0] >= 0))[0]
