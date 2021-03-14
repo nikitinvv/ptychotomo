@@ -436,10 +436,10 @@ class SolverPtycho(ptychofft):
                     gradprb[:, m] *= r/2
                     prb[:, m] = prb[:, m] + 0.5 * (-gradprb[:, m])
 
-            minf0 = minf(absfpsi, psi)
-            if(minf0 > minf1):
-                print('error inptycho', minf0, minf1)
-            minf1 = minf0
+            # minf0 = minf(absfpsi, psi)
+            # if(minf0 > minf1):
+            #     print('error inptycho', minf0, minf1)
+            # minf1 = minf0
 
         return psi, prb
 

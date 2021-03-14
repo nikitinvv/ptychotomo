@@ -1,10 +1,11 @@
 
-import numpy as np
+
 from .solver_tomo import SolverTomo
 from .solver_deform import SolverDeform
 from .solver_ptycho import SolverPtycho
 from .flowvis import flow_to_color
 from .utils import *
+import numpy as np
 import signal
 import dxchange
 import sys
@@ -48,15 +49,8 @@ class SolverAdmm(object):
         """Free GPU memory due at interruptions or with-block exit."""
         return
 
-    # Update rho3, for a faster convergence
-    def update_penalty(self, psi3, h3, h30, psi1, h1, h10, rho3, rho1):
-        # rho3
-        r = np.linalg.norm(psi3 - h3)**2
-        s = np.linalg.norm(rho3*(h3-h30))**2
-        if (r > 10*s):
-            rho3 *= 2
-        elif (s > 10*r):
-            rho3 *= 0.5
+    def update_penalty(self, psi1, h1, h10, psi3, h3, h30, rho1, rho3):
+        """Update rho, for a faster convergence"""
         # rho1
         r = np.linalg.norm(psi1 - h1)**2
         s = np.linalg.norm(rho1*(h1-h10))**2
@@ -64,16 +58,23 @@ class SolverAdmm(object):
             rho1 *= 2
         elif (s > 10*r):
             rho1 *= 0.5
-        return rho3, rho1
+        # rho3
+        r = np.linalg.norm(psi3 - h3)**2
+        s = np.linalg.norm(rho3*(h3-h30))**2
+        if (r > 10*s):
+            rho3 *= 2
+        elif (s > 10*r):
+            rho3 *= 0.5
 
-    # Lagrangian terms for monitoring convergence
-    def take_lagr(self, psi3, psi1, data, prb, scan, h3, h1, lamd3, lamd1, rho3, rho1):
+        return rho1, rho3
+
+    def take_lagr(self, psi1, psi3, data, prb, scan, h1, h3, lamd1, lamd3, rho1, rho3):
+        """Lagrangian terms for monitoring convergence"""
         # \mathcal{L}_{\bar{\rho}} (u,\bar{\psi}, \bar{\lambda})=&\sum_{j=1}^{n} \left\{|\Fop\Qop_p\psi_1|_j^2-2d_j\log|\Fop\Qop_p\psi_1|_j \right\} +  \alpha q(\psi_2)\\&
         # + 2\text{Re}\{\lambda_1^H(\Top_t \psi_3-\psi_1)\}+\rho_1\|\Top_t \psi_3-\psi_1\|_2^2\\&
         # + 2\text{Re}\{\lambda_2^H(\Jop u-\psi_2)\}+ \rho_2\|\Jop u-\psi_2\|_2^2\\&
         # + 2\text{Re}\{\lambda_3^H(\Hop u-\psi_3)\}+\rho_3\|\Hop u-\psi_3\|_2^2
         lagr = np.zeros(6, dtype="float32")
-        #  Lagrangian ptycho part by angles partitions
         lagr[0] = self.pslv.take_error(data, psi1, prb, scan)
         lagr[1] = 2*np.sum(np.real(np.conj(lamd1)*(h1-psi1)))
         lagr[2] = rho1*np.linalg.norm(h1-psi1)**2
@@ -84,23 +85,20 @@ class SolverAdmm(object):
         return lagr
 
     # ADMM for ptycho-tomography problem
-    def admm(self, data, psi3, psi1, flow, prb, scan,
-             h3, h1, lamd3, lamd1,
-             u, piter, titer, diter, niter, recover_prb, name='admm_rec'):
+    def admm(self, data, psi1, psi3, flow, prb, scan,
+             h1, h3, lamd1, lamd3,
+             u, piter, titer, diter, niter, recover_prb, name='tmp/', dbg_step=8):
 
-        # data /= (self.ndetx*self.ndety)  # FFT compensation
-
-        pars = [0.5, 1, self.nz, 4, 5, 1.1, 4]
-        rho3 = 0.5
-        rho1 = 0.5
+        # data /= (self.ndetx*self.ndety)  # FFT compensation  (should be done for real data)
+        pars = [0.5, 1, min(self.nz, self.n), 4, 5, 1.1, 4]
+        rho1, rho3 = 0.5, 0.5
 
         for i in range(niter):
             # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
             # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
             # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
             # h1 == \Top_{t^k} \psi_3^k
-            # if(i==0):
-            h30,  h10 = h3,  h1
+            h10,  h30 = h1,  h3
             psi1, prb = self.pslv.grad_ptycho_batch(
                 data, psi1, prb, scan, h1+lamd1/rho1, rho1, piter, recover_prb)
             # # keep previous iteration for penalty updates
@@ -118,25 +116,25 @@ class SolverAdmm(object):
             # # +\rho_3\|\Hop u-\psi_3^{k+1}+\lambda_3^k/\rho_3\|_2^2,\quad \text{//tomography}\\
             xi0, K, pshift = self.pslv.takexi(psi3, lamd3, rho3)
             u = self.tslv.grad_tomo_batch(xi0, K, u, titer)
-            h3 = self.pslv.exptomo(self.tslv.fwd_tomo_batch(u))*np.exp(1j*pshift)
             h1 = self.dslv.apply_flow_gpu_batch(
                 psi3.real, flow)+1j*self.dslv.apply_flow_gpu_batch(psi3.imag, flow)
+            h3 = self.pslv.exptomo(
+                self.tslv.fwd_tomo_batch(u))*np.exp(1j*pshift)
             # lamd updates
-            lamd3 = lamd3 + rho3 * (h3-psi3)
             lamd1 = lamd1 + rho1 * (h1-psi1)
+            lamd3 = lamd3 + rho3 * (h3-psi3)
             # update rho for a faster convergence
-            rho3, rho1 = self.update_penalty(
-                psi3, h3, h30, psi1, h1, h10, rho3, rho1)
+            rho1, rho3 = self.update_penalty(
+                psi1, h1, h10, psi3, h3, h30, rho1, rho3)
 
+            # decrease the step for optical flow window
             pars[2] -= 1
 
             # Lagrangians difference between two iterations
-            if (np.mod(i, 1) == 0):
+            if (i % dbg_step == 0):
                 lagr = self.take_lagr(
-                    psi3, psi1, data, prb, scan, h3, h1, lamd3, lamd1, rho3, rho1)
-                #print("%d/%d) flow=%.2e, winsize=%d, rho3=%.2e, rho1=%.2e, Lagrangian terms:  %.2e %.2e %.2e %.2e %.2e %.2e %.2e %.2e , Sum: %.2e" %
-                      #(i, niter, np.linalg.norm(flow), pars[2], rho3, rho1, *lagr))
-                print(f"{i}/{niter}) {np.linalg.norm(flow)=}, {pars[2]=}, {rho3=:.2e}, {rho1=:.2e}", 
+                    psi1, psi3, data, prb, scan, h1, h3, lamd1, lamd3, rho1, rho3)
+                print(f"{i}/{niter}) flow:{np.linalg.norm(flow)}, {pars[2]=}, {rho1=:.2e}, {rho3=:.2e}",
                       "Lagrangian terms: [", *(f"{x:.1e}" for x in lagr), "]")
                 if not os.path.exists(name+'flow/'):
                     os.makedirs(name+'flow/')
@@ -164,4 +162,4 @@ class SolverAdmm(object):
                 dxchange.write_tiff_stack(np.imag(u),
                                           name+'uim'+str(self.n)+'/'+str(i), overwrite=True)
 
-        return u, psi3, psi1, flow, prb
+        return u, psi1, psi3, flow, prb

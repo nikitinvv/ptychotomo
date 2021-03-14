@@ -235,10 +235,10 @@ class SolverDeform(deform):
             # check convergence
             Dpsi = self.apply_flow_gpu(
                 psi.real, flow, gpu)+1j*self.apply_flow_gpu(psi.imag, flow, gpu)
-            minf0 = minf(psi, Dpsi)
-            if(minf0 > minf1):
-                print('error in deform', minf0, minf1)
-            minf1 = minf0
+            # minf0 = minf(psi, Dpsi)
+            # if(minf0 > minf1):
+            #     print('error in deform', minf0, minf1)
+            # minf1 = minf0
             #print('d',i,minf0)
         return psi
 

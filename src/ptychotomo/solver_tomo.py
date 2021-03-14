@@ -249,10 +249,10 @@ class SolverTomo(radonusfft):
             u = u + 0.5*(-grad)
             # if(i%4==0):              
             #    print('t',i,minf(KRu, -1))
-            minf0 = minf(KRu, None)                
-            if(minf1 < minf0):
-                print('error in tomo', minf0, minf1)
-            minf1 = minf0
+            # minf0 = minf(KRu, None)                
+            # if(minf1 < minf0):
+            #     print('error in tomo', minf0, minf1)
+            # minf1 = minf0
         return u
 
     def grad_tomo_multi_gpu(self, xi0, K, u, titer, lock, ids):
