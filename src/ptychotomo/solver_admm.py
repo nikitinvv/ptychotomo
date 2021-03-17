@@ -87,12 +87,12 @@ class SolverAdmm(object):
     # ADMM for ptycho-tomography problem
     def admm(self, data, psi1, psi3, flow, prb, scan,
              h1, h3, lamd1, lamd3,
-             u, piter, titer, diter, niter, recover_prb, name='tmp/', dbg_step=8):
+             u, piter, titer, diter, niter, recover_prb, align, start_win, step_flow=1, name='tmp/', dbg_step=8):
 
         # data /= (self.ndetx*self.ndety)  # FFT compensation  (should be done for real data)
-        pars = [0.5, 1, min(self.nz, self.n), 4, 5, 1.1, 4]
+        pars = [0.5, 1, start_win, 4, 5, 1.1, 4]
         rho1, rho3 = 0.5, 0.5
-
+        print('align',align)
         for i in range(niter):
             # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
             # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
@@ -107,7 +107,7 @@ class SolverAdmm(object):
 
             mmin, mmax = find_min_max(np.angle(psi1-lamd1/rho1))
             flow = self.dslv.registration_flow_batch(
-                np.angle(psi3), np.angle(psi1-lamd1/rho1), mmin, mmax, flow, pars)
+                np.angle(psi3), np.angle(psi1-lamd1/rho1), mmin, mmax, flow, pars)*align
 
             psi3 = self.dslv.grad_deform_gpu_batch(
                 psi1-lamd1/rho1, psi3, flow, diter, h3+lamd3/rho3, rho3/rho1)
@@ -128,13 +128,13 @@ class SolverAdmm(object):
                 psi1, h1, h10, psi3, h3, h30, rho1, rho3)
 
             # decrease the step for optical flow window
-            pars[2] -= 1
+            pars[2] -= step_flow
 
             # Lagrangians difference between two iterations
             if (i % dbg_step == 0):
                 lagr = self.take_lagr(
                     psi1, psi3, data, prb, scan, h1, h3, lamd1, lamd3, rho1, rho3)
-                print(f"{i}/{niter}) flow:{np.linalg.norm(flow)}, {pars[2]=}, {rho1=:.2e}, {rho3=:.2e}",
+                print(f"{i}/{niter}) flow:{np.linalg.norm(flow)}, {pars[2]}, {rho1:.2e}, {rho3:.2e}",
                       "Lagrangian terms: [", *(f"{x:.1e}" for x in lagr), "]")
                 if not os.path.exists(name+'flow/'):
                     os.makedirs(name+'flow/')

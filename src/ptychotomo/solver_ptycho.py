@@ -311,7 +311,7 @@ class SolverPtycho(ptychofft):
                         gammaprb[m] = gammaprb0
 
             # check convergence
-            if (np.mod(i, 1) == 0):
+            if (np.mod(i, 8) == 0):
                 absfpsi = cp.zeros(
                     [self.ptheta, self.nscan, self.ndet, self.ndet], dtype='complex64')
                 for m in range(self.nmodes):

@@ -56,8 +56,8 @@ void ptychofft::fwd(size_t g_, size_t f_, size_t prb_, size_t scan_, size_t igpu
 	float2* f = (float2*)f_;
 	float2* g = (float2*)g_;
 	float2* prb = (float2*)prb_;
-	float* scanx = (float*)&((float*)scan_)[0];
-	float* scany = (float*)&((float*)scan_)[ptheta*nscan];
+	float* scany = (float*)&((float*)scan_)[0];
+	float* scanx = (float*)&((float*)scan_)[ptheta*nscan];
 	mul<<<GS3d0,BS3d>>>(g,f,prb,scanx,scany,ptheta,nz,n,nscan,nprb,ndet,ndet);	
 	cufftExecC2C(plan2d[igpu], (cufftComplex*)g,(cufftComplex*)g,CUFFT_FORWARD);
 	takeshifts<<<GS2d0,BS3d>>>(shiftx[igpu],shifty[igpu],scanx,scany,ptheta,nscan);		
@@ -76,8 +76,8 @@ void ptychofft::adj(size_t f_, size_t g_, size_t prb_, size_t scan_, size_t igpu
 	float2* f = (float2*)f_;
 	float2* g = (float2*)g_;
 	float2* prb = (float2*)prb_;
-	float* scanx = (float*)&((float*)scan_)[0];
-	float* scany = (float*)&((float*)scan_)[ptheta*nscan];
+	float* scany = (float*)&((float*)scan_)[0];
+	float* scanx = (float*)&((float*)scan_)[ptheta*nscan];
 	
 	takeshifts<<<GS2d0,BS3d>>>(shiftx[igpu],shifty[igpu],scanx,scany,ptheta,nscan);		
 	shiftsa<<<GS3d1,BS3d>>>(g, shiftx[igpu], shifty[igpu], ptheta, nscan, ndet*ndet);
@@ -97,8 +97,8 @@ void ptychofft::adjprb(size_t prb_, size_t g_, size_t f_, size_t scan_, size_t i
 	float2* f = (float2*)f_;
 	float2* g = (float2*)g_;
 	float2* prb = (float2*)prb_;
-	float* scanx = (float*)&((float*)scan_)[0];
-	float* scany = (float*)&((float*)scan_)[ptheta*nscan];
+	float* scany = (float*)&((float*)scan_)[0];
+	float* scanx = (float*)&((float*)scan_)[ptheta*nscan];
 	
 	takeshifts<<<GS2d0,BS3d>>>(shiftx[igpu],shifty[igpu],scanx,scany,ptheta,nscan);		
 	shiftsa<<<GS3d1,BS3d>>>(g, shiftx[igpu], shifty[igpu], ptheta, nscan, ndet*ndet);

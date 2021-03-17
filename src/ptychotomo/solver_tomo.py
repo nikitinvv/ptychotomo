@@ -244,11 +244,11 @@ class SolverTomo(radonusfft):
         minf1 = 1e12
         for i in range(titer):           
             KRu = K*self.fwd_tomo(u, igpu)
-            grad = self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n)
+            grad = self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n * 1.0)# for some reason float value is needed
             # update step
             u = u + 0.5*(-grad)
             # if(i%4==0):              
-            #    print('t',i,minf(KRu, -1))
+            # print('t',i,minf(KRu, -1))
             # minf0 = minf(KRu, None)                
             # if(minf1 < minf0):
             #     print('error in tomo', minf0, minf1)
