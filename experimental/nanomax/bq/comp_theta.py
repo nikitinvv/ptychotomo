@@ -26,9 +26,7 @@ for k in range(len(theta)):
     print(th1[k],th2[kk],sazat[k],shiftssift[k])
     kk+=1
 np.save('/data/staff/tomograms/vviknik/nanomax/datanpy/shiftsazat.npy',sazat)  
-exit()        
-print(shiftsazat[:10])
-print(shiftssift[:10])
+
 plt.plot(shiftssift[:,0],'b.')
 plt.plot(shiftsazat[:,0],'r.')
 plt.plot(shiftssift[:,0]-shiftsazat[:,0],'g.')

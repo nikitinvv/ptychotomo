@@ -17,26 +17,29 @@ th2 = np.int32(np.round(thetaazat))
 
 sazat = shiftssift.copy()
 kk=0
+print(th1)
 for k in range(len(theta)):
+    print(k)
     while(th1[k]!=th2[kk]):
+        print(th1[k],th2[kk])
         kk+=1
+        
     sazat[k,0] = sx[kk]
     sazat[k,1] = sy[kk]
     # print(shiftssift.shape)
-    print(th1[k],th2[kk],sazat[k],shiftssift[k])
+    if(np.linalg.norm(sazat[k]-shiftssift[k])>3):
+        print(th1[k],th2[kk],sazat[k],shiftssift[k])
     kk+=1
 np.save('/data/staff/tomograms/vviknik/nanomax/datanpy/shiftsazat.npy',sazat)  
-exit()        
-print(shiftsazat[:10])
-print(shiftssift[:10])
+
 plt.plot(shiftssift[:,0],'b.')
-plt.plot(shiftsazat[:,0],'r.')
-plt.plot(shiftssift[:,0]-shiftsazat[:,0],'g.')
+plt.plot(sazat[:,0],'r.')
+plt.plot(shiftssift[:,0]-sazat[:,0],'g.')
 #plt.plot(shiftsazat2[:,0],'g.')
 plt.savefig('/home/vviknik/figx.png')
 plt.clf()
 plt.plot(shiftssift[:,1],'b.')
-plt.plot(shiftsazat[:,1],'r.')
-plt.plot(shiftssift[:,1]-shiftsazat[:,1],'g.')
+plt.plot(sazat[:,1],'r.')
+plt.plot(shiftssift[:,1]-sazat[:,1],'g.')
 plt.savefig('/home/vviknik/figy.png')
 # exit()
