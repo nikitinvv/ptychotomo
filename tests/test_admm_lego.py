@@ -4,14 +4,14 @@ import ptychotomo
 from random import sample
 import matplotlib.pyplot as plt
 
-prefix = '/data/staff/tomograms/vviknik/lego/'
+data_prefix = '/data/staff/tomograms/vviknik/lego/'
 
 if __name__ == "__main__":    
 
     # read object
     n = 256  # object size n x,y
     nz = 256  # object size in z
-    ntheta = 174  # number of angles
+    ntheta = 16#  # number of angles
     pnz = 32  # partial size for nz
     ptheta = 2  # partial size for ntheta
     voxelsize = 1e-6  # object voxel size
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     nprb = 128  # probe size
     center = n/2  # rotation center
     nmodes = 4  # number of probe modes
-    nscan = 300  # number of scan positions per each angle
+    nscan = 10  # number of scan positions per each angle
     ngpus = 4  # number of GPUs
 
     # reconstruction paramters
@@ -30,7 +30,10 @@ if __name__ == "__main__":
     diter = 8  # deform iterations
     niter = 128  # admm iterations
     maxshift = 3  # max random shift of projections (for testing)
-
+    dbg_step = 1
+    step_flow = 2    
+    start_win = 256
+    align = 1 
     # Load a 3D object
     delta = dxchange.read_tiff('data_lego/delta-lego-256.tiff')
     beta = dxchange.read_tiff('data_lego/beta-lego-256.tiff')
@@ -88,11 +91,12 @@ if __name__ == "__main__":
         u, psi1, psi3, flow, prb = aslv.admm(
             data, psi1, psi3, flow, prb, scan,
             h1, h3, lamd1, lamd3,
-            u, piter, titer, diter, niter, recover_prb, step_flow=1, name=prefix+'tmp/', dbg_step=1)
+            u, piter, titer, diter, niter, recover_prb, align, start_win=start_win,
+            step_flow=step_flow, name=data_prefix+'tmp/', dbg_step=dbg_step)
 
     dxchange.write_tiff_stack(
-        np.angle(psi1), prefix+'data_lego/rec_admm/psiangle/p', overwrite=True)
+        np.angle(psi1), data_prefix+'data_lego/rec_admm/psiangle/p', overwrite=True)
     dxchange.write_tiff_stack(
-        np.abs(psi1), prefix+'data_lego/rec_admm/psiamp/p', overwrite=True)
+        np.abs(psi1), data_prefix+'data_lego/rec_admm/psiamp/p', overwrite=True)
     dxchange.write_tiff_stack(u.real, 'data/rec_admm/ure/u', overwrite=True)
     dxchange.write_tiff_stack(u.imag, 'data/rec_admm/uim/u', overwrite=True)

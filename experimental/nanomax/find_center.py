@@ -23,15 +23,15 @@ if __name__ == "__main__":
     
     psi = np.zeros([ntheta, 1, n], dtype='complex64', order='C')
     #psiangle0 = dxchange.read_tiff_stack(data_prefix+'reccrop_align_sum/psiangle'+str(nmodes)+str(nscan)+'/r_00000.tiff', ind=np.arange(0,173))
-    for k in range(ntheta):
-        psiangle = dxchange.read_tiff(f'{data_prefix}reccrop_align/psiangle/r_{k:05}.tiff')  
+    for k in range(ntheta):        
+        psiangle = dxchange.read_tiff(f'{data_prefix}reccrop_align_azat/psiangle/r{k}.tiff')  
         # psiamp = dxchange.read_tiff(f'{data_prefix}rec_full_sorted_aligned_check_new/psiamp{nmodes}{nscan}r_{k:05}.tif')  
         
         print(np.linalg.norm(psiangle))
         # psiangle = dxchange.read_tiff(data_prefix+'rec_crop_sum_check/psiangle'+str(nmodes)+str(nscan)+'/r%d.tiff' % k)
         # psiamp = dxchange.read_tiff(data_prefix+'rec_crop_sum_check/psiamp'+str(nmodes)+str(nscan)+'/r%d.tiff' % k)
-
-        psi[k] = psiangle[psiangle.shape[0]//3]
+        print(psiangle.shape)
+        psi[k] = psiangle[:,psiangle.shape[1]//3]
         theta[k] = np.load(data_prefix+'datanpy/theta128sorted_'+str(k)+'.npy')
     
     psi+=1j*0
@@ -41,6 +41,6 @@ if __name__ == "__main__":
         with ptychotomo.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as tslv:
             u = tslv.cg_tomo_batch(psi, u, niter)
             
-            dxchange.write_tiff(u[0].real,data_prefix+'test_center_crop_align/r'+str(center)+'.tiff',overwrite=True)
-            dxchange.write_tiff(u[0].imag,data_prefix+'test_center_crop_align/i'+str(center)+'.tiff',overwrite=True)
+            dxchange.write_tiff(u[0].real,data_prefix+'test_center_crop_azat/r'+str(center)+'.tiff',overwrite=True)
+            dxchange.write_tiff(u[0].imag,data_prefix+'test_center_crop_azat/i'+str(center)+'.tiff',overwrite=True)
     

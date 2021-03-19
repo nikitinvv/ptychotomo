@@ -19,7 +19,7 @@ if __name__ == "__main__":
     # Reconstrucion parameters
     model = 'gaussian'  # minimization funcitonal (poisson,gaussian)
     alpha = 7*1e-14  # tv regularization penalty coefficient
-    piter = 256  # ptychography iterations
+    piter = 32  # ptychography iterations
     nmodes = 4
     ngpus = 1
     nscan = 13689
@@ -29,10 +29,9 @@ if __name__ == "__main__":
     
     data[0] = np.load(data_prefix+'datanpy/data128sorted_'+str(id_theta)+'.npy')
     scan0 = np.load(data_prefix+'datanpy/scan128sorted_'+str(id_theta)+'.npy')
-    shifts = np.load(data_prefix+'/datanpy/shifts.npy')[id_theta]
-    shiftscrop = np.load(data_prefix+'/datanpy/shiftscrop.npy')[id_theta]
-    scan0[1] -= shifts[1]+shiftscrop[1]
-    scan0[0] -= shifts[0]+shiftscrop[0]
+    shifts = np.load(data_prefix+'/datanpy/shiftsazat.npy')[id_theta]    
+    scan0[1] -= shifts[1]
+    scan0[0] -= shifts[0]
     scan0[1] -= 64+30
     scan0[0] -= 160
 
@@ -62,12 +61,12 @@ if __name__ == "__main__":
             data, psi, prb, scan, piter, recover_prb)
 
     # Save result
-    dxchange.write_tiff(np.angle(psi),  data_prefix+'reccrop_align/psiangle' +
+    dxchange.write_tiff(np.angle(psi),  data_prefix+'reccrop_align_azat/psiangle' +
                         '/r'+str(id_theta), overwrite=True)
-    dxchange.write_tiff(np.abs(psi),   data_prefix+'reccrop_align/psiamp' +
+    dxchange.write_tiff(np.abs(psi),   data_prefix+'reccrop_align_azat/psiamp' +
                         '/r'+str(id_theta), overwrite=True)
     for m in range(nmodes):
         dxchange.write_tiff(np.angle(
-            prb[:, m]),   data_prefix+'reccrop_align/prbangle/r'+str(id_theta), overwrite=True)
+            prb[:, m]),   data_prefix+'reccrop_align_azat/prbangle/r'+str(id_theta), overwrite=True)
         dxchange.write_tiff(np.abs(
-            prb[:, m]),   data_prefix+'reccrop_align/prbamp/r'+str(id_theta), overwrite=True)
+            prb[:, m]),   data_prefix+'reccrop_align_azat/prbamp/r'+str(id_theta), overwrite=True)

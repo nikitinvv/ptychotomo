@@ -43,21 +43,25 @@
 # python find_center.py
 
 # 9. reconstruct all data with applying both shifts to scanning positions
-# for k in {4..174..8}; 
-# do
-#     for j in {0..3}; 
-#     do
-#         echo $(($k+$j))
-#         CUDA_VISIBLE_DEVICES=$j python reccrop_align.py $(($k+$j)) &                
-#     done
-#     wait
-# done
+for k in {0..174..4}; 
+do
+    for j in {0..3}; 
+    do
+        echo $(($k+$j))
+        CUDA_VISIBLE_DEVICES=$j python reccrop_align.py $(($k+$j)) &                
+    done
+    wait
+done
 # python find_center.py
 
 
 # 10. reconstruct with optical flow alignment
-python admm.py 500 stxm 190 1
-# python admm.py 200 stxm
+# python admm.py 500 sift 190 1
+# python admm.py 500 sift 190 0
+
+# python admm.py 3800 sift 190 1
+# python admm.py 3800 sift 190 0
+# python admm.py 200 stxm 190 1
 
 # python admm.py 500 sift 190
 # python admm.py 500 stxm
