@@ -52,6 +52,7 @@ class SolverAdmm(object):
     def update_penalty(self, psi1, h1, h10, psi3, h3, h30, rho1, rho3):
         """Update rho, for a faster convergence"""
         # rho1
+        
         r = np.linalg.norm(psi1 - h1)**2
         s = np.linalg.norm(rho1*(h1-h10))**2
         if (r > 10*s):
@@ -99,6 +100,7 @@ class SolverAdmm(object):
             # \rho_1\|h1 -\psi_1 +\lambda_1^k /\rho_1\| _2^2,
             # h1 == \Top_{t^k} \psi_3^k
             h10,  h30 = h1,  h3
+            
             psi1, prb = self.pslv.grad_ptycho_batch(
                 data, psi1, prb, scan, h1+lamd1/rho1, rho1, piter, recover_prb)
             # # keep previous iteration for penalty updates

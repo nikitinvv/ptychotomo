@@ -51,7 +51,6 @@ class SolverDeform(deform):
                 (mmax[id]-mmin[id])*255)
         tmp2[tmp2 > 255] = 255
         tmp2[tmp2 < 0] = 0
-
         flow[id] = cv2.calcOpticalFlowFarneback(
             tmp1.astype('uint8'), tmp2.astype('uint8'), flow[id], *pars)  # updates flow
 
@@ -67,15 +66,7 @@ class SolverDeform(deform):
                 e.map(partial(self.registration_flow, psi[ids], g[ids], mmin[ids],
                               mmax[ids], flownew, pars), range(len(ids)))
 
-            # control Farneback's (may diverge for small window sizes)
-            # err = np.linalg.norm(
-            #    g[ids]-self.apply_flow_gpu_batch(psi[ids], flownew), axis=(1, 2))
-
-            # err1 = np.linalg.norm(
-            #    g[ids]-self.apply_flow_gpu_batch(psi[ids], flow[ids]), axis=(1, 2))
-
-            #idsgood = np.where(err1 >= err)[0]
-
+            # control Farneback's (may diverge for small window sizes)            
             g_gpu = cp.array(g[ids])
             psi_gpu = cp.array(psi[ids])
             flownew_gpu = cp.array(flownew)
@@ -101,31 +92,21 @@ class SolverDeform(deform):
 
     def apply_flow_gpu(self, f, flow, gpu):
 
-        h, w = flow.shape[1:3]
-        flow = -flow.copy()
-        flow[:, :, :, 0] += cp.arange(w)
-        flow[:, :, :, 1] += cp.arange(h)[:, cp.newaxis]
-
+        flowx = -flow[...,0].copy()
+        flowy = -flow[...,1].copy()
+        flowx += cp.arange(flow.shape[2])
+        flowy += cp.arange(flow.shape[1])[:, cp.newaxis]
         
         g = f.copy()  # keep values that were not affected
         # g = cp.zeros([self.ptheta,self.nz,self.n],dtype='float32')
-        
         g = cp.ascontiguousarray(g)
         f = cp.ascontiguousarray(f)
-        flowx = cp.ascontiguousarray(flow[:, :, :, 0])
-        flowy = cp.ascontiguousarray(flow[:, :, :, 1])
+        flowx = cp.ascontiguousarray(flowx)
+        flowy = cp.ascontiguousarray(flowy)
+        
         self.remap(g.data.ptr, f.data.ptr, 
             flowx.data.ptr, flowy.data.ptr, gpu)
 
-
-        #     flowx = cp.asarray(flow[:, :, :, 0],order='C')
-        # flowy = cp.asarray(flow[:, :, :, 1],order='C')
-        # g = f.copy()  # keep values that were not affected
-
-        # # g = cp.zeros([self.ptheta,self.nz,self.n],dtype='float32')
-
-        # self.remap(g.data.ptr, f.data.ptr, 
-        #     flowx.data.ptr, flowy.data.ptr, gpu)
         return g
 
     def apply_flow_gpu_batch(self, f, flow):

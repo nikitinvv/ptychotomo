@@ -246,9 +246,9 @@ class SolverPtycho(ptychofft):
             # p1 = sum_j|G_j(psi)|^2
             # p2 = sum_j|G_j(dpsi)|^2
             #p3 = sum_j (G_j(psi).real*G_j(psi).real+2*G_j(dpsi).imag*G_j(dpsi).imag)
-            p1 = data*0
-            p2 = data*0
-            p3 = data*0
+            p1 = cp.zeros_like(data)
+            p2 = cp.zeros_like(data)
+            p3 = cp.zeros_like(data)
             for k in range(prb.shape[1]):
                 tmp1 = self.fwd_ptycho(psi, prb[:, k], scan, igpu)
                 tmp2 = self.fwd_ptycho(dpsi, prb[:, k], scan, igpu)
@@ -264,9 +264,9 @@ class SolverPtycho(ptychofft):
 
             if (recover_prb):
                 if(i == 0):
-                    gradprb = prb*0
-                    gradprb0 = prb*0
-                    dprb = prb*0
+                    gradprb = cp.zeros_like(prb)
+                    gradprb0 = cp.zeros_like(prb)
+                    dprb = cp.zeros_like(prb)
                 for m in range(self.nmodes):
                     # 2) prb retrieval subproblem with fixed object
                     # sum of forward operators associated with each prb
@@ -484,8 +484,8 @@ class SolverPtycho(ptychofft):
         with cf.ThreadPoolExecutor(self.ngpus) as e:
             shift = 0
             for psii, prbi in e.map(partial(self.grad_ptycho_multi_gpu, data, psi, prb, scan, hlamd, rho, piter, recover_prb, lock), ids_list):
-                psi[np.arange(psii.shape[0])+shift] = psii
-                prb[np.arange(psii.shape[0])+shift] = prbi
+                psi[shift:shift+psii.shape[0]] = psii
+                prb[shift:shift+psii.shape[0]] = prbi
                 shift += psii.shape[0]
         cp.cuda.Device(0).use()
         return psi, prb        
@@ -517,7 +517,7 @@ class SolverPtycho(ptychofft):
         for ids in chunk(range(self.ntheta), self.ptheta):            
             data_gpu = cp.array(data[ids])
             # normalized data
-            absfprb = data_gpu*0
+            absfprb = cp.zeros_like(data_gpu)
             psi1_gpu = cp.array(psi1[ids])
             prb_gpu = cp.array(prb[ids])
             scan_gpu = cp.array(scan[:, ids])
