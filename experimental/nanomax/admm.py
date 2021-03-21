@@ -71,7 +71,6 @@ if __name__ == "__main__":
         
         # switch x and y
         scan[:, k, :len(ids)] = scan0[:, 0, ids]        
-        scan[:,k,len(ids):] = -1
         # plt.plot(scan[0,k], scan[1,k], 'r.')
         # plt.savefig(f'{data_prefix}/png/scan{k:03}.png')
         # plt.clf()

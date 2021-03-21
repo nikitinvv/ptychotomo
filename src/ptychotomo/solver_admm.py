@@ -94,6 +94,7 @@ class SolverAdmm(object):
         pars = [0.5, 1, start_win, 4, 5, 1.1, 4]
         rho1, rho3 = 0.5, 0.5
         print('align',align)
+        
         for i in range(niter):
             # &\psi_1^{k+1}, (q^{k+1}) =  \argmin_{\psi_1, q} \sum_{j = 1}^{n}
             # \left\{ |\Fop\Qop_q\psi_1|_j^2-2d_j\log |\Fop\Qop_p\psi_1|_j \right\} +
@@ -131,7 +132,6 @@ class SolverAdmm(object):
 
             # decrease the step for optical flow window
             pars[2] -= step_flow
-
             # Lagrangians difference between two iterations
             if (i % dbg_step == 0):
                 lagr = self.take_lagr(

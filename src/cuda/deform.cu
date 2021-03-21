@@ -59,7 +59,7 @@ void deform::remap(size_t g, size_t f, size_t flowx, size_t flowy, size_t gpu)
 	for (int i=0;i<ptheta;i++)
 	{
 		nppiRemap_32f_C1R_Ctx(&pSrc[i*n*nz],oSize,nStep, oROI, &pXMap[i*n*nz], nXMapStep,
-			 &pYMap[i*n*nz], nYMapStep, &pDst[i*n*nz], nStep, oSize, NPPI_INTER_LANCZOS,
+			 &pYMap[i*n*nz], nYMapStep, &pDst[i*n*nz], nStep, oSize, NPPI_INTER_LINEAR,//NPPI_INTER_LANCZOS,//NPPI_INTER_LANCZOS3_ADVANCED,NPPI_INTER_CUBIC
 			 nstreams[gpu*ptheta+i]);
 		//nppiRemap_32f_C1R (const Npp32f *pSrc, NppiSize oSrcSize, int nSrcStep, NppiRect oSrcROI, const Npp32f *pXMap, int nXMapStep, const Npp32f *pYMap, int nYMapStep, Npp32f *pDst, int nDstStep, NppiSize oDstSizeROI, int eInterpolation)
 	}

@@ -3,37 +3,37 @@ import dxchange
 import ptychotomo
 from random import sample
 import matplotlib.pyplot as plt
-
-data_prefix = '/data/staff/tomograms/vviknik/lego/'
+import sys
+data_prefix = './tmp/'
 
 if __name__ == "__main__":    
 
     # read object
     n = 256  # object size n x,y
     nz = 256  # object size in z
-    ntheta = 16#  # number of angles
-    pnz = 32  # partial size for nz
-    ptheta = 2  # partial size for ntheta
+    ntheta = 128#  # number of angles
+    pnz = 32 # partial size for nz
+    ptheta = 8  # partial size for ntheta
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
     ndet = 128  # detector size
     nprb = 128  # probe size
     center = n/2  # rotation center
-    nmodes = 4  # number of probe modes
-    nscan = 10  # number of scan positions per each angle
-    ngpus = 4  # number of GPUs
+    nmodes = 1  # number of probe modes
+    nscan = 300  # number of scan positions per each angle
+    ngpus = 1  # number of GPUs
 
     # reconstruction paramters
-    recover_prb = True  # recover probe or not
-    piter = 8  # ptycho iterations
-    titer = 8  # tomo iterations
-    diter = 8  # deform iterations
+    recover_prb = False  # recover probe or not
+    piter = 32  # ptycho iterations
+    titer = 32  # tomo iterations
+    diter = 32  # deform iterations
     niter = 128  # admm iterations
-    maxshift = 3  # max random shift of projections (for testing)
-    dbg_step = 1
-    step_flow = 2    
+    maxshift = 4  # max random shift of projections (for testing)
+    dbg_step = 4
+    step_flow = 1   
     start_win = 256
-    align = 1 
+    align = int(sys.argv[1])
     # Load a 3D object
     delta = dxchange.read_tiff('data_lego/delta-lego-256.tiff')
     beta = dxchange.read_tiff('data_lego/beta-lego-256.tiff')
@@ -46,18 +46,16 @@ if __name__ == "__main__":
     prb[:] = prb_amp*np.exp(1j*prb_ang)
 
     # Load scan positions
-    scan = np.zeros([2, ntheta, nscan], dtype='float32') - \
-        1  # -1 to be skipped in computations
+    scaninit = -np.ones([2, ntheta, nscan], dtype='float32')
     scan_all = np.load('data_lego/scan.npy')
     for k in range(ntheta):
-        scan0 = scan_all[:, k]
-        ids = np.where((scan0[0] < n-nprb-maxshift)*(scan0[1] < nz-nprb -
-                                                     maxshift)*(scan0[1] >= maxshift)*(scan0[0] >= maxshift))[0]
+        scan0 = scan_all[::-1, k]
+        ids = np.where((scan0[0] < nz-nprb)*(scan0[0] < nz-nprb)*(scan0[0] >= 0)*(scan0[1] >= 0))[0]
         ids = ids[sample(range(len(ids)), min(len(ids), nscan))]
-        scan[:, k, :len(ids)] = scan0[:, ids]
-        plt.plot(scan[0], scan[1], 'r.')
+        scaninit[:, k, :len(ids)] = scan0[:, ids]
+        plt.plot(scan0[1], scan0[0], 'r.')
         plt.savefig(f'data_lego/scan{k:03}.png')
-        plt.clf()
+        plt.clf()    
 
     # init rotation angles
     theta = np.linspace(0, np.pi, ntheta).astype('float32')
@@ -67,13 +65,30 @@ if __name__ == "__main__":
         psi = tslv.fwd_tomo_batch(u)
     with ptychotomo.SolverPtycho(ntheta, ptheta, nz, n, nscan, ndet, nprb, nmodes, voxelsize, energy, ngpus) as pslv:
         psi = pslv.exptomo(psi)
-        data = pslv.fwd_ptycho_batch(psi, prb, scan)
-        data = np.sum(np.abs(data)**2, axis=1)
+        datainit = pslv.fwd_ptycho_batch(psi, prb, scaninit)
+        datainit = np.sum(np.abs(datainit)**2, axis=1)
 
-    # Shift scan positions
-    scan[0] += (np.random.random([ntheta, 1])-0.5)*2*maxshift
-    scan[1] += (np.random.random([ntheta, 1])-0.5)*2*maxshift
-
+    # # Shift scan positions
+    sy = np.int32((np.random.random([ntheta, 1])-0.5)*2*maxshift)
+    sx = np.int32((np.random.random([ntheta, 1])-0.5)*2*maxshift)    
+    scan = -np.ones([2, ntheta, nscan], dtype='float32')
+    data = np.zeros([ntheta, nscan, ndet,ndet], dtype='float32')
+    
+    for k in range(ntheta):
+        scan0 = scaninit[:, k]
+        scan0[0] += (np.random.random(1)-0.5)*2*maxshift
+        scan0[1] += (np.random.random(1)-0.5)*2*maxshift
+        ids = np.where((scan0[0] < nz-nprb)*(scan0[0] < nz-nprb -
+                                                     maxshift)*(scan0[0] >= maxshift)*(scan0[1] >= maxshift))[0]
+        ids = ids[sample(range(len(ids)), min(len(ids), nscan))]
+        scan[:, k, :len(ids)] = scan0[:, ids]        
+        data[k,:len(ids)] = datainit[k, ids]
+        plt.plot(scan0[1], scan0[0], 'r.')
+        plt.savefig(f'data_lego/scan{k:03}.png')
+        plt.clf()    
+    # scan[0] += sy*(scan[0]!=0)
+    # scan[1] += sx*(scan[1]!=0)   
+    
     # Initial guess
     # variable index: 1 - ptycho problem, 2 - regularization (not implemented), 3 - tomo
     # used as in the pdf documents
@@ -85,14 +100,20 @@ if __name__ == "__main__":
     lamd3 = np.zeros([ntheta, nz, n], dtype='complex64')
     u = np.zeros([nz, n, n], dtype='complex64')
     flow = np.zeros([ntheta, nz, n, 2], dtype='float32')
-
+    # for k in range(ntheta):
+    #     print(sy[k,0],sx[k,0])
+    #     psi1[k] = np.roll(psi[k],(sy[k,0],sx[k,0]),axis=(0,1))
+    dxchange.write_tiff_stack(
+        np.abs(psi), data_prefix+'data_lego/initpsiamp/p', overwrite=True)
+    dxchange.write_tiff_stack(
+        np.angle(psi), data_prefix+'data_lego/initpsiangle/p', overwrite=True)
     with ptychotomo.SolverAdmm(nscan, theta, center, ndet, voxelsize, energy,
                                ntheta, nz, n, nprb, ptheta, pnz, nmodes, ngpus) as aslv:
         u, psi1, psi3, flow, prb = aslv.admm(
             data, psi1, psi3, flow, prb, scan,
             h1, h3, lamd1, lamd3,
             u, piter, titer, diter, niter, recover_prb, align, start_win=start_win,
-            step_flow=step_flow, name=data_prefix+'tmp/', dbg_step=dbg_step)
+            step_flow=step_flow, name=data_prefix+'tmp/'+str(align)+'/', dbg_step=dbg_step)
 
     dxchange.write_tiff_stack(
         np.angle(psi1), data_prefix+'data_lego/rec_admm/psiangle/p', overwrite=True)
