@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # simulate data
     with ptychotomo.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as tslv:
         data = tslv.fwd_tomo_batch(u)
-        u = tslv.cg_tomo_batch(data, init, niter)
+        u = tslv.grad_tomo_batch(data, init, niter)
 
     dxchange.write_tiff(u, 'data/cg/u',overwrite=True)
 

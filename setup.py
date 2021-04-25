@@ -16,7 +16,7 @@ from setuptools import find_packages
 setup(
     name='ptychotomo',
     author='Viktor Nikitin',
-    version='0.1.0',
+    version='0.2.0',
     package_dir={"": "src"},
     packages=find_packages('src'),
     zip_safe=False,

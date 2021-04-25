@@ -82,14 +82,6 @@ class SolverDeform(deform):
         print('bad alignment for:', self.ntheta-total)
         return flow
 
-    def line_search(self, minf, gamma, psi, Dpsi, d, Td):
-        """Line search for the step sizes gamma"""
-        while(minf(psi, Dpsi)-minf(psi+gamma*d, Dpsi+gamma*Td) < 0):
-            gamma *= 0.5
-        if(gamma < 0.125):
-            gamma = 0
-        return gamma
-
     def apply_flow_gpu(self, f, flow, gpu):
 
         flowx = -flow[...,0].copy()
@@ -122,78 +114,6 @@ class SolverDeform(deform):
             # copy result to cpu
             res[ids] = res_gpu.get()
         return res
-
-    def cg_deform(self, data, psi, flow, diter, xi1=0, rho=0, gpu=0):
-        """CG solver for deformation"""
-        # minimization functional
-        def minf(psi, Dpsi):
-            f = cp.linalg.norm(Dpsi-data)**2+rho*cp.linalg.norm(psi-xi1)**2
-            return f
-
-        for i in range(diter):
-            Dpsi = self.apply_flow_gpu(psi, flow, gpu)
-            grad = (self.apply_flow_gpu(Dpsi-data, -flow, gpu) +
-                    rho*(psi-xi1))/max(rho, 1)
-            if i == 0:
-                d = -grad
-            else:
-                d = -grad+cp.linalg.norm(grad)**2 / \
-                    (cp.sum(cp.conj(d)*(grad-grad0))+1e-32)*d
-            # line search
-            Td = self.apply_flow_gpu(d, flow, gpu)
-            gamma = 0.5*self.line_search(minf, 1, psi, Dpsi, d, Td)
-            if(gamma == 0):
-                break
-            grad0 = grad
-            # update step
-            psi = psi + gamma*d
-            # check convergence
-            # if (0):
-            #     print("%4d, %.3e, %.7e" %
-            #           (i, gamma, minf(psi, Dpsi+gamma*Td)))
-        return psi
-
-    def cg_deform_multi_gpu(self, data, psi, flow,  diter, xi1, rho, lock, ids):
-        """Pick GPU, copy data, run reconstruction"""
-        global BUSYGPUS
-        lock.acquire()  # will block if lock is already held
-        for k in range(self.ngpus):
-            if BUSYGPUS[k] == 0:
-                BUSYGPUS[k] = 1
-                gpu = k
-                break
-        lock.release()
-        cp.cuda.Device(gpu).use()
-
-        data_gpu = cp.array(data[ids])
-        psi_gpu = cp.array(psi[ids])
-        xi1_gpu = cp.array(xi1[ids])
-        flow_gpu = cp.array(flow[ids])
-        # Radon transform
-        psi_gpu = self.cg_deform(
-            data_gpu, psi_gpu, flow_gpu, diter, xi1_gpu, rho, gpu)
-        # copy result to cpu
-        psi[ids] = psi_gpu.get()
-
-        BUSYGPUS[gpu] = 0
-
-        return psi[ids]
-
-    def cg_deform_gpu_batch(self, data, init, flow, diter, xi1=0, rho=0, dbg=False):
-
-        psi = init.copy()
-        ids_list = chunk(range(self.ntheta), self.ptheta)
-        lock = threading.Lock()
-        global BUSYGPUS
-        BUSYGPUS = np.zeros(self.ngpus)
-        with cf.ThreadPoolExecutor(self.ngpus) as e:
-            shift = 0
-            for psii in e.map(partial(self.cg_deform_multi_gpu, data, psi, flow, diter, xi1, rho, lock), ids_list):
-                psi[np.arange(0, psii.shape[0])+shift] = psii
-                shift += psii.shape[0]
-        cp.cuda.Device(0).use()
-
-        return psi
 
     def grad_deform_gpu(self, data, psi, flow, diter, xi1=0, rho=0, gpu=0):
         """G solver for deformation"""

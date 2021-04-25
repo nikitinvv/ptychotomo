@@ -74,7 +74,7 @@ if __name__ == "__main__":
     psi = np.ones([ntheta, nz, n], dtype='complex64')
     
     with ptychotomo.SolverPtycho(ntheta, ptheta, nz, n, nscan, ndet, nprb, nmodes, voxelsize, energy, ngpus) as pslv:
-        psi, prb = pslv.cg_ptycho_batch(data, psi, prb, scan, piter, recover_prb)
+        psi, prb = pslv.grad_ptycho_batch(data, psi, prb, scan, piter, recover_prb)
     dxchange.write_tiff(np.angle(psi[0]),'data_lego/rec_ptycho/psiangle',overwrite=True)    
     dxchange.write_tiff(np.abs(psi[0]),'data_lego/rec_ptycho/psiamp',overwrite=True)    
     dxchange.write_tiff_stack(np.angle(prb[0]),'data_lego/rec_ptycho/prbangle',overwrite=True)    
