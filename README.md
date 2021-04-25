@@ -50,9 +50,9 @@ python test_tomo.py
 sample output:
 
 ```console
-norm data = 21722.1015625
-norm object = 4057758.5
-<u,R*Ru>=<Ru,Ru>: 4.718072e+08+0.000000e+00j ? 4.718676e+08
+norm data = 24286.515625
+norm object = 4536712.0
+<u,R*Ru>=<Ru,Ru>: 5.897588e+08+8.920990e+01j ? 5.898347e+08+0.000000e+00j
 ```
 
 ## 4. test gradient solvers
