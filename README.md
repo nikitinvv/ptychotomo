@@ -55,6 +55,28 @@ norm object = 4536712.0
 <u,R*Ru>=<Ru,Ru>: 5.897588e+08+8.920990e+01j ? 5.898347e+08+0.000000e+00j
 ```
 
+Test ptychography
+
+```console
+python test_ptycho.py
+```
+
+sample output:
+
+```console
+np.linalg.norm(psi) = 2.3365922
+psi.shape = (174, 256, 256)
+psia.shape = (174, 256, 256)
+prb.shape = (174, 4, 128, 128)
+prba.shape = (174, 4, 128, 128)
+np.linalg.norm(data) = 597.29376
+np.linalg.norm(psia) = 203.73346
+np.linalg.norm(prba) = 10284.095
+<psi,Q*F*FQpsi>=<FQpsi,FQpsi>: 3.567599e+05-1.539114e-03j ? 3.567811e+05+0.000000e+00j
+<prb,P*F*FPprb>=<FPprb,FPprb>: 3.567594e+05-1.521850e-03j ? 3.567811e+05+0.000000e+00j
+```
+
+
 ## 4. test gradient solvers
 
 Test the gradient solver for deformation

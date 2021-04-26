@@ -119,7 +119,9 @@ class SolverDeform(deform):
         """G solver for deformation"""
         # minimization functional
         def minf(psi, Dpsi):
-            f = cp.linalg.norm(Dpsi-data)**2 + rho*cp.linalg.norm(psi-xi1)**2
+            f = cp.linalg.norm(Dpsi-data)**2 
+            if(rho>0):
+                f += rho*cp.linalg.norm(psi-xi1)**2
             return f
 
         minf1 = 1e15
@@ -127,8 +129,11 @@ class SolverDeform(deform):
             Dpsi = self.apply_flow_gpu(
                 psi.real, flow, gpu)+1j*self.apply_flow_gpu(psi.imag, flow, gpu)
             grad = self.apply_flow_gpu((Dpsi-data).real, -flow, gpu)+1j * \
-                self.apply_flow_gpu((Dpsi-data).imag, -flow, gpu) + rho*(psi-xi1)
-            r = min(1, 1/rho)/2.0
+                self.apply_flow_gpu((Dpsi-data).imag, -flow, gpu) 
+            r = 0.5
+            if(rho>0):
+                r = min(1, 1/rho)/2.0
+                grad += rho*(psi-xi1)
             grad *= r
             # update step
             psi = psi + 0.5*(-grad)
@@ -140,7 +145,7 @@ class SolverDeform(deform):
             # if(minf0 > minf1):
             #     print('error in deform', minf0, minf1)
             # minf1 = minf0
-            #print('d',i,minf0)
+            # print('d',i,minf0)
         return psi
 
     def grad_deform_multi_gpu(self, data, psi, flow,  diter, xi1, rho, lock, ids):
@@ -157,7 +162,10 @@ class SolverDeform(deform):
 
         data_gpu = cp.array(data[ids])
         psi_gpu = cp.array(psi[ids])
-        xi1_gpu = cp.array(xi1[ids])
+        if(rho>0):
+            xi1_gpu = cp.array(xi1[ids])
+        else:
+            xi1_gpu = None
         flow_gpu = cp.array(flow[ids])
         # Radon transform
         psi_gpu = self.grad_deform_gpu(

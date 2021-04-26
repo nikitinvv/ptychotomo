@@ -90,7 +90,7 @@ class SolverTomo(radonusfft):
         return res
 
     def grad_tomo(self, xi0, K, init, titer, igpu):
-        """G solver for rho||Ru-xi0||_2 by z-slice partitions"""
+        """G solver for rho||KRu-xi0||_2 by z-slice partitions"""
         # minimization functional
         def minf(KRu, gu):
             f = cp.linalg.norm(KRu-xi0)**2            
@@ -102,8 +102,8 @@ class SolverTomo(radonusfft):
             grad = self.adj_tomo(cp.conj(K)*(KRu-xi0), igpu)/(self.ntheta * self.n * 1.0)# for some reason float value is needed
             # update step
             u = u + 0.5*(-grad)
-            # if(i%4==0):              
-            # print('t',i,minf(KRu, -1))
+            # if(i%1==0):              
+                # print('t',i,minf(KRu, -1))
             # minf0 = minf(KRu, None)                
             # if(minf1 < minf0):
             #     print('error in tomo', minf0, minf1)
@@ -134,7 +134,7 @@ class SolverTomo(radonusfft):
         return u[ids]
 
     def grad_tomo_batch(self, xi0, K, init, titer, dbg=False):
-        """CG solver for rho||Ru-xi0||_2 by z-slice partitions"""
+        """CG solver for rho||KRu-xi0||_2 by z-slice partitions"""
         u = init.copy()
         ids_list = chunk(range(self.nz), self.pnz)
         lock = threading.Lock()

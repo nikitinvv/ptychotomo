@@ -12,25 +12,25 @@ if __name__ == "__main__":
     n = 256  # object size n x,y
     nz = 256  # object size in z
     ntheta = 128#  # number of angles
-    pnz = 32 # partial size for nz
+    pnz = 16 # partial size for nz
     ptheta = 8  # partial size for ntheta
     voxelsize = 1e-6  # object voxel size
     energy = 8.8  # xray energy
     ndet = 128  # detector size
     nprb = 128  # probe size
     center = n/2  # rotation center
-    nmodes = 1  # number of probe modes
-    nscan = 300  # number of scan positions per each angle
-    ngpus = 1  # number of GPUs
+    nmodes = 4  # number of probe modes
+    nscan = 1000  # number of scan positions per each angle
+    ngpus = 8  # number of GPUs
 
     # reconstruction paramters
-    recover_prb = False  # recover probe or not
+    recover_prb = True  # recover probe or not
     piter = 32  # ptycho iterations
     titer = 32  # tomo iterations
     diter = 32  # deform iterations
     niter = 128  # admm iterations
     maxshift = 4  # max random shift of projections (for testing)
-    dbg_step = 4
+    dbg_step = 1
     step_flow = 1   
     start_win = 256
     align = int(sys.argv[1])
@@ -119,5 +119,5 @@ if __name__ == "__main__":
         np.angle(psi1), data_prefix+'data_lego/rec_admm/psiangle/p', overwrite=True)
     dxchange.write_tiff_stack(
         np.abs(psi1), data_prefix+'data_lego/rec_admm/psiamp/p', overwrite=True)
-    dxchange.write_tiff_stack(u.real, 'data/rec_admm/ure/u', overwrite=True)
-    dxchange.write_tiff_stack(u.imag, 'data/rec_admm/uim/u', overwrite=True)
+    dxchange.write_tiff_stack(u.real, 'data_lego/rec_admm/ure/u', overwrite=True)
+    dxchange.write_tiff_stack(u.imag, 'data_lego/rec_admm/uim/u', overwrite=True)

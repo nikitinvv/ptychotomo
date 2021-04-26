@@ -196,9 +196,9 @@ class SolverPtycho(ptychofft):
                 fpsi = self.fwd_ptycho(psi, prb[:, m], scan, igpu)
                 afpsi = self.adj_ptycho(fpsi, prb[:, m], scan, igpu)
                 
-                if(m == 0):
-                    r = cp.real(cp.sum(psi*cp.conj(afpsi)) /
-                                (cp.sum(afpsi*cp.conj(afpsi))+1e-32))
+                # if(m == 0):
+                r = cp.real(cp.sum(psi*cp.conj(afpsi)) /
+                            (cp.sum(afpsi*cp.conj(afpsi))+1e-32))
                 
                 gradpsi += self.adj_ptycho(
                     fpsi - cp.sqrt(data)*fpsi/(cp.sqrt(absfpsi)+1e-32), prb[:, m], scan, igpu)                
@@ -225,6 +225,7 @@ class SolverPtycho(ptychofft):
                     afprb = self.adj_ptycho_prb(fprb, psi, scan, igpu)
                     r = cp.real(
                         cp.sum(prb[:, m]*cp.conj(afprb))/(cp.sum(afprb*cp.conj(afprb))+1e-32))
+                    
                     # take gradient
                     gradprb[:, m] = self.adj_ptycho_prb(
                         fprb - cp.sqrt(data) * fprb/(cp.sqrt(absfprb)+1e-32), psi, scan, igpu)

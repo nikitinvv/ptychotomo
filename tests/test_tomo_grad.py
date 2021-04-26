@@ -5,7 +5,7 @@ import ptychotomo
 if __name__ == "__main__":
     
     # read object
-    u = dxchange.read_tiff('data/init_object.tiff')
+    u = dxchange.read_tiff('data/init_object.tiff') + 0j
     nz, n, _ = u.shape
 
     # parameters
@@ -15,17 +15,12 @@ if __name__ == "__main__":
     ngpus = 1
     pnz = nz//4
     theta = np.linspace(0, 4*np.pi, ntheta).astype('float32')
-    # cg
-    niter = 32
+    # grad
+    niter = 128
     init = u*0
-    pprot = 192
     # simulate data
     with ptychotomo.SolverTomo(theta, ntheta, nz, n, pnz, center, ngpus) as tslv:
         data = tslv.fwd_tomo_batch(u)
-        u = tslv.grad_tomo_batch(data, init, niter)
+        u = tslv.grad_tomo_batch(data, data*0+1, init,niter)
 
-    dxchange.write_tiff(u, 'data/cg/u',overwrite=True)
-
-
-    res  = ptychotomo.pcg(data, theta, pprot, pnz, center, ngpus, niter, padding=False)
-    dxchange.write_tiff(res['u'], 'data/cg/upcg',overwrite=True)
+    dxchange.write_tiff(u.real, 'data/grad/u',overwrite=True)    
