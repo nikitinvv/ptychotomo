@@ -34,7 +34,7 @@ if __name__ == "__main__":
     titer = 32 # tomo iterations
     diter = 32  # deform iterations
     niter = 129   # admm iterations
-    dbg_step = 4
+    dbg_step = 16
     step_flow = 2    
     start_win = 256+32
         
