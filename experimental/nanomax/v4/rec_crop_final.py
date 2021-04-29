@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     n = 512-128
-    nz = 512-192+64
+    nz = 512-192
     ndet = 128
     ntheta = 1
     ptheta = 1 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     scan0[1] -= (shifts1[1]+shifts2[1])
     scan0[0] -= (shifts1[0]+shifts2[0])
     scan0[1] -= (64+29)
-    scan0[0] -= (160-64)
+    scan0[0] -= (160)
     # ignore position out of field of view            
     ids = np.where((scan0[0,0]<nz-nprb)*(scan0[1,0]<n-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
 

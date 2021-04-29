@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import os 
+import sys
 # data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 def read_data(id_data):
