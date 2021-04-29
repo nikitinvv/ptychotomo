@@ -1,9 +1,9 @@
-for k in {8..174..16}; 
+for k in {16..174..24}; 
 do
     for j in {0..7}; 
     do
         echo $(($k+$j))
-        CUDA_VISIBLE_DEVICES=$j python rec_crop.py $(($k+$j)) 2700 1 32 &                
+        CUDA_VISIBLE_DEVICES=$j python rec_crop.py $(($k+$j)) 5400 1 128 &                
     done
     wait
 done
