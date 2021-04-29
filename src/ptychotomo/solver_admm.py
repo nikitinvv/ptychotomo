@@ -138,18 +138,7 @@ class SolverAdmm(object):
                     psi1, psi3, data, prb, scan, h1, h3, lamd1, lamd3, rho1, rho3)
                 print(f"{i}/{niter}) flow:{np.linalg.norm(flow)}, {pars[2]}, {rho1:.2e}, {rho3:.2e}",
                       "Lagrangian terms: [", *(f"{x:.1e}" for x in lagr), "]")
-                if not os.path.exists(name+'flow/'):
-                    os.makedirs(name+'flow/')
-                plt.clf()
-                plt.subplot(2, 2, 1)
-                plt.imshow(flow_to_color(flow[0]))
-                plt.subplot(2, 2, 2)
-                plt.imshow(flow_to_color(flow[self.ntheta//4]))
-                plt.subplot(2, 2, 3)
-                plt.imshow(flow_to_color(flow[3*self.ntheta//4]))
-                plt.subplot(2, 2, 4)
-                plt.imshow(flow_to_color(flow[self.ntheta-1]))
-                plt.savefig(name+'flow/'+str(i)+'.png')
+
 
                 dxchange.write_tiff_stack(np.angle(psi3),
                                           name+'psi3iter'+str(self.n)+'/'+str(i), overwrite=True)
@@ -163,5 +152,19 @@ class SolverAdmm(object):
                                           name+'ure'+str(self.n)+'/'+str(i), overwrite=True)
                 dxchange.write_tiff_stack(np.imag(u),
                                           name+'uim'+str(self.n)+'/'+str(i), overwrite=True)
+                
+                if not os.path.exists(name+'flow/'):
+                    os.makedirs(name+'flow/')
+                plt.clf()
+                plt.subplot(2, 2, 1)
+                plt.imshow(flow_to_color(flow[0]))
+                plt.subplot(2, 2, 2)
+                plt.imshow(flow_to_color(flow[self.ntheta//4]))
+                plt.subplot(2, 2, 3)
+                plt.imshow(flow_to_color(flow[3*self.ntheta//4]))
+                plt.subplot(2, 2, 4)
+                plt.imshow(flow_to_color(flow[self.ntheta-1]))
+                plt.savefig(name+'flow/'+str(i)+'.png')
+                np.save(name+'flow/'+str(i), flow)
 
         return u, psi1, psi3, flow, prb

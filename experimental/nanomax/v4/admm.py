@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ndet = 128  # detector size
     nprb = 128  # probe size
     nmodes = 4  # number of probe modes
-    ngpus = 4  # number of GPUs
+    ngpus = 8  # number of GPUs
 
     nscan = int(sys.argv[1])
     center = float(sys.argv[2])
