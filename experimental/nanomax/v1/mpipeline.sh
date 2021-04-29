@@ -1,26 +1,59 @@
-# 1.read data from h5 files and save it to .npy files
-python read_data.py
-
-# 3. Sort projections with respect to angles
-python sort.py
-
-#4. Take data from rec_full_sorted and align it with sift in imageJ, save the result to recfull_sorted_sift/r_00000.tiff
-#cd /data/staff/tomograms/vviknik/nanomax/recfull_sorted_sift
-#for k in $(ls); do mv $k $(echo $k | sed 's/tif/tiff/g'); done
-
-# 5. Find shifts between rec_full_sorted and rec_full_sorted_aligned, gives file shifts.npy
-# python find_shifts_full.py
-
-# 6. Recosruct with shifted scan positions and cropped
-# for k in {0..165..8}; 
+# python read_data.py
+# python sort.py
+# for k in {0..174..16}; 
 # do
-#     for j in {0..3}; 
+#     for j in {0..16}; 
 #     do
 #         echo $(($k+$j))
-#         CUDA_VISIBLE_DEVICES=$j python reccrop.py $(($k+$j)) &                
+#         python pgm.py $(($k+$j)) &                
 #     done
 #     wait
 # done
+for k in {0..174..32}; 
+do
+    for j in {0..31}; 
+    do
+        echo $(($k+$j))
+        python pgm2.py $(($k+$j)) &                
+    done
+    wait
+done
+# python prealign_sift.py
+
+# for k in {0..174..16}; 
+# do
+#     for j in {0..16}; 
+#     do
+#         echo $(($k+$j))
+#         python pgm1_crop.py $(($k+$j)) &                
+#     done
+#     wait
+# done
+
+# python prealign_crop_sift.py
+
+# for k in {0..174..16}; 
+# do
+#     for j in {0..16}; 
+#     do
+#         echo $(($k+$j))
+#         python pgm2_crop.py $(($k+$j)) &                
+#     done
+#     wait
+# done
+
+# python prealign_crop_cm.py
+
+
+for k in {88..174..4}; 
+do
+    for j in {0..3}; 
+    do
+        echo $(($k+$j))
+        CUDA_VISIBLE_DEVICES=$j python rec_crop.py $(($k+$j)) &                
+    done
+    wait
+done
 
 # 6. Find shifts between reccrop and reccrop_sift, gives file shiftscrop.npy
 # python find_shifts_crop.py
@@ -32,15 +65,15 @@ python sort.py
 # python find_center.py
 
 # 9. reconstruct all data with applying both shifts to scanning positions
-for k in {0..174..4}; 
-do
-    for j in {0..3}; 
-    do
-        echo $(($k+$j))
-        CUDA_VISIBLE_DEVICES=$j python reccrop_align.py $(($k+$j)) &                
-    done
-    wait
-done
+# for k in {0..174..4}; 
+# do
+#     for j in {0..3}; 
+#     do
+#         echo $(($k+$j))
+#         CUDA_VISIBLE_DEVICES=$j python reccrop_align_azat.py $(($k+$j)) &                
+#     done
+#     wait
+# done
 # python find_center.py
 
 

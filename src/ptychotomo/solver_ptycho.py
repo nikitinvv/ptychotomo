@@ -196,8 +196,8 @@ class SolverPtycho(ptychofft):
                 fpsi = self.fwd_ptycho(psi, prb[:, m], scan, igpu)
                 afpsi = self.adj_ptycho(fpsi, prb[:, m], scan, igpu)
                 
-                # if(m == 0):
-                r = cp.real(cp.sum(psi*cp.conj(afpsi)) /
+                if(m == 0):
+                    r = cp.real(cp.sum(psi*cp.conj(afpsi)) /
                             (cp.sum(afpsi*cp.conj(afpsi))+1e-32))
                 
                 gradpsi += self.adj_ptycho(
@@ -213,13 +213,13 @@ class SolverPtycho(ptychofft):
             if (recover_prb):
                 if(i == 0):
                     gradprb = prb*0
-                for m in range(0, self.nmodes):
+                for m in range(self.nmodes):
                     # 2) prb retrieval subproblem with fixed object
                     # sum of forward operators associated with each prb
 
                     absfprb = data*0
-                    for m in range(self.nmodes):
-                        absfprb += cp.abs(self.fwd_ptycho(psi, prb[:, m], scan, igpu))**2                        
+                    for mm in range(self.nmodes):
+                        absfprb += cp.abs(self.fwd_ptycho(psi, prb[:, mm], scan, igpu))**2                        
 
                     fprb = self.fwd_ptycho(psi, prb[:, m], scan, igpu)
                     afprb = self.adj_ptycho_prb(fprb, psi, scan, igpu)

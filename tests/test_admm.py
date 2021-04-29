@@ -48,6 +48,7 @@ if __name__ == "__main__":
     # Load scan positions
     scaninit = -np.ones([2, ntheta, nscan], dtype='float32')
     scan_all = np.load('data_lego/scan.npy')
+    print(scan_all.shape)
     for k in range(ntheta):
         scan0 = scan_all[::-1, k]
         ids = np.where((scan0[0] < nz-nprb)*(scan0[0] < nz-nprb)*(scan0[0] >= 0)*(scan0[1] >= 0))[0]
@@ -68,14 +69,12 @@ if __name__ == "__main__":
         datainit = pslv.fwd_ptycho_batch(psi, prb, scaninit)
         datainit = np.sum(np.abs(datainit)**2, axis=1)
 
-    # # Shift scan positions
-    sy = np.int32((np.random.random([ntheta, 1])-0.5)*2*maxshift)
-    sx = np.int32((np.random.random([ntheta, 1])-0.5)*2*maxshift)    
     scan = -np.ones([2, ntheta, nscan], dtype='float32')
     data = np.zeros([ntheta, nscan, ndet,ndet], dtype='float32')
     
     for k in range(ntheta):
         scan0 = scaninit[:, k]
+        # Shift scan positions    
         scan0[0] += (np.random.random(1)-0.5)*2*maxshift
         scan0[1] += (np.random.random(1)-0.5)*2*maxshift
         ids = np.where((scan0[0] < nz-nprb)*(scan0[0] < nz-nprb -
@@ -85,10 +84,7 @@ if __name__ == "__main__":
         data[k,:len(ids)] = datainit[k, ids]
         plt.plot(scan0[1], scan0[0], 'r.')
         plt.savefig(f'data_lego/scan{k:03}.png')
-        plt.clf()    
-    # scan[0] += sy*(scan[0]!=0)
-    # scan[1] += sx*(scan[1]!=0)   
-    
+        plt.clf()        
     # Initial guess
     # variable index: 1 - ptycho problem, 2 - regularization (not implemented), 3 - tomo
     # used as in the pdf documents
@@ -100,9 +96,7 @@ if __name__ == "__main__":
     lamd3 = np.zeros([ntheta, nz, n], dtype='complex64')
     u = np.zeros([nz, n, n], dtype='complex64')
     flow = np.zeros([ntheta, nz, n, 2], dtype='float32')
-    # for k in range(ntheta):
-    #     print(sy[k,0],sx[k,0])
-    #     psi1[k] = np.roll(psi[k],(sy[k,0],sx[k,0]),axis=(0,1))
+    
     dxchange.write_tiff_stack(
         np.abs(psi), data_prefix+'data_lego/initpsiamp/p', overwrite=True)
     dxchange.write_tiff_stack(
@@ -113,7 +107,7 @@ if __name__ == "__main__":
             data, psi1, psi3, flow, prb, scan,
             h1, h3, lamd1, lamd3,
             u, piter, titer, diter, niter, recover_prb, align, start_win=start_win,
-            step_flow=step_flow, name=data_prefix+'tmp/'+str(align)+'/', dbg_step=dbg_step)
+            step_flow=step_flow, name='/local/data/vnikitin/'+'tmp/'+str(align)+'/', dbg_step=dbg_step)
 
     dxchange.write_tiff_stack(
         np.angle(psi1), data_prefix+'data_lego/rec_admm/psiangle/p', overwrite=True)

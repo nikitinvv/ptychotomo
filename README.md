@@ -6,7 +6,7 @@ see ? for details
 ## 1. create conda environment and install dependencies
 
 ```console
-conda create -n ptychotomo -c conda-forge cupy swig scikit-build dxchange opencv tomopy
+conda create -n ptychotomo -c conda-forge cupy swig scikit-build dxchange opencv tomopy silx
 ```
 
 Note: CUDA drivers need to be installed before installation
