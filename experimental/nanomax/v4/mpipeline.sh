@@ -1,3 +1,7 @@
+#!/bin/bash
+# source /home/vvnikitin/anaconda3/etc/profile.d/conda.sh
+# conda activate tomoalign
+
 python read_data.py /gdata/RAVEN/vnikitin/nanomax/
 python sort.py /gdata/RAVEN/vnikitin/nanomax/
 for k in {0..174..8}; 
@@ -28,7 +32,7 @@ do
     for j in {0..7}; 
     do
         echo $(($k+$j))
-        CUDA_VISIBLE_DEVICES=$j python rec_crop_final.py /gdata/RAVEN/vnikitin/nanomax/  $(($k+$j)) 4000 1 32 &                
+        CUDA_VISIBLE_DEVICES=$j python rec_crop_final.py /gdata/RAVEN/vnikitin/nanomax/  $(($k+$j)) 3500 1 32 &                
     done
     wait
 done
