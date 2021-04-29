@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     n = 512-128
-    nz = 512-192-64
+    nz = 512-192+64
     ndet = 128
     ntheta = 1
     ptheta = 1 
@@ -41,12 +41,12 @@ if __name__ == "__main__":
     data0 = data0[:,ids].reshape(len(ids)*81,128,128)
     
     shifts1 = np.load(data_prefix+'/datanpy/shifts1_'+str(2000)+'.npy')[id_theta]
-    shifts2 = np.load(data_prefix+'/datanpy/shifts2_'+str(nscan)+'.npy')[id_theta]
+    shifts2 = np.load(data_prefix+'/datanpy/shifts2_'+str(2700)+'.npy')[id_theta]
     
     scan0[1] -= (shifts1[1]+shifts2[1])
     scan0[0] -= (shifts1[0]+shifts2[0])
     scan0[1] -= (64+29)
-    scan0[0] -= (160+64)
+    scan0[0] -= (160-64)
     # ignore position out of field of view            
     ids = np.where((scan0[0,0]<nz-nprb)*(scan0[1,0]<n-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
 
@@ -72,9 +72,9 @@ if __name__ == "__main__":
             data, psi, prb, scan, psi*0, -1, piter, recover_prb)   
     
     # Save result
-    dxchange.write_tiff(np.angle(psi),  data_prefix+'rec_crop2/psiangle'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
-    dxchange.write_tiff(np.abs(psi),   data_prefix+'rec_crop2/psiamp'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
+    dxchange.write_tiff(np.angle(psi),  data_prefix+'rec_crop_final/psiangle'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
+    dxchange.write_tiff(np.abs(psi),   data_prefix+'rec_crop_final/psiamp'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
     for m in range(nmodes):
-        dxchange.write_tiff(np.angle(prb[:,m]),   data_prefix+'rec_crop2/prbangle/r'+str(id_theta), overwrite=True)
-        dxchange.write_tiff(np.abs(prb[:,m]),   data_prefix+'rec_crop2/prbamp/r'+str(id_theta), overwrite=True)
+        dxchange.write_tiff(np.angle(prb[:,m]),   data_prefix+'rec_crop_final/prbangle/r'+str(id_theta), overwrite=True)
+        dxchange.write_tiff(np.abs(prb[:,m]),   data_prefix+'rec_crop_final/prbamp/r'+str(id_theta), overwrite=True)
         

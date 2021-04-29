@@ -4,12 +4,12 @@ import sys
 import ptychotomo 
 from random import sample
 import matplotlib.pyplot as plt
-
 # data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 if __name__ == "__main__":
-    n = 512-128
-    nz = 512-192-64
+    
+    n = 512
+    nz = 512
     ndet = 128
     ntheta = 1
     ptheta = 1 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     recover_prb = True
     
     # Reconstrucion parameters
-    piter = 16  # ptychography iterations
+    
     nmodes = 4
     ngpus = 1
     
@@ -28,7 +28,6 @@ if __name__ == "__main__":
     nscan = int(sys.argv[3])
     step = int(sys.argv[4])    
     piter = int(sys.argv[5])
-    
     
     data = np.zeros([1, nscan, ndet, ndet], dtype='float32')
     scan = np.zeros([2, 1, nscan], dtype='float32')-1
@@ -39,21 +38,22 @@ if __name__ == "__main__":
     ids = np.arange(id_theta%step,169,step)
     scan0 = scan0[:,:,:,ids].reshape(2,1,len(ids)*81)
     data0 = data0[:,ids].reshape(len(ids)*81,128,128)
-    
-    shifts1 = np.load(data_prefix+'/datanpy/shifts1_'+str(2000)+'.npy')[id_theta]
-    shifts2 = np.load(data_prefix+'/datanpy/shifts2_'+str(nscan)+'.npy')[id_theta]
-    
-    scan0[1] -= (shifts1[1]+shifts2[1])
-    scan0[0] -= (shifts1[0]+shifts2[0])
-    scan0[1] -= (64+29)
-    scan0[0] -= (160+64)
     # ignore position out of field of view            
     ids = np.where((scan0[0,0]<nz-nprb)*(scan0[1,0]<n-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
 
+    
+    plt.savefig(data_prefix+'tmp/fig'+str(id_theta)+'.png')
+    
     print(f'{len(ids)}')
+    ids = ids[sample(range(len(ids)), min(len(ids),nscan))]
+    
     scan[:,:,:min(len(ids),nscan)] = scan0[:, :, ids]
     data[0,:min(len(ids),nscan)] = data0[ids]    
     print(nscan)
+    plt.plot(scan[1,0],scan[0,0],'r.')
+    plt.xlim([-2,512])
+    plt.ylim([-2,512])
+    plt.savefig(data_prefix+'tmp/fig'+str(id_theta)+'.png')
     # init probes
     prb = np.zeros([1, nmodes, nprb, nprb], dtype='complex64')
     prb[:] = np.load(data_prefix+'datanpy/prb128.npy')
@@ -72,9 +72,9 @@ if __name__ == "__main__":
             data, psi, prb, scan, psi*0, -1, piter, recover_prb)   
     
     # Save result
-    dxchange.write_tiff(np.angle(psi),  data_prefix+'rec_crop2/psiangle'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
-    dxchange.write_tiff(np.abs(psi),   data_prefix+'rec_crop2/psiamp'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
+    dxchange.write_tiff(np.angle(psi),  data_prefix+'rec_full/psiangle'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
+    dxchange.write_tiff(np.abs(psi),   data_prefix+'rec_full/psiamp'+str(nmodes)+str(nscan)+'/r'+str(id_theta), overwrite=True)
     for m in range(nmodes):
-        dxchange.write_tiff(np.angle(prb[:,m]),   data_prefix+'rec_crop2/prbangle/r'+str(id_theta), overwrite=True)
-        dxchange.write_tiff(np.abs(prb[:,m]),   data_prefix+'rec_crop2/prbamp/r'+str(id_theta), overwrite=True)
+        dxchange.write_tiff(np.angle(prb[:,m]),   data_prefix+'rec_full/prbangle/r'+str(id_theta), overwrite=True)
+        dxchange.write_tiff(np.abs(prb[:,m]),   data_prefix+'rec_full/prbamp/r'+str(id_theta), overwrite=True)
         

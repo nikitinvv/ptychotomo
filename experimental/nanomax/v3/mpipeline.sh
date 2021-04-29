@@ -1,5 +1,5 @@
-# python read_data.py
-# python sort.py
+python read_data.py
+python sort.py
 # for k in {0..174..8}; 
 # do
 #     for j in {0..7}; 

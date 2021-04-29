@@ -4,7 +4,7 @@ import ptychotomo
 from random import sample
 import matplotlib.pyplot as plt
 import sys
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+#data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 if __name__ == "__main__":    
 
@@ -21,10 +21,11 @@ if __name__ == "__main__":
     nmodes = 4  # number of probe modes
     ngpus = 8  # number of GPUs
 
-    nscan = int(sys.argv[1])
-    center = float(sys.argv[2])
-    align = int(sys.argv[3])
-    step = int(sys.argv[4])
+    data_prefix = sys.argv[1]
+    nscan = int(sys.argv[2])
+    center = float(sys.argv[3])
+    align = int(sys.argv[4])
+    step = int(sys.argv[5])
     
 
     # reconstruction paramters

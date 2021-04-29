@@ -17,13 +17,14 @@ from silx.image import sift
 
 
 
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+# data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 n = 512-128
 nz = 512-192-64
 ntheta = 174
 nmodes = 4
-nscan = int(sys.argv[1])
+data_prefix = sys.argv[1]
+nscan = int(sys.argv[2])
 img0 = np.zeros([ntheta,nz,n], dtype='float32')
 shift = np.zeros([ntheta,2], dtype='float32')
 ssum = np.zeros([ntheta,nz-200], dtype='float32')

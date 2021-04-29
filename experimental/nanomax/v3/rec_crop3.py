@@ -5,7 +5,7 @@ import ptychotomo
 from random import sample
 import matplotlib.pyplot as plt
 
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+# data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 if __name__ == "__main__":
     n = 512-128
@@ -23,10 +23,11 @@ if __name__ == "__main__":
     nmodes = 4
     ngpus = 1
     
-    id_theta = int(sys.argv[1])
-    nscan = int(sys.argv[2])
-    step = int(sys.argv[3])    
-    piter = int(sys.argv[4])
+    data_prefix = sys.argv[1]
+    id_theta = int(sys.argv[2])
+    nscan = int(sys.argv[3])
+    step = int(sys.argv[4])    
+    piter = int(sys.argv[5])
     
     
     data = np.zeros([1, nscan, ndet, ndet], dtype='float32')

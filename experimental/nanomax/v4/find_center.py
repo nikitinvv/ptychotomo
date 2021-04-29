@@ -15,7 +15,8 @@ if __name__ == "__main__":
     ntheta = 174
     pnz = 1
     nmodes =4
-    nscan = int(sys.argv[1])
+    data_prefix = sys.argv[1]
+    nscan = int(sys.argv[2])
     
     theta = np.zeros([ntheta],dtype='float32')
     

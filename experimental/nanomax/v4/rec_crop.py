@@ -5,11 +5,11 @@ import ptychotomo
 from random import sample
 import matplotlib.pyplot as plt
 
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+# data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 if __name__ == "__main__":
     n = 512-128
-    nz = 512-192+64
+    nz = 512-192-64
     ndet = 128
     ntheta = 1
     ptheta = 1 
@@ -23,11 +23,11 @@ if __name__ == "__main__":
     nmodes = 4
     ngpus = 1
     
-    id_theta = int(sys.argv[1])
-    nscan = int(sys.argv[2])
-    step = int(sys.argv[3])    
-    piter = int(sys.argv[4])
-    
+    data_prefix = sys.argv[1]
+    id_theta = int(sys.argv[2])
+    nscan = int(sys.argv[3])
+    step = int(sys.argv[4])    
+    piter = int(sys.argv[5])
     
     data = np.zeros([1, nscan, ndet, ndet], dtype='float32')
     scan = np.zeros([2, 1, nscan], dtype='float32')-1
@@ -39,13 +39,11 @@ if __name__ == "__main__":
     scan0 = scan0[:,:,:,ids].reshape(2,1,len(ids)*81)
     data0 = data0[:,ids].reshape(len(ids)*81,128,128)
     
-    shifts1 = np.load(data_prefix+'/datanpy/shifts1_'+str(2000)+'.npy')[id_theta]
-    shifts2 = np.load(data_prefix+'/datanpy/shifts2_'+str(2700)+'.npy')[id_theta]
-    
-    scan0[1] -= (shifts1[1]+shifts2[1])
-    scan0[0] -= (shifts1[0]+shifts2[0])
+    shifts = np.load(data_prefix+'/datanpy/shifts1_'+str(2000)+'.npy')[id_theta]
+    scan0[1] -= shifts[1]
+    scan0[0] -= shifts[0]
     scan0[1] -= (64+29)
-    scan0[0] -= (160-64)
+    scan0[0] -= (160+64)
     # ignore position out of field of view            
     ids = np.where((scan0[0,0]<nz-nprb)*(scan0[1,0]<n-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
 

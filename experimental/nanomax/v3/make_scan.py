@@ -4,7 +4,7 @@ import sys
 import ptychotomo 
 from random import sample
 import matplotlib.pyplot as plt
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+# data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 
 if __name__ == "__main__":
     
@@ -22,8 +22,8 @@ if __name__ == "__main__":
     
     nmodes = 4
     ngpus = 1
-    
-    id_theta = int(sys.argv[1])
+    data_prefix = sys.argv[1]
+    id_theta = int(sys.argv[2])
         
     scan0 = np.load(data_prefix+'datanpy/scan128sorted_'+str(id_theta)+'.npy').reshape(2,1,81,169)     
 

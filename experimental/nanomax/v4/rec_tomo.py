@@ -5,7 +5,7 @@ import scipy.ndimage as ndimage
 import ptychotomo
 import sys
 
-data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
+#data_prefix = '/gdata/RAVEN/vnikitin/nanomax/'
 if __name__ == "__main__":
 
     n = 512-128
@@ -15,7 +15,8 @@ if __name__ == "__main__":
     ntheta = 174
     pnz = 4
     nmodes =4
-    nscan = int(sys.argv[1])
+    data_prefix = sys.argv[1]
+    nscan = int(sys.argv[2])
     
     theta = np.zeros([ntheta],dtype='float32')
     
