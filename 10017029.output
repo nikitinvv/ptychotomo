@@ -1,0 +1,77 @@
+[1/3] Building CUDA object src/cuda/CMakeFiles/deform.dir/deform.cu.o
+[2/3] Linking CXX shared module src/cuda/_deform.so
+[2/3] Install the project...
+-- Install configuration: "Release"
+-- Up-to-date: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/radonusfft.py
+-- Up-to-date: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/ptychofft.py
+-- Up-to-date: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/deform.py
+-- Installing: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/_radonusfft.so
+-- Installing: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/_ptychofft.so
+-- Installing: /gpfs/mira-home/vvnikitin/ptychotomo_experimental/_skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/_deform.so
+
+copying src/ptychotomo/__init__.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/__init__.py
+copying src/ptychotomo/flowvis.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/flowvis.py
+copying src/ptychotomo/solver_admm.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_admm.py
+copying src/ptychotomo/solver_deform.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_deform.py
+copying src/ptychotomo/solver_ptycho.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_ptycho.py
+copying src/ptychotomo/solver_tomo.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_tomo.py
+copying src/ptychotomo/utils.py -> _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/utils.py
+
+running install
+running bdist_egg
+running egg_info
+writing src/ptychotomo.egg-info/PKG-INFO
+writing dependency_links to src/ptychotomo.egg-info/dependency_links.txt
+writing top-level names to src/ptychotomo.egg-info/top_level.txt
+reading manifest file 'src/ptychotomo.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+writing manifest file 'src/ptychotomo.egg-info/SOURCES.txt'
+installing library code to _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg
+running install_lib
+running build_py
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/__init__.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/flowvis.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_admm.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_deform.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_ptycho.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/solver_tomo.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/utils.py -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copying _skbuild/linux-x86_64-3.9/cmake-install/src/ptychotomo/_deform.so -> _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo
+copied 12 files
+running build_ext
+creating _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg
+creating _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/radonusfft.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/ptychofft.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/deform.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/__init__.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/flowvis.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/gendata.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/methods.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/solver_admm.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/solver_deform.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/solver_ptycho.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/solver_tomo.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/utils.py -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/_radonusfft.so -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/_ptychofft.so -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copying _skbuild/linux-x86_64-3.9/setuptools/lib/ptychotomo/_deform.so -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/ptychotomo
+copied 15 files
+creating _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+copying src/ptychotomo.egg-info/PKG-INFO -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+copying src/ptychotomo.egg-info/SOURCES.txt -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+copying src/ptychotomo.egg-info/dependency_links.txt -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+copying src/ptychotomo.egg-info/not-zip-safe -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+copying src/ptychotomo.egg-info/top_level.txt -> _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO
+writing _skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg/EGG-INFO/native_libs.txt
+creating 'dist/ptychotomo-0.2.0-py3.9-linux-x86_64.egg' and adding '_skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg' to it
+removing '_skbuild/linux-x86_64-3.9/setuptools/bdist.linux-x86_64/egg' (and everything under it)
+Processing ptychotomo-0.2.0-py3.9-linux-x86_64.egg
+creating /gpfs/mira-home/vvnikitin/anaconda3/envs/tomoalign/lib/python3.9/site-packages/ptychotomo-0.2.0-py3.9-linux-x86_64.egg
+Extracting ptychotomo-0.2.0-py3.9-linux-x86_64.egg to /gpfs/mira-home/vvnikitin/anaconda3/envs/tomoalign/lib/python3.9/site-packages
+Removing ptychotomo 0.1.0 from easy-install.pth file
+Adding ptychotomo 0.2.0 to easy-install.pth file
+
+Installed /gpfs/mira-home/vvnikitin/anaconda3/envs/tomoalign/lib/python3.9/site-packages/ptychotomo-0.2.0-py3.9-linux-x86_64.egg
+Processing dependencies for ptychotomo==0.2.0
+Finished processing dependencies for ptychotomo==0.2.0

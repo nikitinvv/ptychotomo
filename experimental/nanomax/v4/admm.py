@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     # read object
     n = 384  # object size n x,y
-    nz = 384  # object size in z
+    nz = 320  # object size in z
     ntheta = 174  # number of angles
     pnz = 8  # partial size for nz
     ptheta = 1  # partial size for ntheta
@@ -33,8 +33,14 @@ if __name__ == "__main__":
     piter = 32  # ptycho iterations
     titer = 32 # tomo iterations
     diter = 32  # deform iterations
-    niter = 129   # admm iterations
-    dbg_step = 16
+    niter = 129  # admm iterations
+
+#    piter = 256  # ptycho iterations
+#    titer = 256 # tomo iterations
+#    diter = 8  # deform iterations
+#    niter = 1  # admm iterations
+
+    dbg_step = 10000
     step_flow = 2    
     start_win = 256+32
         
@@ -60,7 +66,7 @@ if __name__ == "__main__":
         scan0[1] -= (shifts1[1]+shifts2[1])
         scan0[0] -= (shifts1[0]+shifts2[0])
         scan0[1] -= (64+29)
-        scan0[0] -= (160-64)
+        scan0[0] -= (160)
         # ignore position out of field of view            
         ids = np.where((scan0[0,0]<nz-nprb)*(scan0[1,0]<n-nprb)*(scan0[0,0]>=0)*(scan0[1,0]>=0))[0]
 
@@ -99,5 +105,10 @@ if __name__ == "__main__":
         np.angle(psi1), data_prefix+'rec_admm/psiangle/p', overwrite=True)
     dxchange.write_tiff_stack(
         np.abs(psi1), data_prefix+'rec_admm/psiamp/p', overwrite=True)
-    dxchange.write_tiff_stack(u.real, 'rec_admm/ure/u', overwrite=True)
-    dxchange.write_tiff_stack(u.imag, 'rec_admm/uim/u', overwrite=True)
+    dxchange.write_tiff_stack(
+        np.angle(psi3), data_prefix+'rec_admm/psi3angle/p', overwrite=True)
+    dxchange.write_tiff_stack(
+        np.abs(psi3), data_prefix+'rec_admm/psi3amp/p', overwrite=True)
+
+    dxchange.write_tiff_stack(u.real,data_prefix+'rec_admm/ure/u', overwrite=True)
+    dxchange.write_tiff_stack(u.imag,data_prefix+'rec_admm/uim/u', overwrite=True)

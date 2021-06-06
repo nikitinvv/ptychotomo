@@ -1,0 +1,25 @@
+Jobid: 10017029
+qsub -q full-node -A nanoct -t 0:10:00 -n 1 --proccount=32 ./compile.sh
+Sun May 02 18:40:02 2021 +0000 (UTC) submitted with cwd set to: /gpfs/mira-home/vvnikitin/ptychotomo_experimental
+jobid 10017029 submitted from terminal /dev/pts/22
+Sun May 02 18:48:24 2021 +0000 (UTC) 
+Sun May 02 18:48:24 2021 +0000 (UTC) Command: '/usr/bin/ssh' 'thetagpu06' '/usr/bin/cobalt-launcher.py' '--nf' '/var/tmp/cobalt.10017029' '--jobid' '10017029' '--cwd' '/gpfs/mira-home/vvnikitin/ptychotomo_experimental' '--env' 'COBALT_JOBID=10017029' '/gpfs/mira-home/vvnikitin/ptychotomo_experimental/./compile.sh'
+Sun May 02 18:48:24 2021 +0000 (UTC) 
+Sun May 02 18:48:24 2021 +0000 (UTC) Environment:
+Sun May 02 18:48:24 2021 +0000 (UTC) SHELL=/bin/bash
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_NODEFILE=/tmp/tmpPpUsDc
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_PARTNAME=thetagpu06
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_JOBID=10017029
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_STARTTIME=1619981295
+Sun May 02 18:48:24 2021 +0000 (UTC) LOGNAME=vvnikitin
+Sun May 02 18:48:24 2021 +0000 (UTC) USER=vvnikitin
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_ENDTIME=1619981895
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_PARTSIZE=32
+Sun May 02 18:48:24 2021 +0000 (UTC) HOME=/home/vvnikitin
+Sun May 02 18:48:24 2021 +0000 (UTC) COBALT_JOBSIZE=32
+Sun May 02 18:48:24 2021 +0000 (UTC) 
+Sun May 02 18:48:24 2021 +0000 (UTC) Info: stdin received from /dev/null
+Sun May 02 18:48:24 2021 +0000 (UTC) Info: stdout sent to /gpfs/mira-home/vvnikitin/ptychotomo_experimental/10017029.output
+Sun May 02 18:48:24 2021 +0000 (UTC) Info: stderr sent to /gpfs/mira-home/vvnikitin/ptychotomo_experimental/10017029.error
+Sun May 02 18:48:24 2021 +0000 (UTC) 
+Sun May 02 18:48:43 2021 +0000 (UTC) Info: task completed normally with an exit code of 0; initiating job cleanup and removal

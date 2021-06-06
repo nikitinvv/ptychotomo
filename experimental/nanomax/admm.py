@@ -108,5 +108,5 @@ if __name__ == "__main__":
         np.angle(psi1), data_prefix+'recadmm/psiangle/p', overwrite=True)
     dxchange.write_tiff_stack(
         np.abs(psi1), data_prefix+'recadmm/psiamp/p', overwrite=True)
-    dxchange.write_tiff_stack(u.real, 'recadmm/ure/u', overwrite=True)
-    dxchange.write_tiff_stack(u.imag, 'recadmm/uim/u', overwrite=True)
+    dxchange.write_tiff_stack(u.real, data_prefix+'recadmm/ure/u', overwrite=True)
+    dxchange.write_tiff_stack(u.imag, data_prefix+'recadmm/uim/u', overwrite=True)
