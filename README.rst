@@ -12,7 +12,7 @@ solve the proposed optimization problem, where the ptychography and tomography s
 Example of reconstruction:
 
 .. image:: rec.png
-    :width: 60%
+    :width: 75%
     :align: center
 
 ================
